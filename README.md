@@ -89,7 +89,7 @@
 - Microsoft Edge WebView2 Runtime。
 - 可访问的数据库服务，或本地 SQLite 文件。
 
-发布 Windows 构建后，可从仓库的 **Releases** 页面下载免安装版并运行 `DBFolio.exe`；发布包尚未提供时，可按下文从源码构建。免安装版仍需要系统 WebView2 运行环境。
+发布 Windows 构建后，可从仓库的 **Releases** 页面下载安装版（`setup.exe`）或便携版（`portable.zip`）；发布包尚未提供时，可按下文从源码构建。便携版需完整解压后运行目录内的 `DBFolio.exe`，并需要系统 WebView2 运行环境。
 
 ### 首次使用
 
@@ -141,23 +141,38 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 涉及真实外部数据库的测试需按测试要求准备环境；跳过的集成测试不表示对应服务已经通过验证。
 
-### 生成 Windows 可执行文件
+### 生成 Windows 安装包与便携版
 
 ```powershell
-# 正式构建，启用 LTO 优化
+# 正式构建：安装包 + 便携目录和 ZIP，启用 LTO 优化
 npm run app:build
 
-# 快速迭代构建，关闭 LTO，缩短编译时间
+# 仅生成正式便携版
+npm run app:portable
+
+# 测试构建：同样生成完整便携目录和 ZIP，关闭 LTO
 npm run app:build:fast
 ```
 
-两种构建均输出到：
+产物位于 `release/`，以下以 0.177.0 为例：
 
 ```text
-release/DBFolio.exe
+release/
+  DBFolio_0.177.0_windows_x64_setup.exe
+  DBFolio_0.177.0_windows_x64_portable.zip
+  DBFolio_0.177.0_windows_x64_portable/
+    DBFolio.exe
+    web/                    # HTML、CSS、JavaScript、编辑器等前端资源
+    LICENSE
+    distribution.json       # 版本、架构、构建配置与文件 SHA-256
+    使用说明.txt
 ```
 
-两条命令按需选择，输出路径相同。可执行文件仍依赖系统的 WebView2 运行环境。
+- 测试构建使用 `portable-fast` 后缀，避免覆盖正式产物；两种便携包旁都会生成 `SHA256SUMS.txt` 校验文件（带版本前缀）。脚本当前支持 Windows x64 MSVC。
+- **不再发布单文件 EXE。** 前端资源从 EXE 同目录的 `web/` 加载，EXE 只内置资源摘要清单；不要单独移动 EXE。程序启动时校验资源，缺失、损坏或版本混用会提示重新解压/安装。开发热重载仍使用 Vite。
+- 安装版使用 NSIS，按当前用户安装；缺少 WebView2 时需联网下载安装运行时。便携包不包含 WebView2。
+- 手动更新便携版时，先退出应用，将新包解压到新目录并整体替换程序文件；本地会话和凭据不在程序目录内。安装版可运行新版安装包升级。
+- **在线更新尚未实现。** 目录布局与版本清单为后续更新做准备；安装版可接入 Tauri updater，便携版仍需实现整包替换与回滚。当前产物未配置 Windows 代码签名或更新签名。
 
 ## 本地数据与使用边界
 

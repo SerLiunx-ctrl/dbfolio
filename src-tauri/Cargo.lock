@@ -1005,7 +1005,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "dbfolio"
-version = "0.176.0"
+version = "0.177.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1022,6 +1022,7 @@ dependencies = [
  "rust_xlsxwriter",
  "serde",
  "serde_json",
+ "sha2",
  "sqlparser",
  "sqlx",
  "tauri",

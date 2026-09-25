@@ -1,16 +1,17 @@
 {
   "name": "dbfolio",
   "private": true,
-  "version": "0.176.0",
+  "version": "0.177.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/create-web-manifest.mjs",
     "preview": "vite preview",
     "app:build": "powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1",
     "app:build:fast": "powershell -ExecutionPolicy Bypass -File scripts/build-app-fast.ps1",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "app:portable": "powershell -ExecutionPolicy Bypass -File scripts/package-app.ps1"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.7",

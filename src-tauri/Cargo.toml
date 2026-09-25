@@ -1,6 +1,6 @@
 [package]
 name = "dbfolio"
-version = "0.176.0"
+version = "0.177.0"
 description = "DBFolio - multi-database desktop client with cross-session sync"
 authors = ["SerLiunx"]
 license = "MIT"
@@ -27,6 +27,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
 sqlx = { version = "0.8", default-features = false, features = [
   "runtime-tokio",
   "tls-rustls-ring",

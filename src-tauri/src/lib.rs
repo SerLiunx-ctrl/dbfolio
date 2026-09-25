@@ -9,6 +9,8 @@ mod services;
 mod state;
 mod tasks;
 mod store;
+#[cfg(any(feature = "custom-protocol", test))]
+mod web_assets;
 #[cfg(test)]
 mod acceptance_tests;
 
@@ -35,14 +37,31 @@ fn init_tracing() {
         .try_init();
 }
 
+#[cfg(feature = "custom-protocol")]
+pub fn verify_resources() -> Result<(), String> {
+    web_assets::DiskAssets::packaged().validate()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     init_tracing();
+
+    #[cfg(feature = "custom-protocol")]
+    let context = tauri::generate_context!(assets = web_assets::DiskAssets::packaged());
+    #[cfg(not(feature = "custom-protocol"))]
+    let context = tauri::generate_context!();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            #[cfg(feature = "custom-protocol")]
+            if let Err(message) = verify_resources() {
+                use tauri_plugin_dialog::DialogExt;
+                app.dialog().message(format!("{message}\n\n请完整解压 DBFolio 便携包或重新运行安装程序。"))
+                    .title("DBFolio 资源不完整").blocking_show();
+                return Err(std::io::Error::other(message).into());
+            }
             let state = tauri::async_runtime::block_on(state::AppState::initialize())?;
             app.manage(state);
             #[cfg(windows)]
@@ -151,6 +170,6 @@ pub fn run() {
             commands::redis::redis_rename_key,
             commands::redis::redis_key_ttl,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }

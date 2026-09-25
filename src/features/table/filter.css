@@ -1,0 +1,17 @@
+.dw-filter-panel .fui-Input, .dw-filter-panel .fui-Dropdown,
+.dw-filter-panel .fui-Combobox { font-size: 12px; }
+.dw-filter-panel .fui-Dropdown__button { font-size: 11px; }
+.dw-filter-panel .dw-filter-column input { font-size: 11px; }
+.dw-filter-labels { display: grid; grid-template-columns: 190px 150px minmax(0,1fr) 28px; gap: 6px; font-size: 11px; color: var(--colorNeutralForeground3); }
+.dw-filter-presets { border-bottom: 1px solid var(--colorNeutralStroke2); padding-bottom: 8px; }
+.dw-filter-presets summary { cursor: pointer; font-size: 12px; padding: 2px 0; }
+.dw-filter-presets[open] > div { margin-top: 8px; }
+.dw-filter-column-options .fui-Option { font-size: 11px !important; line-height: 15px !important; padding: 5px 6px !important; }
+.dw-filter-field-label { min-width: 0; overflow-wrap: anywhere; white-space: normal; }
+.dw-filter-field-label small { font-size: 10px; color: var(--colorNeutralForeground3); margin-left: 4px; }
+.dw-filter-value.fui-Combobox { min-width: 0; width: 100%; flex: 1; }
+.dw-filter-value input { min-width: 0; font-size: 12px; }
+.dw-filter-options { max-width: 380px; }
+.dw-filter-options .fui-Option { font-size: 12px !important; gap: 6px; }
+.dw-filter-option-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dw-filter-options small { margin-left: auto; font-size: 10px; color: var(--colorNeutralForeground3); }

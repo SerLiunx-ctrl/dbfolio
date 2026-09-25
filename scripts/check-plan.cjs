@@ -1,0 +1,11 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+const m={exports:{}};
+new Function('require','module','exports',ts.transpileModule(fs.readFileSync('src/features/query/plan.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(require,m,m.exports);
+const {parsePlan}=m.exports,wrap=x=>({rows:[[['json',JSON.stringify(x)]]],columns:[]});
+const pg=parsePlan(wrap([{Plan:{'Node Type':'Nested Loop','Plan Rows':3,'Total Cost':12,Plans:[{'Node Type':'Seq Scan','Relation Name':'a','Plan Rows':100},{'Node Type':'Index Scan','Index Name':'b_pk','Relation Name':'b'}]}}]));
+assert.equal(pg.nodes[0].children.length,2);assert.ok(pg.nodes[0].children[0].warning);assert.equal(pg.nodes[0].children[1].index,'b_pk');
+const mysql=parsePlan(wrap({query_block:{nested_loop:[{table:{table_name:'a',access_type:'ALL',rows_examined_per_scan:100,cost_info:{prefix_cost:'10'}}},{table:{table_name:'b',access_type:'ref',key:'pk'}}]}}));
+assert.equal(mysql.nodes.length,2);assert.equal(mysql.nodes[0].rows,'100');assert.equal(mysql.nodes[1].index,'pk');
+assert.equal(parsePlan({rows:[[['text','not json']]],columns:[]}),null);
+assert.equal(parsePlan(wrap({unknown:'new format'})).nodes.length,0);
+console.log('通过：PG 计划树、MySQL 扫描和索引、未知格式及原始结果回退。');

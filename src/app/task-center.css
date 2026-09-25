@@ -1,0 +1,14 @@
+.dw-task-trigger{flex-shrink:0!important;white-space:nowrap;gap:7px!important}
+.dw-task-trigger.is-active{color:var(--colorBrandForeground1)!important;background:var(--colorBrandBackground2)!important;border:1px solid var(--colorBrandStroke1)!important;font-weight:600;box-shadow:inset 0 -2px var(--colorBrandStroke1)}
+.dw-task-hover{width:360px;max-width:min(400px,calc(100vw - 24px))!important;max-height:min(560px,75vh);overflow:auto;padding:12px!important;background:var(--colorNeutralBackground1)!important;color:var(--colorNeutralForeground1)!important;border:1px solid var(--colorNeutralStroke2);box-shadow:var(--shadow16);border-radius:10px!important}
+.dw-task-hover-header,.dw-task-hover-row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.dw-task-hover-header{margin-bottom:8px}
+.dw-task-hover-item{display:flex;flex-direction:column;gap:7px;padding:10px 0;border-top:1px solid var(--colorNeutralStroke2)}
+.dw-task-hover-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dw-task-hover-row>span{flex-shrink:0;font-size:12px;color:var(--colorBrandForeground1);font-variant-numeric:tabular-nums}
+.dw-task-hover-context,.dw-task-hover-message,.dw-task-hover-footer{font-size:12px;line-height:1.5;color:var(--colorNeutralForeground3);overflow-wrap:anywhere}
+.dw-task-hover-message{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0}
+.dw-task-hover-context{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dw-task-hover-footer{padding-top:8px;border-top:1px solid var(--colorNeutralStroke2)}
+.dw-tab-activity{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex-shrink:0;color:var(--colorBrandForeground1)}
+@media (prefers-reduced-motion:reduce){.dw-tab-activity *{animation:none!important}}

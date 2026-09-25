@@ -1,0 +1,12 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {FluentProvider,webLightTheme} from '@fluentui/react-components';
+import {TaskCenter} from '../../src/app/TaskCenter';
+import {useTaskStore,updateTask} from '../../src/stores/useTaskStore';
+import '../../src/styles.css';
+import {GenerationTabActivity} from '../../src/app/GenerationTabActivity';
+(window as any).taskStore=useTaskStore;
+(window as any).updateTask=updateTask;
+useTaskStore.setState({tasks:[{id:'test',tabId:'generation',kind:'生成',label:'生成测试数据',sessionIds:[],startedAt:Date.now(),status:'running',progress:{processed:10,total:100,message:'接收中',cancelRequested:false}}]});
+setInterval(()=>updateTask('test',{progress:{processed:Math.floor(Date.now()/1000)%100,total:100,message:'接收中',cancelRequested:false}}),300);
+createRoot(document.getElementById('root')!).render(<FluentProvider theme={webLightTheme}><button id="outside">其他页签</button><div role="tab" id="generation-tab"><GenerationTabActivity tabId="generation"/>数据生成</div><div role="tab" id="other-tab"><GenerationTabActivity tabId="other"/>其他生成页</div><footer style={{position:'fixed',bottom:0,left:0,right:0,height:28,display:'flex',alignItems:'center',overflowX:'auto',padding:'0 12px',gap:8}}><div style={{flex:1}}/><TaskCenter/></footer></FluentProvider>);

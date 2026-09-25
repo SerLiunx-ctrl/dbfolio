@@ -1,0 +1,78 @@
+[package]
+name = "dbfolio"
+version = "0.176.0"
+description = "DBFolio - multi-database desktop client with cross-session sync"
+authors = ["SerLiunx"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "dbfolio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+webview2-com = "0.38.2"
+windows-core = "0.61.2"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sqlx = { version = "0.8", default-features = false, features = [
+  "runtime-tokio",
+  "tls-rustls-ring",
+  "mysql",
+  "postgres",
+  "sqlite",
+  "chrono",
+  "json",
+  "uuid",
+  "rust_decimal",
+  "bigdecimal",
+] }
+tokio = { version = "1", features = ["sync", "time", "rt-multi-thread", "macros"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+anyhow = "1"
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+keyring = { version = "3", features = ["windows-native"] }
+dirs = "6"
+arboard = { version = "3", default-features = false }
+csv = "1"
+tempfile = "3"
+encoding_rs = "0.8"
+rust_xlsxwriter = "0.79"
+redis = { version = "1.7.0", features = ["tokio-comp", "connection-manager", "tokio-rustls-comp"] }
+
+mongodb = "=3.3.0"
+futures-util = "0.3"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
+sqlparser = "0.59"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
+
+# 快速迭代构建：牺牲少量运行时优化换取编译速度（供 scripts/build-app-fast.ps1 使用）
+[profile.release-fast]
+inherits = "release"
+lto = false
+codegen-units = 16
+opt-level = 2
+incremental = true

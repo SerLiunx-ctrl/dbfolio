@@ -1,0 +1,20 @@
+const fs=require('node:fs'),assert=require('node:assert/strict'),ts=require('typescript'),vm=require('node:vm');
+const source=fs.readFileSync('src/features/query/queryActions.ts','utf8');
+const mod={exports:{}};
+new Function('exports',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(mod.exports);
+const definitions=[],calls=[];let disposed=0;
+const menu=mod.exports.registerQueryActions({addAction(action){definitions.push(action);return {dispose(){disposed++;}};}},{runCurrent:()=>calls.push('current'),runSelection:()=>calls.push('selection'),format:()=>calls.push('format'),aiFormat:()=>calls.push('aiFormat'),aiOptimize:()=>calls.push('aiOptimize'),save:()=>calls.push('save'),history:()=>calls.push('history')});
+definitions.find(a=>a.id==='dw-run-selection').run();
+assert.deepEqual(calls,['selection'],'选中执行不能调用当前语句执行');
+assert.match(definitions.find(a=>a.id==='dw-run-selection').precondition,/editorHasSelection/);
+assert.match(definitions.find(a=>a.id==='dw-run-current').precondition,/dwQueryIdle/);
+definitions.find(a=>a.id==='dw-run-current').run();assert.deepEqual(calls,['selection','current']);
+assert.ok(definitions.every(a=>/[\u4e00-\u9fff]/.test(a.label)&&a.contextMenuGroupId));
+for(const [id,expected] of [['dw-ai-format','aiFormat'],['dw-ai-optimize','aiOptimize']]){const action=definitions.find(a=>a.id===id);assert.match(action.precondition,/editorHasSelection/);action.run();assert.equal(calls.at(-1),expected);}
+menu.dispose();assert.equal(disposed,definitions.length);
+const locale={};vm.runInNewContext(fs.readFileSync('node_modules/monaco-editor/esm/vs/nls/lang/zh-cn.js','utf8'),locale);
+assert.equal(locale._VSCODE_NLS_LANGUAGE,'zh-cn');
+assert.ok(locale._VSCODE_NLS_MESSAGES.some(s=>s.includes('剪切')));
+assert.ok(locale._VSCODE_NLS_MESSAGES.some(s=>s.includes('粘贴')));
+const boot=fs.readFileSync('src/monaco.ts','utf8');assert.ok(boot.indexOf('monaco-editor/nls/lang/zh-cn')<boot.indexOf('import * as monaco'));
+console.log('通过：中文语言资源和加载顺序、执行入口隔离、选区/运行状态条件、菜单中文及注册清理。');

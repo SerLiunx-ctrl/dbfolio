@@ -1,0 +1,8 @@
+.dw-table-options{border:1px solid var(--colorNeutralStroke2);border-radius:5px;padding:8px;margin-bottom:8px;max-width:1100px;font-size:12px}
+.dw-table-options-basic{display:grid;grid-template-columns:minmax(180px,280px) minmax(0,1fr);gap:8px;align-items:start;margin-bottom:8px}
+.dw-table-options-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 10px;align-items:start}
+.dw-table-options .fui-Field{min-width:0;align-self:start}.dw-table-options .fui-Label{font-size:12px;line-height:16px;padding-bottom:3px}
+.dw-table-options :is(.fui-Input,.fui-Select,.fui-Textarea){min-width:0;width:100%;box-sizing:border-box;align-self:start}
+.dw-table-options-comment .fui-Textarea{min-height:28px}.dw-table-options-comment textarea{min-height:20px;max-height:120px;line-height:20px;font-size:13px;padding:3px 8px;box-sizing:border-box}
+.dw-table-options-actions{display:flex;gap:6px;margin-top:8px}
+@media(max-width:700px){.dw-table-options-basic{grid-template-columns:1fr}.dw-table-options-grid{grid-template-columns:1fr}}

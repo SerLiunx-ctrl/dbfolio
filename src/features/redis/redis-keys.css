@@ -1,0 +1,25 @@
+.dw-redis-key-table {
+  --redis-key-row-height: 28px;
+  --redis-key-cell-padding: 1px;
+}
+:root[data-density="comfortable"] .dw-redis-key-table {
+  --redis-key-row-height: 32px;
+  --redis-key-cell-padding: 3px;
+}
+/* Override the shared table padding only inside the Redis key list. */
+:root[data-density] .dw-redis-key-table :is(.fui-TableCell,.fui-TableHeaderCell) {
+  padding: var(--redis-key-cell-padding) 8px;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+:root[data-density] .dw-redis-key-table .fui-TableRow { height: var(--redis-key-row-height); }
+:root[data-density] .dw-redis-key-table .fui-TableHeaderCell { font-weight: 600; }
+:root[data-density] .dw-redis-key-table :is(.fui-TableCell,.fui-TableHeaderCell):first-child {
+  padding-inline: 4px;
+  text-align: center;
+}
+.dw-redis-key-table .fui-Checkbox { width: 24px; height: 24px; vertical-align: middle; }
+.dw-redis-key-table .fui-Checkbox__indicator { margin: 4px; }
+.dw-redis-key-table .fui-Checkbox__input { width: 24px; }

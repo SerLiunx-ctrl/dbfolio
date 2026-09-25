@@ -1,0 +1,32 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {FluentProvider,webLightTheme} from '@fluentui/react-components';
+import {initializeWorkspace} from '../../src/stores/useWorkspace';
+import {useTabStore} from '../../src/stores/useTabStore';
+import {useEditGuard} from '../../src/stores/useEditGuard';
+import {SyncWorkspace} from '../../src/features/sync/SyncWorkspace';
+import {AppToaster} from '../../src/app/toast';
+import {useSessionStore} from '../../src/stores/useSessionStore';
+import '../../src/styles.css';
+(window as any).calls=[];
+(window as any).__TAURI_INTERNALS__={invoke:async(command:string,args:any)=>{
+ (window as any).calls.push({command,args});
+ if(command==='settings_get')return (window as any).workspaceSnapshot??null;
+ if(command==='settings_set')return;
+ if(command==='meta_databases')return [{name:args.sessionId==='s'?'source':'target'}];
+ if(command==='meta_table_detail')return {columns:[{name:'id',rawType:'INT'},{name:'status',rawType:'TEXT',comment:'状态'}]};
+ if(command==='meta_tables')return [{name:'posts',kind:'table',comment:'文章'},{name:'users',kind:'table',comment:'用户'},{name:'view1',kind:'view'}];
+ if(command==='sync_compare_schema')return {tables:args.tables.map((table:string)=>({table,status:'same',columns:[]})),summary:{createTables:0,alterTables:0,sameTables:args.tables.length,dropTables:0}};
+ if(command==='sync_compare_data'&&(window as any).delay)await new Promise(r=>setTimeout(r,600));
+ if(command==='sync_compare_data')return args.request.tables.map((table:string)=>({table,samples:[],sourceRows:1,targetRows:0,inserts:1,updates:0,deletes:0}));
+ if(command==='sync_preview_schema')return {id:'fixed-plan',warnings:[],groups:args.request.tables.map((_:string,i:number)=>[i]),statements:args.request.tables.map((table:string)=>({table,kind:'createTable',description:'创建表 '+table,sql:'CREATE TABLE '+table+' (id INT)'}))};
+ if(command==='task_begin'||command==='task_release')return;
+ if(command==='task_progress')return null;
+ throw Error('Unexpected IPC '+command);
+}};
+useSessionStore.setState({sessions:[{id:'s',name:'源会话',engine:'mysql'},{id:'t',name:'目标会话',engine:'mysql'},{id:'offline',name:'未连接会话',engine:'mysql'}] as any,statuses:{s:{connected:true},t:{connected:true},offline:{connected:false}} as any});
+(window as any).restore=()=>initializeWorkspace((e)=>{throw e;});
+(window as any).tabs=useTabStore;(window as any).guard=useEditGuard;
+useTabStore.getState().openSync();
+function Workspaces(){const tabs=useTabStore(s=>s.tabs),active=useTabStore(s=>s.activeId);return <div style={{display:'flex',flexDirection:'column',height:'100vh',width:'100%'}}><nav>{tabs.map((t,i)=><button key={t.id} onClick={()=>useTabStore.getState().setActive(t.id)}>同步页 {i+1}</button>)}</nav>{tabs.map(t=><div key={t.id} style={{display:active===t.id?'flex':'none',minHeight:0,flex:1}}>{t.kind==='sync'&&<SyncWorkspace tab={t} active={active===t.id}/>}</div>)}</div>;}
+createRoot(document.getElementById('root')!).render(<FluentProvider theme={webLightTheme}><div style={{height:'100vh',display:'flex'}}><Workspaces/></div><AppToaster/></FluentProvider>);

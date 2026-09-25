@@ -1,0 +1,10 @@
+import {connectionBridge} from '../../src/ipc/connectionBridge';
+import {createRoot} from 'react-dom/client';
+import {FluentProvider,webLightTheme} from '@fluentui/react-components';
+import {QueryPageSettings} from '../../src/features/settings/QueryPageSettings';
+import {TableDataPanel} from '../../src/features/table/TableDataPanel';
+import {useSettingsStore} from '../../src/stores/useSettingsStore';
+connectionBridge.isOffline=()=>false;
+const w=window as any;w.calls=[];w.settings=useSettingsStore;w.__TAURI_INTERNALS__={invoke:async(c:string,a:any)=>{w.calls.push({c,a});if(c==='settings_set'||c.startsWith('task_'))return null;if(c==='settings_get')return null;if(c==='query_execute'||c==='query_fetch_page'){const n=a.options?.limit??a.opts?.limit??a.limit??200;return {columns:[{name:'name',rawType:'varchar',canonical:{kind:'text'}}],rows:Array.from({length:n},(_,i)=>[['text',String(i)]]),elapsedMs:1};}throw Error(c);}};
+const detail:any={name:'t',kind:'table',primaryKey:[],columns:[{name:'name',rawType:'varchar',canonical:{kind:'text'},nullable:true}],foreignKeys:[]};
+createRoot(document.getElementById('root')!).render(<FluentProvider theme={webLightTheme}><QueryPageSettings/><div style={{display:'flex',height:400}}><TableDataPanel tab={{id:'t',kind:'table',sessionId:'s',database:'d',table:'t'}} detail={detail} engine="mysql" readOnly onChanged={()=>{}}/></div></FluentProvider>);

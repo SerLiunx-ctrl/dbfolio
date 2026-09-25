@@ -1,0 +1,42 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+const moduleText=fs.readFileSync('src/features/query/sqlText.ts','utf8');const mod={exports:{}};
+new Function('module','exports',ts.transpileModule(moduleText,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(mod,mod.exports);
+const {currentStatement,namedParameters,fillParameters,formatSql,tableReferences,sqlTokens}=mod.exports;
+assert.equal(currentStatement('SELECT 1;\n',10),'SELECT 1');
+assert.equal(currentStatement('SELECT 1;SELECT 2;',9),'SELECT 2');
+const sql="SELECT ';' AS x; -- ; :ignored\nSELECT :id, ':literal', col::text FROM public.items AS i WHERE i.id=:id; SELECT 3";
+assert.equal(currentStatement(sql,sql.indexOf('WHERE')),"-- ; :ignored\nSELECT :id, ':literal', col::text FROM public.items AS i WHERE i.id=:id");
+assert.deepEqual(namedParameters(sql,'postgres').map(p=>p.name),['id','id']);
+assert.ok(fillParameters(sql,{id:"'a''; DROP TABLE x;--'"},'postgres').includes("WHERE i.id='a''; DROP TABLE x;--'"));
+assert.throws(()=>fillParameters('select :missing',{}),/缺少参数/);
+assert.equal(namedParameters('DO $body$ BEGIN PERFORM :inside; END; $body$; SELECT :outside','postgres').length,1);
+assert.equal(namedParameters('select x #>> \'{a}\' from t where id=:id','postgres').length,1);
+assert.equal(namedParameters("select 'C:\\' as p; select :id",'postgres').length,1);
+assert.equal(namedParameters("select 'C:\\' :inside' as p; select :id",'mysql').length,1);
+assert.equal(namedParameters('select [name:part], :id','sqlite').length,1);
+assert.deepEqual(tableReferences('SELECT u.id FROM "public"."users" AS u JOIN audit.logs l ON u.id=l.id','postgres'),[{name:'users',schema:'public',alias:'u'},{name:'logs',schema:'audit',alias:'l'}]);
+assert.equal(tableReferences('SELECT * FROM users WHERE id=1')[0].alias,undefined);
+const formatted=formatSql("SELECT 'from; :name', id FROM t WHERE id=:id; -- comment\nSELECT 2",'postgres');
+const meaningful=s=>sqlTokens(s,'postgres').filter(t=>t.kind!=='space').map(t=>[t.kind,t.text]);
+assert.deepEqual(meaningful(formatted),meaningful("SELECT 'from; :name', id FROM t WHERE id=:id; -- comment\nSELECT 2"),'格式化必须保留所有非空白 token');
+console.log('通过：当前语句边界、引号/注释/dollar-quote、方言转义、重复命名参数、类型转换、别名/schema 与格式化原文保护。');
+
+const path=require('node:path'),cache=new Map(),settings=new Map();
+const api={settingsGet:async key=>settings.get(key)??null,settingsSet:async(key,value)=>settings.set(key,value)};
+function load(file){file=path.resolve(file);if(file.endsWith(path.join('src','ipc.ts')))return {api};if(cache.has(file))return cache.get(file).exports;const m={exports:{}};cache.set(file,m);const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new Function('require','module','exports',code)(name=>name.startsWith('.')?load(path.resolve(path.dirname(file),name)+'.ts'):require(name),m,m.exports);return m.exports;}
+(async()=>{
+  const library=load('src/stores/useLibrary.ts');
+  const entry={id:10,sql:'SELECT 1',sessionId:'s1',database:'db',executedAt:'2026-09-16',success:true};
+  const preset={id:'p1',scope:JSON.stringify(['s1','db','public','items']),name:'常用',filters:[{column:'code',operator:'eq',value:'001',literal:['text','001']}],conjunction:'and'};
+  await Promise.all([library.toggleHistory(entry),library.saveFilterPreset(preset),library.rememberSqlFile({path:'C:/query.sql',sessionId:'s1',database:'db'})]);
+  let state=library.useLibrary.getState();assert.equal(state.history.length,1);assert.equal(state.filters.length,1);assert.equal(state.files.length,1);
+  await library.saveFilterPreset({...preset,id:'p2',scope:JSON.stringify(['s1','db','audit','items'])});assert.equal(library.useLibrary.getState().filters.length,2);
+  await library.saveFilterPreset({...preset,id:'p3',conjunction:'or'});assert.equal(library.useLibrary.getState().filters.length,2,'同一表的同名方案应覆盖');
+  const original=api.settingsSet;api.settingsSet=async()=>{throw Error('disk failed');};await assert.rejects(library.toggleHistory(entry));assert.equal(library.useLibrary.getState().history.length,1,'持久化失败不得丢收藏');api.settingsSet=original;
+  await library.toggleHistory(entry);assert.equal(library.useLibrary.getState().history.length,0);
+  const {useTabStore}=load('src/stores/useTabStore.ts');
+  useTabStore.getState().openTable({sessionId:'s1',database:'db',schema:'public',table:'items'});
+  useTabStore.getState().openTable({sessionId:'s1',database:'db',schema:'audit',table:'items'});
+  assert.equal(useTabStore.getState().tabs.length,2,'同名跨 schema 表不能串页签');
+  console.log('通过：收藏/方案/文件记录并发保存、同名覆盖与 schema 隔离、持久化失败恢复、跨 schema 页签。');
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,0 +1,7 @@
+import {createRoot} from 'react-dom/client';
+import {FluentProvider,Input,Select,Dropdown,Combobox,Option,Textarea,SpinButton,Field} from '@fluentui/react-components';
+import {buildTheme} from '../../src/theme';
+import '../../src/styles.css';import '../../src/compact.css';
+const params=new URLSearchParams(location.search),density=params.get('density')??'compact';document.documentElement.dataset.density=density;document.documentElement.style.zoom=params.get('zoom')??'1';
+const theme=buildTheme(params.get('dark')==='1','#1675c0',params.get('style')??'lavender',density);
+createRoot(document.getElementById('root')!).render(<FluentProvider theme={theme}><div style={{padding:24,display:'grid',gap:18}}><Select size="small" aria-label="长下拉"><option>选择已保存的关联</option><option>另一选项</option></Select><div style={{display:'flex',gap:12}}><Select size="small" aria-label="短下拉"><option>求和</option></Select><Input size="small" aria-label="输入框" placeholder="输入内容"/><Dropdown size="small" aria-label="下拉" placeholder="请选择"><Option>项目一</Option></Dropdown><Combobox size="small" aria-label="组合框" placeholder="搜索"><Option>项目一</Option></Combobox></div><Textarea aria-label="多行"/><SpinButton aria-label="数字" value={30}/><Select size="small" disabled><option>禁用</option></Select><Field validationState="error" validationMessage="错误"><Select size="small" aria-label="错误下拉"><option>错误状态</option></Select></Field></div></FluentProvider>);

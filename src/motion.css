@@ -1,0 +1,40 @@
+/* 不对编辑器祖先使用 transform，避免固定定位的补全菜单错位。 */
+:root { --dw-ease:cubic-bezier(.16,1,.3,1); --dw-spring:cubic-bezier(.2,.9,.3,1.08); }
+@keyframes dw-motion-fade { from {opacity:0} to {opacity:1} }
+@keyframes dw-motion-menu { from {opacity:0;clip-path:inset(0 0 10% 0 round 6px)} to {opacity:1;clip-path:inset(0 round 6px)} }
+@keyframes dw-motion-sheet { from {opacity:0;translate:0 28px} to {opacity:1;translate:0 0} }
+@keyframes dw-motion-content { from {top:16px} to {top:0} }
+@keyframes dw-motion-dialog { from {opacity:.55;clip-path:inset(4% 2% 0 round 8px)} to {opacity:1;clip-path:inset(0 round 8px)} }
+:root[data-motion="full"] :is(.fui-Button,.fui-MenuItem,.session-row,.dw-workspace-tab,.dw-task-trigger) {
+ transition:background-color 140ms var(--dw-ease),color 140ms var(--dw-ease),border-color 140ms var(--dw-ease),box-shadow 180ms var(--dw-ease),scale 120ms var(--dw-ease);
+}
+:root[data-motion="full"] .fui-Button:active:not(:disabled):not([aria-disabled="true"]) {scale:.97}
+:root[data-motion="full"] :is(.fui-MenuPopover,.dw-context-menu) {animation:dw-motion-menu 260ms var(--dw-ease)}
+:root[data-motion="full"] :is(.fui-DialogSurface,.fui-PopoverSurface,.dw-task-hover) {animation:dw-motion-dialog 300ms var(--dw-ease)}
+:root[data-motion="full"] :is(.dw-enter,.dw-smart-side) {position:relative;animation:dw-motion-content 320ms cubic-bezier(.22,.7,.25,1)}
+:root[data-motion="full"] .dw-smart-clarification {animation:dw-motion-sheet 240ms var(--dw-spring)}
+/* 内容保持不透明，移动同一根指示条，不在每次选中时重建下划线。 */
+.dw-tab-strip {position:relative}
+.dw-workspace-content {position:relative;top:0}
+:root[data-motion="full"] .dw-workspace-content {animation:dw-motion-content 320ms cubic-bezier(.22,.7,.25,1);opacity:1}
+/* 补全展开时立即落位，避免输入过程中候选框与编辑器发生相对位移。 */
+:root[data-motion="full"] .dw-workspace-content:has(.suggest-widget.visible) {animation:none}
+.dw-workspace-tab {position:relative}
+.dw-tab-strip .dw-workspace-tab[aria-selected="true"] {box-shadow:none}
+.dw-tab-indicator {position:absolute;height:2px;pointer-events:none;background:var(--colorBrandStroke1);visibility:hidden;z-index:1}
+:root[data-motion="full"] .dw-tab-indicator[data-ready="true"] {transition:left 320ms cubic-bezier(.22,.7,.25,1),top 320ms cubic-bezier(.22,.7,.25,1),width 320ms cubic-bezier(.22,.7,.25,1)}
+/* 分组保持挂载以支持收起动画；折叠内容 inert，不能被键盘聚焦。 */
+.dw-session-group-body {display:grid;grid-template-rows:0fr}
+.dw-session-group-body[data-expanded="true"] {grid-template-rows:1fr}
+.dw-session-group-clip {min-height:0;overflow:hidden}
+:root[data-motion="full"] .dw-session-group-body {transition:grid-template-rows 320ms cubic-bezier(.22,.7,.25,1)}
+/* 减弱模式不动画布局尺寸，分隔条始终直接跟手。 */
+:root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
+ animation:none!important;transition-property:color,background-color,border-color,opacity!important;transition-duration:80ms!important;transition-delay:0s!important;scroll-behavior:auto!important;
+}
+:root[data-motion="reduced"] :is(.fui-MenuPopover,.dw-context-menu,.fui-DialogSurface,.dw-task-hover,.dw-smart-side) {animation:dw-motion-fade 80ms linear!important}
+:root[data-motion="off"] *, :root[data-motion="off"] *::before, :root[data-motion="off"] *::after {animation:none!important;transition:none!important;scroll-behavior:auto!important}
+/* 设置尚未加载时也尊重系统偏好，防止启动时闪过位移动画。 */
+@media(prefers-reduced-motion:reduce) {
+ :root:not([data-motion]) *, :root:not([data-motion]) *::before, :root:not([data-motion]) *::after {animation:none!important;transition:none!important}
+}

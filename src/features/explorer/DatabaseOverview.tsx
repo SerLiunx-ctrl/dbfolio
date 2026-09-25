@@ -1,0 +1,18 @@
+import {useEffect,useMemo,useState} from 'react';
+import {Button,Input,Spinner} from '@fluentui/react-components';
+import {api,normalizeError} from '../../ipc';
+import type {TableRef} from '../../ipc/types';
+import {useTabStore} from '../../stores/useTabStore';
+import './database-overview.css';
+type SortKey='name'|'rowEstimate'|'sizeBytes'|'engine'|'comment'|'kind';
+export function DatabaseOverview({sessionId,database}:{sessionId:string;database:string}){
+ const [tables,setTables]=useState<TableRef[]>([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(true),[revision,setRevision]=useState(0);
+ const [sort,setSort]=useState<{key:SortKey;desc:boolean}>({key:'name',desc:false});
+ useEffect(()=>{let active=true;setTables([]);setBusy(true);setError('');void api.listTables(sessionId,database).then(v=>{if(active)setTables(v);}).catch(e=>{if(active)setError(normalizeError(e).message);}).finally(()=>{if(active)setBusy(false);});return()=>{active=false;};},[sessionId,database,revision]);
+ const shown=useMemo(()=>tables.filter(t=>(t.name+' '+(t.comment??'')+' '+(t.schema??'')).toLowerCase().includes(search.toLowerCase())).sort((a,b)=>{const x=a[sort.key],y=b[sort.key];const result=x==null?(y==null?0:1):y==null?-1:typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y));return sort.desc?-result:result;}),[tables,search,sort]);
+ const max=Math.max(1,...tables.map(t=>t.rowEstimate??0));
+ const open=(t:TableRef)=>useTabStore.getState().openTable({sessionId,database,schema:t.schema,table:t.name});
+ return <section className="dw-database-overview" aria-label="数据库表概览"><header><strong>{database}</strong><span>{tables.length} 个对象</span><Input size="small" aria-label="搜索表" placeholder="搜索表名 / 注释" value={search} onChange={(_,d)=>setSearch(d.value)}/><Button size="small" disabled={busy} onClick={()=>setRevision(v=>v+1)}>刷新</Button><Button size="small" onClick={()=>useTabStore.getState().openQuery(sessionId,database)}>新建查询</Button></header>
+ {busy&&<Spinner size="tiny" label="加载表列表…"/>}{error&&<div role="alert">{error}</div>}
+ <div className="dw-database-overview-scroll"><table><thead><tr>{([['name','名称'],['rowEstimate','估算行数'],['sizeBytes','大小'],['engine','引擎'],['comment','注释'],['kind','类型']] as [SortKey,string][]).map(([key,label])=><th key={key} aria-sort={sort.key===key?(sort.desc?'descending':'ascending'):'none'}><button onClick={()=>setSort({key,desc:sort.key===key?!sort.desc:false})}>{label}{sort.key===key?(sort.desc?' ↓':' ↑'):''}</button></th>)}</tr></thead><tbody>{shown.map(t=><tr key={(t.schema??'')+'.'+t.name} onDoubleClick={()=>open(t)}><td><button className="dw-table-open" onClick={()=>open(t)}>{t.schema?`${t.schema}.`:''}{t.name}</button></td><td className="dw-estimate">{t.rowEstimate==null?'—':<div className="dw-estimate-content"><span className="dw-estimate-value">{t.rowEstimate.toLocaleString()}</span><span className="dw-estimate-track" role="meter" aria-label={`${t.name} 估算行数，相对当前数据库最大表`} aria-valuemin={0} aria-valuemax={max} aria-valuenow={t.rowEstimate} title={`估算 ${t.rowEstimate.toLocaleString()} 行；当前数据库最大 ${max.toLocaleString()} 行`}><span className="dw-estimate-fill" style={{width:`${Math.min(100,Math.max(0,t.rowEstimate/max*100))}%`,minWidth:t.rowEstimate>0?2:0}}/></span></div>}</td><td>{t.sizeBytes==null?'—':t.sizeBytes<1024?`${t.sizeBytes} B`:t.sizeBytes<1048576?`${(t.sizeBytes/1024).toFixed(1)} KiB`:`${(t.sizeBytes/1048576).toFixed(1)} MiB`}</td><td>{t.engine??'—'}</td><td title={t.comment??''}>{t.comment||'—'}</td><td>{t.kind==='view'?'视图':'表'}</td></tr>)}</tbody></table>{!busy&&!error&&!shown.length&&<p>{tables.length?'没有匹配的表':'当前数据库没有可见的表或视图'}</p>}</div></section>;
+}

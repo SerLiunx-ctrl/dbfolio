@@ -1,0 +1,192 @@
+/* 工作台密度层：尺寸与装饰独立于主题配色，包含 Portal 中的二级弹窗。 */
+:root {
+  --dw-form-gap: 12px;
+  --dw-panel-padding: 14px 20px 24px;
+  --dw-card-padding: 12px 16px;
+  --dw-section-gap: 16px;
+}
+:root[data-density="compact"] {
+  --dw-form-gap: 8px;
+  --dw-panel-padding: 10px 12px 16px;
+  --dw-card-padding: 8px 12px;
+  --dw-section-gap: 10px;
+}
+
+/* 标准外壳统一保证标题 / 操作区留在视口内，长内容在中间滚动。 */
+.fui-DialogSurface {
+  box-sizing: border-box;
+  max-height: calc(100dvh - 32px) !important;
+  min-width: 0;
+}
+.fui-DialogBody { min-height: 0; min-width: 0; max-height: calc(100dvh - 82px); grid-template-rows: auto minmax(0,1fr) auto; }
+.fui-DialogContent {
+  min-height: 0;
+  min-width: 0;
+  overscroll-behavior: contain;
+  overflow-y: auto;
+}
+.fui-DialogActions { flex-wrap: wrap; }
+.fui-DialogContent .fui-Field { min-width: 0; }
+.fui-DialogContent .fui-Field > :is(.fui-Input,.fui-Dropdown,.fui-Combobox,.fui-Select) { min-width: 0; width: 100%; }
+.fui-DialogContent pre { max-width: 100%; overflow: auto; user-select: text; }
+
+:root[data-density="compact"] .fui-DialogSurface {
+  padding: 16px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--dw-palette-border);
+  background: var(--dw-palette-surface) !important;
+  box-shadow: 0 16px 48px #0003, 0 2px 8px #0002 !important;
+}
+:root[data-density="compact"] .fui-DialogBody { gap: 10px; max-height: calc(100dvh - 68px); }
+:root[data-density="compact"] .fui-DialogTitle {
+  font-size: 16px !important;
+  line-height: 24px !important;
+  font-weight: 600;
+  border-inline-start: 3px solid var(--colorBrandStroke1);
+  padding-inline-start: 10px;
+}
+:root[data-density="compact"] .fui-DialogContent {
+  font-size: 13px;
+  line-height: 1.5;
+  padding-block: 0;
+}
+:root[data-density="compact"] .fui-DialogContent p { margin-block: 6px; }
+:root[data-density="compact"] .fui-DialogActions {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+  gap: 6px;
+}
+:root[data-density="compact"] .fui-DialogActions .fui-Button { min-width: 64px; }
+
+/* 不设置固定 height，长标签、触屏缩放和错误提示仍可撑开。 */
+:root[data-density="compact"] .fui-Button {
+  min-height: 26px;
+  padding-block: 3px;
+  padding-inline: 9px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 5px;
+}
+:root[data-density="compact"] .fui-Button__icon { font-size: 16px; width: 16px; height: 16px; }
+:root[data-density="compact"] :is(.fui-Input,.fui-Combobox,.fui-Dropdown,.fui-Select) {
+  min-height: 28px;
+  border-bottom-color: var(--colorNeutralStroke1);
+}
+:root[data-density="compact"] :is(.fui-Input__input,.fui-Combobox__input,.fui-Dropdown__button) {
+  font-size: 13px;
+  line-height: 18px;
+  padding-block: 4px;
+}
+/* small Select 原有固定高度为 24px，不能再向其中塞入 18px 行高与 8px 内边距。 */
+:root[data-density="compact"] .fui-Select__select {
+  box-sizing: border-box;
+  height: auto;
+  min-height: 28px;
+  font-size: 13px;
+  line-height: 20px;
+  padding-block: 3px;
+}
+:root[data-density="compact"] :is(.fui-Field__label,.fui-Label) {
+  font-size: 12px;
+  line-height: 18px;
+}
+:root[data-density="compact"] .fui-Field__label { padding-bottom: 3px; }
+:root[data-density="compact"] :is(.fui-Checkbox__label,.fui-Switch__label,.fui-Radio__label) { padding-block: 5px; }
+:root[data-density="compact"] :is(.fui-MenuItem,.fui-Option) { min-height: 28px; padding-block: 4px; font-size: 13px; }
+:root[data-density="compact"] .fui-OptionGroup__label { padding-block: 5px; font-size: 11px; }
+:root[data-density="compact"] :is(.fui-MenuPopover,.fui-PopoverSurface,.fui-Listbox) {
+  border-radius: 6px;
+  background: var(--dw-palette-surface) !important;
+}
+:root[data-density="compact"] .fui-Tab { padding-block: 7px; padding-inline: 12px; }
+:root[data-density="compact"] .fui-TreeItemLayout { min-height: 28px; height: auto; }
+:root[data-density="compact"] :is(.fui-TableCell,.fui-TableHeaderCell) { padding-block: 5px; }
+
+/* 主工作区使用平面分区与细强调线，减少一层套一层的卡片边框。 */
+:root[data-density="compact"] [data-style] .dw-table-heading {
+  margin: 0;
+  padding: 7px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  border-radius: 0;
+  background: var(--colorNeutralBackground1);
+  box-shadow: none;
+  font-size: 14px;
+}
+:root[data-density="compact"] [data-style] .dw-data-toolbar {
+  margin: 0;
+  padding: 5px 10px;
+  gap: 5px;
+  border: 0;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  border-radius: 0;
+  background: var(--colorNeutralBackground2);
+  flex-wrap: wrap;
+}
+:root[data-density="compact"] [data-style] .dw-data-surface { margin: 0; border-radius: 0; box-shadow: none; }
+:root[data-density="compact"] [data-style] .dw-data-footer { margin: 0; padding: 5px 10px; border-radius: 0; font-size: 12px; }
+:root[data-density="compact"] [data-style] .dw-sidebar { background: var(--dw-palette-canvas); }
+:root[data-density="compact"] .dw-style-options { gap: 8px; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); }
+:root[data-density="compact"] .dw-style-preview { height: 72px; }
+:root[data-density="compact"] .dw-style-name { margin: 7px 0 3px; }
+:root[data-density="compact"] .dw-style-option { border-radius: 6px; padding: 8px; }
+:root[data-density="compact"] .dw-native-select { min-height: 28px; padding: 3px 7px; }
+:root[data-density="compact"] .dw-mongo-query { gap: 8px; padding: 8px 10px; }
+:root[data-density="compact"] .dw-mongo-query textarea { min-height: 48px; }
+:root[data-density="compact"] .dw-mongo-detail { padding: 8px; }
+:root[data-density="compact"] .dw-mongo-tool-tabs { gap: 4px; margin-bottom: 10px; }
+:root[data-density="compact"] .dw-mongo-tools textarea { min-height: 120px; padding: 8px; }
+:root[data-density="compact"] .dw-mongo-tool-result :is(th,td) { padding: 5px 8px; }
+:root[data-density="compact"] .dw-plan-view li { padding: 7px 9px; margin: 6px 0; }
+
+.dw-session-form { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: var(--dw-form-gap) !important; }
+.dw-session-form > :is(.dw-span-full,.fui-Switch,.fui-Checkbox,p) { grid-column: 1 / -1; }
+.dw-session-form > p { font-size: 12px; color: var(--colorNeutralForeground3); }
+.dw-session-form .fui-Field { min-width: 0; }
+@media (max-width: 620px) {
+  .dw-session-form { grid-template-columns: minmax(0,1fr); }
+  .fui-DialogSurface { max-width: calc(100vw - 20px) !important; }
+  :root[data-density="compact"] .fui-DialogSurface { padding: 12px !important; }
+}
+@media (prefers-reduced-motion: reduce) { .dw-enter { animation: none; } }
+
+:root[data-density="compact"] .dw-window-titlebar { height: 34px; border-bottom: 1px solid var(--colorNeutralStroke2); }
+:root[data-density="compact"] .dw-window-titlebar .fui-Button { border-radius: 0; padding: 0; }
+:root[data-density="compact"] .dw-redis-detail > :first-child { padding: 9px 10px 8px; background: var(--colorNeutralBackground2); }
+:root[data-density="compact"] .dw-redis-detail > [aria-busy] { padding: 8px 10px 12px; gap: 8px; }
+:root[data-density="compact"] .dw-info-section { background: var(--colorNeutralBackground2); border-radius: 5px; }
+.dw-session-form > .fui-Field:has(input[type="password"]) { grid-column: 1 / -1; }
+@media (max-height: 420px) {
+  .fui-DialogSurface { overflow-y: auto; }
+  .fui-DialogBody { max-height: none !important; }
+}
+
+/* 表结构、索引、外键共用紧凑列表，不改变数据网格和其他表单。 */
+.dw-schema-list {font-size:12px;line-height:16px;font-weight:400}
+.dw-schema-list .fui-TableRow {height:26px;min-height:26px}
+.dw-schema-list :is(.fui-TableCell,.fui-TableHeaderCell) {height:26px;box-sizing:border-box;padding:2px 8px!important;font-size:12px!important;line-height:16px;font-weight:400!important}
+.dw-schema-list :is(.fui-TableCell,.fui-TableHeaderCell) :is(span,strong,code) {font-size:inherit;font-weight:400!important}
+.dw-schema-list .fui-Badge {font-size:10px!important;line-height:12px;height:16px;min-width:0;padding-inline:4px}
+.dw-schema-list .fui-Button {min-height:22px;height:22px;padding:1px 4px;font-size:12px;font-weight:400}
+/* 控件外框、Select 内框与 Fluent 焦点伪元素共用圆角，避免主题圆角与紧凑样式错位。 */
+:root :is(.fui-Input,.fui-Combobox,.fui-Dropdown,.fui-Select,.fui-Textarea,.fui-SpinButton) {
+  --borderRadiusMedium: 5px;
+  border-radius: var(--borderRadiusMedium);
+}
+:root .fui-Select__select {
+  border-radius: var(--borderRadiusMedium);
+}
+/* Select 的边框在原生 select 上，不能只调整外层容器。保留焦点、错误和禁用状态。 */
+:root .fui-Select__select:not(:disabled):not([aria-invalid="true"]) {
+  border-bottom-color: var(--colorNeutralStroke1);
+}
+:root .fui-Select__select:not(:disabled):not([aria-invalid="true"]):hover {
+  border-bottom-color: var(--colorNeutralStroke1Hover);
+}
+/* 结构属性勾选不撑高紧凑行。 */
+.dw-schema-list .fui-Checkbox { height:22px; min-height:22px; vertical-align:middle; }
+.dw-schema-list .fui-Checkbox__indicator { margin:2px; width:16px; height:16px; }
+.dw-schema-list .fui-Checkbox { display:flex; }

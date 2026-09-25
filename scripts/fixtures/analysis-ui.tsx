@@ -1,0 +1,22 @@
+import React from 'react';
+import {monaco} from '../../src/monaco';
+(window as any).monaco=monaco;
+import {createRoot} from 'react-dom/client';
+import {FluentProvider,webLightTheme,webDarkTheme} from '@fluentui/react-components';
+import {AnalysisWorkspace,AnalysisLauncher,openAnalysis} from '../../src/features/analysis/AnalysisWorkspace';
+import {newPlan,fromSql,autoChart} from '../../src/features/analysis/model';
+import {useTabStore,type AnalysisTab} from '../../src/stores/useTabStore';
+import {useSessionStore} from '../../src/stores/useSessionStore';
+import {useSettingsStore} from '../../src/stores/useSettingsStore';
+import {AppToaster} from '../../src/app/toast';
+import {connectionBridge} from '../../src/ipc/connectionBridge';
+import '../../src/styles.css';
+const data={columns:[{name:'月份',rawType:'TEXT'},{name:'销售额',rawType:'decimal'},{name:'订单数',rawType:'INTEGER'}],rows:Array.from({length:125},(_,i)=>[['text',`2026-${String(i%12+1).padStart(2,'0')}`],['decimal',String(100+i*4)],['int',i+1]]),affected:null};
+const storage=new Map<string,string>();const calls:unknown[]=[];(window as any).calls=calls;(window as any).storage=storage;
+(window as any).__TAURI_INTERNALS__={invoke:async(command:string,args:any)=>{calls.push({command,args});switch(command){case 'meta_tables':return [{name:args.database==='other'?'other_table':'orders',schema:null,kind:'table'}];case 'meta_table_detail':return {name:args.table,columns:[{name:'customer_name',rawType:'TEXT',comment:'客户名称'}]};case 'settings_get':return storage.get(args.key)??null;case 'settings_set':storage.set(args.key,args.value);return;case 'query_parameter_literals':return Object.fromEntries(Object.entries(args.values).map(([k,v]:any)=>[k,v[0]==='text'?"'"+v[1].replace(/'/g,"''")+"'":v[1]]));case 'analysis_query':if((window as any).fail)throw {message:'模拟查询失败，原结果保留'};return {result:data,limit:5000,limited:(window as any).limited??false};case 'mongo_inspect':return {rows:[{category:'A',stats:{amount:{$numberDecimal:'12.5'}}},{category:'B',stats:{amount:{$numberInt:'3'}}}],limited:false};case 'plugin:dialog|save':return 'C:/isolated/chart.'+args.options.filters[0].extensions[0];case 'analysis_export':(window as any).lastExport=args;return;case 'task_begin':case 'task_release':return;case 'task_progress':return null;default:throw Error('Unexpected IPC '+command);}}};
+useSessionStore.setState({sessions:[{id:'test',name:'隔离分析测试',engine:'sqlite'},{id:'mongo',name:'MongoDB 模拟',engine:'mongodb'}] as any,statuses:{test:{connected:true},mongo:{connected:true}} as any,activeSessionId:'test'});
+connectionBridge.currentTab=()=>{const s=useTabStore.getState();return s.tabs.find(t=>t.id===s.activeId);};
+const plan=newPlan('test','main');plan.name='月度销售分析';plan.query='SELECT :start_date AS period';plan.parameters={start_date:{type:'text',value:'2026-01-01'}};const dataset=fromSql(data as any,'当前查询页 · 第 1–125 行（非全量）');plan.chart=autoChart(dataset);openAnalysis(plan,dataset);
+(window as any).settings=useSettingsStore;(window as any).tabs=useTabStore;
+function App(){const tabs=useTabStore(s=>s.tabs),active=useTabStore(s=>s.activeId),dark=useSettingsStore(s=>s.themeMode==='dark');return <FluentProvider theme={dark?webDarkTheme:webLightTheme}><div style={{height:'100vh',display:'flex',flexDirection:'column'}}>{tabs.filter(t=>t.id===active).map(t=><AnalysisWorkspace key={t.id} tab={t as AnalysisTab}/>)}<AnalysisLauncher/><AppToaster/></div></FluentProvider>;}
+createRoot(document.getElementById('root')!).render(<App/>);

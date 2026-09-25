@@ -1,0 +1,20 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+function load(path){const module={exports:{}};new Function('require','module','exports',ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(()=>({}),module,module.exports);return module.exports;}
+const {compareResults,snapshotResult}=load('src/features/compare/model.ts');
+const data=rows=>({columns:[{name:'id',rawType:'bigint'},{name:'amount',rawType:'decimal'}],rows,affected:null});
+const a=data([[['int','9007199254740993'],['decimal','1.00']],[['int','2'],['null',null]],[['int','3'],['text','old']]]);
+const b=data([[['decimal','9007199254740993'],['int',1]],[['int','2'],['text','']],[['int','4'],['text','new']]]);
+let diff=compareResults(a,b,['id']);assert.equal(diff.equal,1);assert.deepEqual(diff.differences.map(d=>d.kind),['changed','removed','added']);
+assert.throws(()=>compareResults(a,data([...a.rows,a.rows[0]]),['id']),/重复/);
+assert.throws(()=>compareResults(a,data([[['null',null],['text','x']]]),['id']),/NULL/);
+assert.throws(()=>compareResults(a,data([[['int',1],['trunc','x']]]),['id']),/截断/);
+assert.throws(()=>compareResults(a,{...b,columns:[{name:'id'},{name:'id'}]},['id']),/重名/);
+const reordered={...a,columns:[...a.columns].reverse(),rows:a.rows.map(r=>[...r].reverse())};assert.equal(compareResults(a,reordered,['id']).equal,3);
+const snap=snapshotResult(a,'source','当前页');a.rows[0][1][1]='changed';assert.equal(snap.result.rows[0][1][1],'1.00');
+const {foreignRelations,relationValues}=load('src/features/relations/model.ts');
+const source={sessionId:'s',database:'db',schema:'public',table:'article'};
+const [relation]=foreignRelations(source,{foreignKeys:[{name:'f',columns:['tenant','category'],refDatabase:'other',refSchema:'catalog',refTable:'category',refColumns:['tenant','id']}]});
+assert.equal(relation.target.database,'other');assert.equal(relation.target.schema,'catalog');
+assert.deepEqual(relationValues(relation,['category','tenant'],[['int',12],['text','a']]),[['text','a'],['int',12]]);
+assert.throws(()=>relationValues(relation,['category','tenant'],[['null',null],['text','a']]),/NULL/);
+console.log('通过：精确大整数、数值规范化、NULL/空串、重排列、重复键及截断拒绝、快照隔离、跨库/schema 复合外键');

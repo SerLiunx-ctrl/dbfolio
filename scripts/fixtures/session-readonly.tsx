@@ -1,0 +1,3 @@
+import React from 'react';import {createRoot} from 'react-dom/client';import {FluentProvider,webLightTheme} from '@fluentui/react-components';import {SessionDialog} from '../../src/features/sessions/SessionDialog';import {useSessionStore} from '../../src/stores/useSessionStore';
+(window as any).__TAURI_INTERNALS__={invoke:async()=>null};useSessionStore.setState({createSession:async(input:any)=>{(window as any).saved=input;return {...input,id:'new'};}});
+createRoot(document.getElementById('root')!).render(<FluentProvider theme={webLightTheme}><SessionDialog open session={null} folders={[]} onClose={()=>{}} onSaved={()=>{}}/></FluentProvider>);

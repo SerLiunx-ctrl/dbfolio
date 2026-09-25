@@ -1,0 +1,23 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+const mod={exports:{}},api={};
+new Function('require','module','exports',ts.transpileModule(fs.readFileSync('src/stores/useDockStore.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(name=>name==='../ipc'?{api}:name==='./useLocalUndo'?{rememberUndo:()=>{}}:require(name),mod,mod.exports);
+const {normalizeDock,moveDock,dockTarget,DEFAULT_DOCK,useDockStore:store}=mod.exports;
+const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+(async()=>{
+ assert.deepEqual(normalizeDock(null),DEFAULT_DOCK);assert.deepEqual(normalizeDock({sessions:'bad',first:'bad'}),DEFAULT_DOCK);
+ let layout=moveDock(DEFAULT_DOCK,'sessions','right',true);assert.equal(layout.explorer,'left');assert.equal(layout.sessions,'right');
+ layout=moveDock(layout,'explorer','right',true);assert.equal(layout.first,'explorer');
+ layout=moveDock(layout,'sessions','left',false);assert.equal(layout.sessions,'left');assert.equal(layout.explorer,'right');
+ const bounds={left:100,top:50,width:1000,height:600};
+ assert.deepEqual(dockTarget(120,100,bounds),{side:'left',top:true});assert.deepEqual(dockTarget(1050,600,bounds),{side:'right',top:false});
+ assert.equal(dockTarget(600,100,bounds),null);assert.equal(dockTarget(99,100,bounds),null);assert.equal(dockTarget(1050,700,bounds),null);
+ api.settingsSetMany=async values=>{for(const [key,value] of Object.entries(values))await api.settingsSet(key,value);};
+ const old=deferred();api.settingsGet=()=>old.promise;const writes=[];api.settingsSet=async(_,value)=>{writes.push(JSON.parse(value));};
+ const load=store.getState().load();await store.getState().move('sessions','right',true);old.resolve(JSON.stringify(DEFAULT_DOCK));await load;
+ assert.equal(store.getState().layout.sessions,'right','慢速恢复不能覆盖用户刚拖动的布局');
+ await Promise.all([store.getState().move('explorer','right',false),store.getState().reset()]);assert.deepEqual(writes.at(-1),DEFAULT_DOCK);
+ api.settingsGet=async()=>JSON.stringify({sessions:'right',explorer:'left',first:'explorer'});await store.getState().load();assert.equal(store.getState().layout.sessions,'right');
+ api.settingsSet=async()=>{throw Error('保存失败');};await assert.rejects(store.getState().reset());
+ api.settingsSet=async()=>{};await store.getState().move('explorer','right',true);assert.equal(store.getState().layout.explorer,'right');
+ console.log('通过：独立左右停靠、同侧排序、落点与取消区、损坏配置、恢复竞争、顺序保存、失败后重试。');
+})().catch(e=>{console.error(e);process.exitCode=1;});

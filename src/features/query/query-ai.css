@@ -1,0 +1,90 @@
+.dw-query-ai{width:min(1060px,94vw)!important;max-width:94vw!important}.dw-query-ai .fui-DialogContent{max-height:75vh;overflow:auto}.dw-query-ai textarea{width:100%;box-sizing:border-box;min-height:85px;max-height:220px;resize:vertical;background:var(--colorNeutralBackground1);color:inherit;border:1px solid var(--colorNeutralStroke1);border-radius:5px;padding:8px}.dw-query-ai pre{max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:10px;background:var(--colorNeutralBackground2);user-select:text}.dw-query-ai summary{cursor:pointer;padding:8px 0;font-weight:600}.dw-ai-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;border:0;padding:0;min-width:0}.dw-ai-fields>*{min-width:0}.dw-ai-table-list{max-height:200px;overflow:auto;display:flex;flex-direction:column;margin:8px 0}.dw-ai-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}.dw-ai-error{white-space:pre-wrap;padding:10px;border-left:3px solid var(--colorPaletteRedBorder2);color:var(--colorPaletteRedForeground1);background:var(--colorPaletteRedBackground1)}
+
+.dw-ai-clarification{width:min(720px,94vw)!important}.dw-ai-question{border:1px solid var(--colorNeutralStroke2);border-radius:6px;padding:12px;margin:12px 0;min-width:0}.dw-ai-question legend{font-weight:600;overflow-wrap:anywhere}.dw-ai-question textarea{min-height:60px;margin-top:6px}.dw-ai-question label{display:block}
+.dw-query-ai .dw-ai-fields{grid-template-columns:minmax(280px,1.2fr) minmax(140px,1fr) minmax(140px,1fr);margin:8px 0}
+.dw-ai-service{display:flex;align-items:center;gap:6px;min-width:0}
+.dw-ai-service>.fui-Select{flex:1;min-width:0}
+.dw-ai-service>.fui-Button{flex-shrink:0;min-height:32px}
+.dw-ai-inline{display:flex;align-items:center;gap:4px}
+.dw-ai-help{flex-shrink:0;color:var(--colorNeutralForeground3)}
+.dw-ai-section-help{display:flex;justify-content:flex-end;margin-top:-30px;pointer-events:none}
+.dw-ai-section-help>.fui-Button{pointer-events:auto}
+.dw-query-ai h3{font-size:14px;margin:12px 0 6px}
+@media(max-width:760px){.dw-query-ai .dw-ai-fields{grid-template-columns:1fr 1fr}.dw-ai-fields>.fui-Field:first-child{grid-column:1/-1}}
+@media(max-width:440px){.dw-query-ai .dw-ai-fields{grid-template-columns:1fr}}
+.dw-smart-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);height:100%;min-height:0;gap:8px}
+.dw-smart-single{height:100%;min-height:0}
+.dw-smart-single>.dw-smart-side{display:none}
+.dw-smart-sql{height:100%;min-width:0;min-height:0}
+.dw-smart-side{min-width:0;min-height:0;overflow:auto;border-left:0}
+.dw-smart-panel{padding:8px;min-width:0;font-size:12px}
+.dw-smart-panel>header{display:flex;align-items:center;gap:4px;margin-bottom:6px}
+.dw-smart-panel>header>.fui-Button:last-child{margin-left:auto}
+.dw-smart-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:200px;overflow:auto;background:var(--colorNeutralBackground2);padding:8px;user-select:text}
+.dw-smart-panel .dw-ai-actions{margin:6px 0}
+.dw-smart-panel summary{cursor:pointer;margin:6px 0}
+.dw-smart-analysis{height:360px}
+.dw-smart-analysis .dw-analysis-sql-editor,.dw-smart-analysis .dw-analysis-sql-editor>section{height:100%!important}
+.dw-smart-clarification{animation:dw-smart-slide-in .22s ease-out}
+@keyframes dw-smart-slide-in{from{translate:0 60vh;opacity:0}to{translate:0 0;opacity:1}}
+@media(prefers-reduced-motion:reduce){.dw-smart-clarification{animation:none}}
+@media(max-width:700px){.dw-smart-split{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(140px,1fr) minmax(180px,1fr)}.dw-smart-side{border-left:0;border-top:0}}
+/* 编辑区：统一两侧栏头，提示词与结果各自清晰分区。 */
+.dw-resizable-sql{display:flex;flex-direction:column;min-height:160px;flex-shrink:0;min-width:0}
+.dw-resizable-sql-content{flex:1;min-height:0;min-width:0}
+.dw-sql-resizer{height:8px;flex:0 0 8px;display:flex;align-items:center;justify-content:center;cursor:row-resize;touch-action:none;background:var(--colorNeutralBackground2);border-block:0;box-sizing:border-box}
+.dw-sql-resizer>span{width:36px;height:2px;border-radius:2px;background:var(--colorNeutralStroke1)}
+.dw-sql-resizer:hover,.dw-sql-resizer:focus-visible{background:var(--colorBrandBackground2);outline:1px solid var(--colorBrandStroke1);outline-offset:-1px}
+.dw-smart-split{gap:0}
+.dw-smart-side{overflow:hidden}
+.dw-query-sql-pane{display:flex;flex-direction:column}
+.dw-sql-pane-header,.dw-smart-panel>header{height:36px;min-height:36px;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:4px 10px;border-bottom:0;background:var(--colorNeutralBackground2);margin:0;flex-shrink:0}
+.dw-sql-pane-header{font-size:12px}
+.dw-sql-pane-header>.fui-Input{width:150px;min-width:60px;flex-shrink:1}
+.dw-sql-pane-header>span{min-width:0;flex:1;font-size:11px;color:var(--colorNeutralForeground3)}
+.dw-sql-editor-body{flex:1;min-height:0}
+.dw-smart-panel{padding:0;display:flex;flex-direction:column;height:100%;min-height:0}
+.dw-smart-panel>header>.fui-Button:last-child{margin-left:0}
+.dw-smart-header-spacer{flex:1}
+.dw-smart-panel>div:not(.dw-smart-results){flex-shrink:0}
+.dw-smart-results{flex:1;min-height:0;overflow:auto;border-top:0;padding:0 10px 8px}
+.dw-smart-status:empty{display:none}
+.dw-smart-status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--colorNeutralForeground3)}
+.dw-smart-preview-header{display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:1;background:var(--colorNeutralBackground1);padding:6px 0;border-bottom:0}
+.dw-smart-panel pre{margin:6px 0;padding:8px;font-family:"Cascadia Code",Consolas,monospace;line-height:1.5;font-size:12px;border-radius:4px}
+.dw-smart-analysis{height:100%}
+.dw-resizable-sql .dw-analysis-sql-editor,.dw-resizable-sql .dw-analysis-sql-editor>section{height:100%!important}
+.dw-sql-split{height:100%;min-height:0;min-width:0}
+.dw-sql-split-open{display:grid}
+.dw-sql-split>.dw-smart-side[hidden]{display:none}
+.dw-sql-column-resizer{display:flex;align-items:center;justify-content:center;cursor:col-resize;touch-action:none;background:var(--colorNeutralBackground2);border-inline:0;min-height:0}
+.dw-sql-column-resizer>span{width:2px;height:32px;background:var(--colorNeutralStroke1);border-radius:2px}
+.dw-sql-column-resizer:hover,.dw-sql-column-resizer:focus-visible{background:var(--colorBrandBackground2);outline:1px solid var(--colorBrandStroke1);outline-offset:-1px}
+.dw-smart-status{padding:6px 0;min-height:20px;box-sizing:border-box}
+.dw-smart-panel pre.dw-smart-sql-output{max-height:none;margin:0;white-space:pre-wrap}
+.dw-smart-ai-notice{padding:6px 10px;border-top:0;color:var(--colorNeutralForeground3);font-size:11px;flex-shrink:0}
+@media(max-width:700px){.dw-sql-split-open{grid-template-columns:minmax(0,1fr)}.dw-sql-column-resizer{cursor:row-resize;border-inline:0;border-block:0}.dw-sql-column-resizer>span{width:32px;height:2px}}
+
+/* 用留白和底色区分编辑区，拖动手柄只在交互时强调。 */
+.dw-sql-column-resizer,.dw-sql-resizer{background:transparent}
+.dw-sql-column-resizer>span,.dw-sql-resizer>span{opacity:.4;transition:opacity .12s ease}
+.dw-sql-column-resizer:hover>span,.dw-sql-column-resizer:focus-visible>span,.dw-sql-resizer:hover>span,.dw-sql-resizer:focus-visible>span{opacity:1;background:var(--colorBrandStroke1)}
+.dw-smart-results{padding-top:4px}
+.dw-smart-ai-notice{padding-top:8px;padding-bottom:8px}
+
+/* 轻边界：每个编辑面板一层边框，内部仅在栏头保留单线。 */
+.dw-sql-split{--dw-editor-border:color-mix(in srgb,var(--colorNeutralStroke2) 55%,transparent)}
+.dw-smart-sql,.dw-smart-panel{border:1px solid var(--dw-editor-border);border-radius:5px;box-sizing:border-box;overflow:hidden}
+.dw-sql-pane-header,.dw-smart-panel>header{border-bottom:1px solid var(--dw-editor-border);background:var(--colorNeutralBackground1)}
+.dw-smart-side{border:0}
+.dw-smart-prompt{margin:8px 10px 4px;border:1px solid var(--dw-editor-border);border-radius:4px;overflow:hidden}
+.dw-smart-prompt:focus-within{border-color:var(--colorBrandStroke2)}
+.dw-smart-ai-notice{margin:4px 10px 8px;border-radius:4px;max-height:100px;overflow:auto}
+.dw-smart-risk-yellow{background:var(--colorPaletteYellowBackground1);color:var(--colorPaletteYellowForeground2);border-left:3px solid var(--colorPaletteYellowBorder2)}
+.dw-smart-risk-red{background:var(--colorPaletteRedBackground1);color:var(--colorPaletteRedForeground1);border-left:3px solid var(--colorPaletteRedBorder2)}
+
+/* Monaco 补全层按编辑器坐标定位，不能被输入框圆角裁切。 */
+.dw-smart-prompt,.dw-smart-panel,.dw-smart-side{overflow:visible}
+.dw-smart-side{position:relative}
+.dw-smart-side:focus-within{z-index:10}
+.dw-smart-prompt .monaco-editor,.dw-smart-prompt .monaco-editor .overflow-guard{border-radius:4px}

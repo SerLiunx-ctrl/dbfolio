@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');const {chromium}=require('C:/Users/zhangwq/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+(async()=>{const browser=await chromium.launch({headless:true,channel:'msedge'});try{const p=await browser.newPage({viewport:{width:1600,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
+await p.goto('http://localhost:1425/scripts/fixtures/workflow-qol.html');await p.locator('.monaco-editor').waitFor();
+await p.getByRole('button',{name:'开启事务',exact:true}).click();await p.getByRole('button',{name:'提交事务',exact:true}).waitFor();
+await p.locator('button').filter({hasText:'执行当前语句'}).click();await p.getByText('old',{exact:true}).waitFor();
+assert.equal(await p.evaluate(()=>window.calls.filter(c=>c.command==='query_execute').length),0);
+await p.getByRole('button',{name:'固定为对比基准'}).click();await p.evaluate(()=>window.value='new');await p.locator('button').filter({hasText:'执行当前语句'}).click();await p.getByText('new',{exact:true}).waitFor();
+await p.getByRole('button',{name:'对比结果',exact:true}).click();await p.getByRole('checkbox',{name:'id',exact:true}).check();await p.getByText(/新增 0 · 删除 0 · 修改 1 · 相同 0/).waitFor();await p.getByRole('button',{name:'关闭',exact:true}).click();
+await p.evaluate(()=>{window.closePromise=window.closeTransaction();});await p.getByRole('button',{name:'放弃 / 回滚并继续'}).click();assert.equal(await p.evaluate(()=>window.closePromise),true);assert.equal(await p.evaluate(()=>window.calls.filter(c=>c.command==='transaction_finish').at(-1).args.commit),false);
+await p.getByRole('button',{name:'开启事务',exact:true}).click();await p.getByRole('button',{name:'提交事务',exact:true}).waitFor();await p.evaluate(()=>window.loseTransaction());await p.locator('button').filter({hasText:'执行当前语句'}).click();await p.getByRole('button',{name:'结束事务模式'}).waitFor();assert(await p.locator('button').filter({hasText:'执行当前语句'}).isDisabled());
+await p.getByRole('button',{name:'结束事务模式'}).click();await p.getByRole('button',{name:'切换测试页面'}).click();
+const cell=p.locator('.ag-cell[col-id="c1"]').first();await cell.waitFor();await cell.click({button:'right'});await p.getByRole('menuitem',{name:'查看关联记录…'}).click();await p.getByRole('complementary',{name:'关联记录'}).waitFor();await p.getByText('new',{exact:true}).waitFor();
+assert(await p.evaluate(()=>window.calls.some(c=>c.command==='meta_table_detail'&&c.args.table==='category'&&c.args.schema==='catalog')));
+assert(await p.evaluate(()=>window.calls.some(c=>c.command==='build_filter_clause'&&c.args.filters[0].literal[1]===13)));
+await p.getByRole('button',{name:'配置业务关联'}).click();await p.getByLabel('目标表',{exact:true}).selectOption(JSON.stringify(['catalog','category']));await p.getByLabel('目标关联键',{exact:true}).selectOption('id');await p.getByLabel('名称字段（可选）').selectOption('name');await p.getByRole('button',{name:'保存并查看'}).click();
+assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('business_relations_v1'))[0].label),'name');
+await p.screenshot({path:'.qa/workflow-qol-v141.png'});assert.deepEqual(errors,[]);console.log('通过：事务路由、异步关闭回滚、事务失效阻止执行、精确快照对比、关联右键侧栏、真实 schema、业务关联保存');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

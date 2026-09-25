@@ -1,0 +1,5 @@
+const assert=require('node:assert/strict'),fs=require('fs'),ts=require('typescript');const m={exports:{}};new Function('module','exports',ts.transpileModule(fs.readFileSync('src/features/query/streamSql.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(m,m.exports);const {streamedSql}=m.exports;
+for(const sql of ['SELECT 1;','WITH x AS (SELECT 1)\nSELECT * FROM x;', 'SELECT "中文😀", \'a\\b\', \'"quoted"\';', 'UPDATE t SET name = :name WHERE id = :id;']){
+ const encoded=JSON.stringify({sql,explanation:'not displayed',questions:[]});for(let i=0;i<=encoded.length;i++){const part=streamedSql(encoded.slice(0,i));assert(sql.startsWith(part),'prefix '+i+': '+part);}assert.equal(streamedSql(encoded),sql);
+}
+assert.equal(streamedSql('{"nested":{"sql":"HIDDEN"},"sql":"SELECT \\u4e2d\\u6587\\n1"}'),'SELECT 中文\n1');assert.equal(streamedSql('{"questions":[{"text":"sql"}]}'),'');assert.equal(streamedSql('{"sql":"SELECT \\uD83D'),'SELECT ');console.log('通过：逐字符流式提取、换行/引号/反斜杠/Unicode 断包及顶层 SQL 定位');

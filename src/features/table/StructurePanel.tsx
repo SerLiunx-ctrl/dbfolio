@@ -1,3 +1,4 @@
+import {fieldTypeStyle} from "../grid/valueColor";
 import {InlineColumnRow,type ColumnEdit} from "./InlineColumnRow";
 import {usePendingEdit} from "../../stores/useEditGuard";
 import {InfoHint} from '../../common/InfoHint';
@@ -374,10 +375,10 @@ export function ColumnsPanel({
     >
       <TableCell className={styles.muted}>{column.ordinal}</TableCell>
       <TableCell>
-        <span className={styles.mono}>{column.name}</span>
+        <span className={styles.mono} style={fieldTypeStyle(column.rawType,column.canonical)}>{column.name}</span>
       </TableCell>
       <TableCell>
-        <span className={styles.mono}>{column.rawType}</span>
+        <span className={styles.mono} style={fieldTypeStyle(column.rawType,column.canonical)}>{column.rawType}</span>
       </TableCell>
       <TableCell><Checkbox size="medium" aria-label={column.name+' 可空'} checked={flags[column.name]?.nullable??column.nullable} disabled={!canEdit||flagsBusy||!!draft||engine==='sqlite'||detail.primaryKey.includes(column.name)||column.autoIncrement} onChange={(_,d)=>changeFlag(column,'nullable',d.checked===true)}/></TableCell>
       {engine==='mysql'&&<TableCell>{numeric(column)?<Checkbox aria-label={column.name+' 无符号'} checked={flags[column.name]?.unsigned??column.unsigned} disabled={!canEdit||flagsBusy||!!draft} onChange={(_,d)=>changeFlag(column,'unsigned',d.checked===true)}/>:<span className={styles.muted}>—</span>}</TableCell>}

@@ -1,6 +1,6 @@
 [package]
 name = "dbfolio"
-version = "0.177.0"
+version = "0.180.0"
 description = "DBFolio - multi-database desktop client with cross-session sync"
 authors = ["SerLiunx"]
 license = "MIT"
@@ -54,6 +54,7 @@ dirs = "6"
 arboard = { version = "3", default-features = false }
 csv = "1"
 tempfile = "3"
+zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 encoding_rs = "0.8"
 rust_xlsxwriter = "0.79"
 redis = { version = "1.7.0", features = ["tokio-comp", "connection-manager", "tokio-rustls-comp"] }
@@ -69,6 +70,10 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# 保留服务器字符集语义，修复 _bin 文本被 SQLx 0.8.6 识别为二进制。
+[patch.crates-io]
+sqlx-mysql = { path = "vendor/sqlx-mysql" }
 
 # 快速迭代构建：牺牲少量运行时优化换取编译速度（供 scripts/build-app-fast.ps1 使用）
 [profile.release-fast]

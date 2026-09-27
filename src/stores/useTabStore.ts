@@ -48,7 +48,8 @@ export interface GenerationTab {id:string;kind:"generation";sessionId:string;dat
 export interface AnalysisTab {id:string;kind:"analysis";sessionId:string;database:string;title:string;plan:AnalysisPlan;}
 export interface SyncTab {id:string;kind:"sync";sessionId:"";database:"";title:string;draft?:SyncDraft}
 export interface SqlExportTab {id:string;kind:"sqlExport";sessionId:"";database:"";title:string;draft?:Partial<SqlExportDraft>}
-export type WorkspaceTab = SqlExportTab | SyncTab | AnalysisTab | QueryTab | TableTab | RedisTab | MongoTab | GenerationTab;
+export interface MysqlToolTab {id:string;kind:'mysqlTool';sessionId:string;database:string;title:string;mode:'import'|'objects';table?:string}
+export type WorkspaceTab = MysqlToolTab | SqlExportTab | SyncTab | AnalysisTab | QueryTab | TableTab | RedisTab | MongoTab | GenerationTab;
 
 /** 置顶的表页签（按会话持久化，下次连接自动恢复） */
 export interface PinnedTab {
@@ -74,6 +75,7 @@ function nextId(prefix: string) {
 }
 
 interface TabState {
+  openMysqlTool:(sessionId:string,database:string,mode:'import'|'objects',table?:string)=>void;
   tabs: WorkspaceTab[];
   recentlyClosed: WorkspaceTab[];
   reopenClosed: (validSessionIds: string[], id?: string) => WorkspaceTab | null;
@@ -104,6 +106,7 @@ interface TabState {
 }
 
 export const useTabStore = create<TabState>((set, get) => ({
+  openMysqlTool:(sessionId,database,mode,table)=>{const id=nextId('mysql-tool');set({tabs:[...get().tabs,{id,kind:'mysqlTool',sessionId,database,mode,table,title:mode==='import'?'SQL 导入':'数据库对象'+(database?' · '+database:'')}],activeId:id});window.dispatchEvent(new Event('dw:show-workspace'));},
   openSqlExport:(draft)=>{const id=nextId("sql-export");set({tabs:[...get().tabs,{id,kind:"sqlExport",sessionId:"",database:"",title:"SQL 导出",draft}],activeId:id});return id;},
   updateSqlExport:(id,draft)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==="sqlExport"?{...t,draft,title:"SQL 导出"+(draft.database?" · "+draft.database:"")}:t)}),
   openSync:()=>{const id=nextId("sync");set({tabs:[...get().tabs,{id,kind:"sync",sessionId:"",database:"",title:"数据同步"}],activeId:id});return id;},

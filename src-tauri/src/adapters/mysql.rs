@@ -183,7 +183,7 @@ fn u32_opt(row: &MySqlRow, col: &str) -> Option<u32> {
     u64_opt(row, col).map(|v| v as u32)
 }
 
-fn decode_cell(row: &MySqlRow, idx: usize) -> DbValue {
+pub(crate) fn decode_cell(row: &MySqlRow, idx: usize) -> DbValue {
     let type_name = sqlx::TypeInfo::name(row.column(idx).type_info()).to_ascii_uppercase();
 
     if type_name.starts_with("TINYINT")
@@ -316,6 +316,14 @@ fn bind_value<'q>(
 
 #[async_trait]
 impl DbAdapter for MySqlAdapter {
+    async fn mysql_connection(&self, database: &str, write: bool) -> AppResult<sqlx::MySqlConnection> {
+        crate::services::database_access::check(self.params.allowed_databases.as_deref(), database)?;
+        if write && self.params.read_only { return Err(AppError::ReadOnly("当前会话为只读模式".into())); }
+        let pool = connect_pool(&self.params, Some(database)).await?;
+        let conn = pool.acquire().await?.detach();
+        pool.close().await;
+        Ok(conn)
+    }
     async fn export_sql(&self, request:&crate::services::sql_export::SqlExportRequest)->AppResult<crate::services::sql_export::SqlExportResult>{export::export(self,request).await}
     fn engine(&self) -> Engine {
         Engine::Mysql

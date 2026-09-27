@@ -12,6 +12,10 @@ pub mod readonly;
 pub mod manual_transaction;
 
 pub mod sql_export;
+pub mod mysql_script;
+pub mod mysql_objects;
+pub mod mysql_dump;
+pub mod sql_import;
 
 pub mod database_access;
 

@@ -1,7 +1,7 @@
 {
   "name": "dbfolio",
   "private": true,
-  "version": "0.177.0",
+  "version": "0.180.0",
   "license": "MIT",
   "type": "module",
   "scripts": {

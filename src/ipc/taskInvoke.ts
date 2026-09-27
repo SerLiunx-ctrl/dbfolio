@@ -3,6 +3,7 @@ import { connectionBridge } from "./connectionBridge";
 import { errorText, updateTask, useTaskStore, isTaskActive, type TaskKind, type TaskProgress } from "../stores/useTaskStore";
 
 const commands: Record<string, [TaskKind, string]> = {
+  sql_import_preview: ['导入','预检 SQL 文件'],sql_import_execute:['导入','导入 SQL 文件'],mysql_procedure_call:['修改','调用存储过程'],
   export_sql: ["导出", "导出 SQL 文件"],
   transaction_execute: ["查询", "事务内执行 SQL"],
   query_ai: ["AI", "智能生成"],
@@ -48,7 +49,7 @@ export async function trackedInvoke<T>(command: string, args?: Record<string, un
   const id = crypto.randomUUID();
   const tab = connectionBridge.currentTab?.();
   const originTabId=args?.originTabId as string|undefined;
-  const tabId = (spec[0]==="同步" || command==="query_ai" || command==="export_sql") ? originTabId : tab && sessionIds.includes(tab.sessionId) && (!request.database || request.database === tab.database) ? tab.id : undefined;
+  const tabId = originTabId ?? ((spec[0]==="同步" || command==="query_ai" || command==="export_sql") ? undefined : tab && sessionIds.includes(tab.sessionId) && (!request.database || request.database === tab.database) ? tab.id : undefined);
   const queryLabel = spec[0] === "查询" && typeof request.sql === "string" ? " · " + request.sql.replace(/\s+/g, " ").trim().slice(0, 100) : "";
   await invoke("task_begin", { id });
   useTaskStore.setState(s => ({ tasks: [{ id, tabId, kind: spec[0], label: `${spec[1]}${request.table ? ` · ${request.table}` : request.database ? ` · ${request.database}` : ""}` + queryLabel, sessionIds, startedAt: Date.now(), status: "running" }, ...s.tasks.filter(isTaskActive), ...s.tasks.filter(t => !isTaskActive(t)).slice(0, 99)] }));

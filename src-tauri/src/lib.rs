@@ -13,6 +13,8 @@ mod store;
 mod web_assets;
 #[cfg(test)]
 mod acceptance_tests;
+#[cfg(test)]
+mod mysql_tools_acceptance;
 
 use std::sync::OnceLock;
 use tauri::Manager;
@@ -70,6 +72,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::mysql_tools::sql_import_preview,
+            commands::mysql_tools::sql_import_execute,
+            commands::mysql_tools::mysql_objects,
+            commands::mysql_tools::mysql_object_definition,
+            commands::mysql_tools::mysql_object_apply,
+            commands::mysql_tools::mysql_procedure_call,
             commands::query_ai::query_ai,
             commands::query_ai::query_validate_sql,
             commands::generation::ai_providers,

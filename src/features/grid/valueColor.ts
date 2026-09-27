@@ -23,6 +23,11 @@ export function valueTypeGroup(rawType:string,canonical?:CanonicalType,value?:Db
  return 'text';
 }
 
+// 结构元数据与数据单元格共用同一套类型配色。
+export function fieldTypeStyle(rawType:string,canonical?:CanonicalType){
+ return {color:`var(--dw-value-${valueTypeGroup(rawType,canonical)})`};
+}
+
 export function valueCellStyle(rawType:string,value?:DbValue,canonical?:CanonicalType){
  if(isReadOnlyValue(value))return {color:'var(--dw-value-special)',fontStyle:'italic'};
  if(isNullValue(value))return {color:'var(--dw-value-null)',fontStyle:'italic'};

@@ -163,6 +163,7 @@ export function TableWorkspace({ tab }: Props) {
           </Tag>
         )}
         <div className={styles.spacer} />
+        {session?.engine==='mysql'&&<Button size="small" appearance="subtle" onClick={()=>useTabStore.getState().openMysqlTool(tab.sessionId,tab.database,'objects',tab.table)}>触发器</Button>}
 
         <Button
           appearance="subtle"

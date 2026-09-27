@@ -1005,7 +1005,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "dbfolio"
-version = "0.177.0"
+version = "0.180.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1039,6 +1039,7 @@ dependencies = [
  "webview2-com",
  "windows-core 0.61.2",
  "winreg 0.52.0",
+ "zip",
 ]
 
 [[package]]
@@ -4960,8 +4961,6 @@ dependencies = [
 [[package]]
 name = "sqlx-mysql"
 version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa003f0038df784eb8fecbbac13affe3da23b45194bd57dba231c8f48199c526"
 dependencies = [
  "atoi",
  "base64 0.22.1",

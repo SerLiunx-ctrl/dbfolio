@@ -2,6 +2,7 @@ import {useExplorerStore} from "./stores/useExplorerStore";
 import {DatabaseOverview} from "./features/explorer/DatabaseOverview";
 import {TabIndicator} from "./app/TabIndicator";
 import {SqlExportWorkspace} from "./features/transfer/SqlExportWorkspace";
+import {MysqlToolsWorkspace} from './features/mysql/MysqlToolsWorkspace';
 import { AnalysisWorkspace, AnalysisLauncher } from "./features/analysis/AnalysisWorkspace";
 import { GenerationWorkspace, GenerationLauncher } from "./features/generation/GenerationWorkspace";
 import { TabOverflow } from "./app/WorkbenchHub";
@@ -310,6 +311,7 @@ const WorkspaceContent = memo(function WorkspaceContent({tab,active}:{tab:Worksp
   const session=useSessionStore(s=>s.sessions.find(v=>v.id===tab.sessionId));
   if(session?.allowedDatabases && tab.database && !session.allowedDatabases.includes(tab.database)) return <div role="alert" style={{padding:24}}>数据库「{tab.database}」不在本会话允许范围内。请在会话设置中调整数据库范围。</div>;
   if(tab.kind==="sqlExport")return <SqlExportWorkspace tab={tab}/>;
+  if(tab.kind==="mysqlTool")return <MysqlToolsWorkspace tab={tab}/>;
   if(tab.kind==="sync")return <SyncWorkspace tab={tab} active={active}/>;
   return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab}/>}</>;
 });
@@ -628,7 +630,7 @@ function AppShell() {
                     <CodeRegular fontSize={14} />
                   ) : tab.kind === "redis" ? (
                     <DatabaseRegular fontSize={14} />
-                  ) : tab.kind === "mongo" ? (<DatabaseRegular fontSize={14}/>) : tab.kind === "generation" ? (<GenerationTabActivity tabId={tab.id}/>) : tab.kind === "analysis" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.pinned ? (
+                  ) : tab.kind === "mongo" ? (<DatabaseRegular fontSize={14}/>) : tab.kind === "generation" ? (<GenerationTabActivity tabId={tab.id}/>) : tab.kind === "analysis" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.kind === "table" && tab.pinned ? (
                     <PinRegular fontSize={12} className={styles.tabPin} />
                   ) : (
                     <TableRegular fontSize={14} />

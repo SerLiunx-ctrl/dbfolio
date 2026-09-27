@@ -95,6 +95,10 @@ pub enum RowChange {
 
 #[async_trait]
 pub trait DbAdapter: Send + Sync {
+    /// Dedicated connection: session state from scripts must never return to a query pool.
+    async fn mysql_connection(&self, _database: &str, _write: bool) -> AppResult<sqlx::MySqlConnection> {
+        Err(AppError::InvalidInput("此功能仅支持 MySQL".into()))
+    }
     async fn export_sql(&self, _request: &crate::services::sql_export::SqlExportRequest) -> AppResult<crate::services::sql_export::SqlExportResult> { Err(AppError::InvalidInput("SQL 文件导出目前仅支持 MySQL".into())) }
     fn engine(&self) -> Engine;
 

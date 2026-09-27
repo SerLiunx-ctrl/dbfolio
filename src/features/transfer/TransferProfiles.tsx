@@ -1,0 +1,11 @@
+import {useEffect,useState} from 'react';
+import {Button,Input,Select} from '@fluentui/react-components';
+import {api,normalizeError} from '../../ipc';
+interface Profile {id:string;name:string;version:1;value:Record<string,unknown>}
+export function TransferProfiles({kind,value,onApply,disabled}:{kind:'import'|'export';value:Record<string,unknown>;onApply:(value:Record<string,unknown>)=>void;disabled?:boolean}){
+ const [items,setItems]=useState<Profile[]>([]),[id,setId]=useState(''),[name,setName]=useState(''),[error,setError]=useState('');const key=`sql_${kind}_profiles_v1`;
+ const read=async()=>{const raw=await api.settingsGet(key);if(!raw)return [];const values:unknown=JSON.parse(raw);if(!Array.isArray(values))throw Error('方案格式损坏');return values.filter((p):p is Profile=>p?.version===1&&typeof p.id==='string'&&typeof p.name==='string'&&typeof p.value==='object'&&p.value!==null);};
+ useEffect(()=>{void read().then(setItems).catch(e=>setError(normalizeError(e).message));},[key]);
+ const write=async(remove=false)=>{try{const latest=await read();const next=remove?latest.filter(p=>p.id!==id):[...latest,{id:crypto.randomUUID(),name:name.trim(),version:1 as const,value}].slice(-50);await api.settingsSet(key,JSON.stringify(next));setItems(next);setId(remove?'':next[next.length-1].id);setName('');setError('');}catch(e){setError(normalizeError(e).message);}};
+ return <div><div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}><Select size="small" aria-label="导入导出方案" disabled={disabled} value={id} onChange={(_,d)=>setId(d.value)} style={{minWidth:160}}><option value="">选择已保存方案</option>{items.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</Select><Button size="small" disabled={disabled||!id} onClick={()=>{const p=items.find(p=>p.id===id);if(p)onApply(p.value);}}>应用方案</Button><Button size="small" disabled={disabled||!id} onClick={()=>void write(true)}>删除方案</Button><Input size="small" aria-label="方案名称" placeholder="新方案名称" value={name} maxLength={80} onChange={(_,d)=>setName(d.value)} disabled={disabled}/><Button size="small" disabled={disabled||!name.trim()} onClick={()=>void write()}>保存方案</Button><span style={{fontSize:11,opacity:.75}}>不保存密码、文件内容和筛选值</span></div>{error&&<div role="alert">{error}</div>}</div>;
+}

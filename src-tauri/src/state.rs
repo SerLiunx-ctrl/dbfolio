@@ -16,6 +16,7 @@ pub struct ConnectedSession {
 }
 
 pub struct AppState {
+    pub sql_imports: crate::services::sql_import::Registry,
     pub schema_plans: crate::services::sync::SchemaRegistry,
     pub transactions: crate::services::manual_transaction::Registry,
     pub connection_attempts: crate::services::session::ConnectionAttempts,
@@ -34,6 +35,7 @@ impl AppState {
     }
     pub(crate) fn with_local(local:LocalStore)->Self{
         Self {
+            sql_imports: Default::default(),
             schema_plans: Default::default(),
             transactions: Default::default(),
             local,

@@ -60,7 +60,7 @@ fn expression(name: &str, kind: &str) -> String {
     format!("IF({c} IS NULL,'NULL',{body})")
 }
 fn header(database: &str, mode: &str, include: bool, sql_mode: &str) -> String {
-    let mut s=format!("-- DBFolio · MySQL SQL export\n-- 内容：{mode}；仅数据表，不含视图、触发器、存储过程、函数或事件。\n-- 在需要恢复的目标数据库执行；显式跨库引用保持原样。\nSET @DW_OLD_SQL_MODE=@@SQL_MODE;\nSET SQL_MODE='{sql_mode}';\nSET @DW_OLD_FK=@@FOREIGN_KEY_CHECKS;\nSET FOREIGN_KEY_CHECKS=0;\nSET @DW_OLD_TIME_ZONE=@@TIME_ZONE;\nSET TIME_ZONE='+00:00';\nSET @DW_OLD_CLIENT=@@CHARACTER_SET_CLIENT;\nSET @DW_OLD_RESULTS=@@CHARACTER_SET_RESULTS;\nSET @DW_OLD_CONNECTION=@@COLLATION_CONNECTION;\nSET NAMES utf8mb4;\n");
+    let mut s=format!("-- DBFolio · MySQL SQL export\n-- 内容：{mode}；对象范围见导出选项。字符串内的动态 SQL 与外部库引用保持原样。\nSET @DW_OLD_SQL_MODE=@@SQL_MODE;\nSET SQL_MODE='{sql_mode}';\nSET @DW_OLD_FK=@@FOREIGN_KEY_CHECKS;\nSET FOREIGN_KEY_CHECKS=0;\nSET @DW_OLD_TIME_ZONE=@@TIME_ZONE;\nSET TIME_ZONE='+00:00';\nSET @DW_OLD_CLIENT=@@CHARACTER_SET_CLIENT;\nSET @DW_OLD_RESULTS=@@CHARACTER_SET_RESULTS;\nSET @DW_OLD_CONNECTION=@@COLLATION_CONNECTION;\nSET NAMES utf8mb4;\n");
     if include {
         s.push_str(&format!(
             "CREATE DATABASE IF NOT EXISTS {};\nUSE {};\n",
@@ -157,10 +157,10 @@ fn ddl_signature(ddl: &str) -> String {
     s
 }
 async fn ddl(conn: &mut sqlx::MySqlConnection, db: &str, table: &str) -> AppResult<String> {
-    let row = sqlx::query(&format!("SHOW CREATE TABLE {}.{}", ident(db), ident(table)))
-        .fetch_one(conn)
-        .await?;
-    Ok(row.try_get(1)?)
+    let query=format!("SHOW CREATE TABLE {}.{}", ident(db), ident(table));
+    let row=conn.fetch_one(query.as_str()).await?;
+    if let Ok(value)=row.try_get::<String,_>(1){return Ok(value);}
+    String::from_utf8(row.try_get::<Vec<u8>,_>(1)?).map_err(|_|AppError::InvalidInput("建表定义不是有效 UTF-8".into()))
 }
 
 pub(super) async fn export(
@@ -172,9 +172,7 @@ pub(super) async fn export(
     // A dedicated owned connection is closed on cancellation/error, never returned with an open snapshot.
     let pool = connect_pool(&adapter.params, Some(&req.database)).await?;
     let mut conn = pool.acquire().await?.detach();
-    sqlx::query("SET SESSION time_zone='+00:00'")
-        .execute(&mut conn)
-        .await?;
+    conn.execute("SET SESSION time_zone='+00:00'").await?;
     let sql_mode: String = sqlx::query_scalar("SELECT @@SQL_MODE")
         .fetch_one(&mut conn)
         .await?;
@@ -195,12 +193,10 @@ pub(super) async fn export(
     // read connection and use the same mode for SHOW CREATE and script replay.
     let sql_mode = sql_mode
         .split(',')
-        .filter(|v| *v != "NO_BACKSLASH_ESCAPES")
+        .filter(|v| !crate::services::mysql_script::nonstandard_quotes(v))
         .collect::<Vec<_>>()
         .join(",");
-    sqlx::query(&format!("SET SESSION SQL_MODE='{sql_mode}'"))
-        .execute(&mut conn)
-        .await?;
+    conn.execute(format!("SET SESSION SQL_MODE='{sql_mode}'").as_str()).await?;
     let rows=sqlx::query("SELECT TABLE_NAME, ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME").bind(&req.database).fetch_all(&mut conn).await?;
     let available: HashMap<String, String> = rows
         .iter()
@@ -213,7 +209,8 @@ pub(super) async fn export(
     };
     tables.sort();
     tables.dedup();
-    if tables.is_empty() {
+    let objects = crate::services::mysql_dump::collect(&mut conn, req).await?;
+    if tables.is_empty() && objects.is_empty() {
         return Err(AppError::InvalidInput("没有可导出的数据表".into()));
     }
     for t in &tables {
@@ -235,12 +232,8 @@ pub(super) async fn export(
                 "一致性快照仅支持 InnoDB 表；请排除其他引擎表或关闭快照选项".into(),
             ));
         }
-        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
-            .execute(&mut conn)
-            .await?;
-        sqlx::query("START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY")
-            .execute(&mut conn)
-            .await?;
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ").await?;
+        conn.execute("START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY").await?;
     }
     let destination = PathBuf::from(&req.path);
     let parent = if req.split_files {
@@ -264,16 +257,17 @@ pub(super) async fn export(
         None
     };
     let dir = staging.as_ref().map(|d| d.path()).unwrap_or(parent);
+    let target_db = if req.target_database.is_empty() { &req.database } else { &req.target_database };
+    let mut preamble = header(target_db, &req.mode, req.include_database, &sql_mode);
+    if req.include_database {
+        let options=sqlx::query("SELECT DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME=?").bind(&req.database).fetch_one(&mut conn).await?;
+        preamble=preamble.replace(&format!("CREATE DATABASE IF NOT EXISTS {};",ident(target_db)),&format!("CREATE DATABASE IF NOT EXISTS {} DEFAULT CHARACTER SET {} COLLATE {};",ident(target_db),ident(&text(&options,"DEFAULT_CHARACTER_SET_NAME")),ident(&text(&options,"DEFAULT_COLLATION_NAME"))));
+    }
     let mut combined = if req.split_files {
         None
     } else {
         let mut o = Output::new(dir)?;
-        o.write(&header(
-            &req.database,
-            &req.mode,
-            req.include_database,
-            &sql_mode,
-        ))?;
+        o.write(&preamble)?;
         Some(o)
     };
     let mut count = 0u64;
@@ -291,12 +285,7 @@ pub(super) async fn export(
         signatures.push((table.clone(), ddl_signature(&original)));
         let mut separate = if req.split_files {
             let mut o = Output::new(dir)?;
-            o.write(&header(
-                &req.database,
-                &req.mode,
-                req.include_database,
-                &sql_mode,
-            ))?;
+            o.write(&preamble)?;
             Some(o)
         } else {
             None
@@ -311,7 +300,7 @@ pub(super) async fn export(
             if req.drop_tables {
                 output.write(&format!("\nDROP TABLE IF EXISTS {};\n", ident(table)))?;
             }
-            output.write(&original)?;
+            output.write(&crate::services::mysql_dump::remap(&original, &req.database, &req.target_database))?;
             output.write(";\n")?;
         }
         if req.mode != "structure" {
@@ -370,7 +359,7 @@ pub(super) async fn export(
                 let Some(row) = row else { break };
                 crate::tasks::checkpoint()?;
                 let values = (0..columns.len())
-                    .map(|i| row.try_get::<String, _>(i))
+                    .map(|i| row.try_get::<String, _>(i).or_else(|_|row.try_get::<Vec<u8>,_>(i).and_then(|bytes|String::from_utf8(bytes).map_err(|e|sqlx::Error::Decode(Box::new(e))))))
                     .collect::<Result<Vec<_>, _>>()?;
                 batch.push(format!("({})", values.join(", ")), output)?;
                 count += 1;
@@ -395,6 +384,19 @@ pub(super) async fn export(
             manifest.push(serde_json::json!({"table":table,"file":name}));
         }
     }
+    // Stored programs and views precede triggers/events, which must not fire while loading table data.
+    for (at,item) in objects.iter().enumerate() {
+        crate::tasks::checkpoint()?;
+        let sql=crate::services::mysql_dump::definition_sql(item,req)?;
+        if req.split_files {
+            let name=format!("{:04}.sql",tables.len()+at+1);
+            let mut output=Output::new(dir)?;output.write(&preamble)?;output.write(&sql)?;output.write(FOOTER)?;
+            bytes+=output.finish(&dir.join(&name))?;
+            manifest.push(serde_json::json!({"kind":item.object.kind,"name":item.object.name,"file":name}));
+        }else{combined.as_mut().unwrap().write(&sql)?;}
+        let latest=crate::services::mysql_objects::definition(&mut conn,&req.database,&item.object.kind,&item.object.name).await?;
+        if latest.sql!=item.definition.sql {return Err(AppError::InvalidInput(format!("对象 {} 在导出期间变化，未发布文件",item.object.name)));}
+    }
     // Refuse to publish if DDL changed while reading data; do not replace an existing export.
     for (table, signature) in signatures {
         crate::tasks::checkpoint()?;
@@ -405,13 +407,13 @@ pub(super) async fn export(
         }
     }
     if req.mode != "structure" && req.consistent_snapshot {
-        sqlx::query("ROLLBACK").execute(&mut conn).await?;
+        conn.execute("ROLLBACK").await?;
     }
     conn.close().await.ok();
     pool.close().await;
     crate::tasks::checkpoint()?;
     let path = if let Some(staging) = staging {
-        let manifest=serde_json::to_vec_pretty(&serde_json::json!({"database":req.database,"mode":req.mode,"tables":manifest,"note":"按文件编号导入；仅包含数据表，不含其他数据库对象"})).unwrap();
+        let manifest=serde_json::to_vec_pretty(&serde_json::json!({"database":req.database,"targetDatabase":target_db,"mode":req.mode,"objects":manifest,"note":"按文件编号导入。先表结构和数据，再函数、过程、视图、触发器和事件；动态 SQL 字符串不重写"})).unwrap();
         std::fs::write(staging.path().join("manifest.json"), &manifest)?;
         bytes += manifest.len() as u64;
         let path = parent.join(format!(
@@ -438,6 +440,7 @@ pub(super) async fn export(
         rows: count,
         bytes,
         tables: tables.len(),
+        objects: objects.len(),
     })
 }
 

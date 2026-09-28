@@ -31,4 +31,4 @@ npm run app:build 正式构建成功；交付位于 release/1.0.0-alpha.5/：
 
 便携目录与 ZIP 共 104 个文件逐项 SHA256 一致，NSIS 110 个文件通过完整性检查，两份清单均通过；安装包解压后 101 个 web 文件与便携版及最终 dist 一致。两个 EXE 仅相差 Tauri 的 NSS / UNK 安装类型标记，安装版与便携版资源自检通过。版本目录恰有以上五项。
 
-代码尚未提交。
+代码提交 [830bec9](https://github.com/SerLiunx-ctrl/dbfolio/commit/830bec9d308f55f4dc13710ee1906c0ae85d8616)。

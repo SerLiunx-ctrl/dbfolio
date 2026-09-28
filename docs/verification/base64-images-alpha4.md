@@ -21,4 +21,4 @@
 - 前端跨引擎回归使用合成 IPC，并非 MySQL/PostgreSQL 图片列真实服务器验收；后端实际长度执行测试覆盖 SQLite。
 - WebP 头部尺寸读取依据 [官方 RIFF 容器说明](https://developers.google.com/speed/webp/docs/riff_container)及[无损格式说明](https://developers.google.com/speed/webp/docs/webp_lossless_bitstream_specification)。
 - `npm run app:build` 正式构建通过；`release/1.0.0-alpha.4/` 中安装包、完整 portable 目录/ZIP 和两份 SHA256SUMS 已交付。内置资源校验、104 个目录/ZIP 文件摘要、NSIS 110 个资源完整性及两份清单全部通过。
-- 代码尚未提交。
+- 代码提交 [830bec9](https://github.com/SerLiunx-ctrl/dbfolio/commit/830bec9d308f55f4dc13710ee1906c0ae85d8616)。

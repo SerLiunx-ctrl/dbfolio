@@ -26,4 +26,4 @@
 
 ## 交付
 
-正式 `npm run app:build`（LTO + NSIS）通过，产物位于 `release/1.0.0-alpha.6/`：安装包、完整 portable 目录、ZIP 及两份独立 SHA256SUMS，目录恰好五项。便携目录/ZIP 内 104 个清单文件摘要、两份 SHA256SUMS 全部条目通过；NSIS 110 个文件完整性检查通过，安装包与便携版/最终 dist 的 101 个 web 文件一致，EXE 仅有预期 Tauri 分发标记差异，解包安装版内置资源校验通过。代码尚未提交。
+正式 `npm run app:build`（LTO + NSIS）通过，产物位于 `release/1.0.0-alpha.6/`：安装包、完整 portable 目录、ZIP 及两份独立 SHA256SUMS，目录恰好五项。便携目录/ZIP 内 104 个清单文件摘要、两份 SHA256SUMS 全部条目通过；NSIS 110 个文件完整性检查通过，安装包与便携版/最终 dist 的 101 个 web 文件一致，EXE 仅有预期 Tauri 分发标记差异，解包安装版内置资源校验通过。代码提交 [830bec9](https://github.com/SerLiunx-ctrl/dbfolio/commit/830bec9d308f55f4dc13710ee1906c0ae85d8616)。

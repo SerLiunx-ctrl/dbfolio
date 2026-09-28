@@ -43,4 +43,4 @@
 - `npm run build` 通过。
 - 真实 PostgreSQL 专项已加入显式集成测试 `local_postgres_inline_acceptance`，只操作随机验收 schema；本机 127.0.0.1 服务拒绝连接（10061），本轮未完成真实 PostgreSQL 执行验收，也未创建测试 schema。不得将 SQL 生成/界面测试表述为服务器实测。
 - `npm run app:build` 正式构建通过，交付目录 `release/1.0.0-alpha.3/` 包含安装包、完整 portable 目录、ZIP 及独立 setup/portable SHA256SUMS 共五项；内置资源校验、104 个目录/ZIP 文件摘要、NSIS 110 个资源完整性及两份清单全部通过。
-- 代码尚未提交。
+- 代码提交 [830bec9](https://github.com/SerLiunx-ctrl/dbfolio/commit/830bec9d308f55f4dc13710ee1906c0ae85d8616)。

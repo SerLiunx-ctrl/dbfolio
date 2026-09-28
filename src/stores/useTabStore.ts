@@ -1,3 +1,5 @@
+import { newTableState, type CreateTableState } from '../features/table/createTableDraft';
+import type { Engine } from '../ipc/types';
 import type { SqlExportDraft } from "../features/transfer/sqlExportModel";
 import type {SyncDraft} from '../features/sync/model';
 import type { AnalysisPlan } from "../features/analysis/model";
@@ -49,7 +51,8 @@ export interface AnalysisTab {id:string;kind:"analysis";sessionId:string;databas
 export interface SyncTab {id:string;kind:"sync";sessionId:"";database:"";title:string;draft?:SyncDraft}
 export interface SqlExportTab {id:string;kind:"sqlExport";sessionId:"";database:"";title:string;draft?:Partial<SqlExportDraft>}
 export interface MysqlToolTab {id:string;kind:'mysqlTool';sessionId:string;database:string;title:string;mode:'import'|'objects';table?:string}
-export type WorkspaceTab = MysqlToolTab | SqlExportTab | SyncTab | AnalysisTab | QueryTab | TableTab | RedisTab | MongoTab | GenerationTab;
+export interface CreateTableTab {id:string;kind:"createTable";sessionId:string;database:string;title:string;draft:CreateTableState}
+export type WorkspaceTab = CreateTableTab | MysqlToolTab | SqlExportTab | SyncTab | AnalysisTab | QueryTab | TableTab | RedisTab | MongoTab | GenerationTab;
 
 /** 置顶的表页签（按会话持久化，下次连接自动恢复） */
 export interface PinnedTab {
@@ -75,6 +78,9 @@ function nextId(prefix: string) {
 }
 
 interface TabState {
+  openCreateTable:(sessionId:string,database:string,engine:Engine)=>void;
+  updateCreateTable:(id:string,draft:CreateTableState)=>void;
+  finishCreateTable:(id:string,table:string,schema:string|null)=>void;
   openMysqlTool:(sessionId:string,database:string,mode:'import'|'objects',table?:string)=>void;
   tabs: WorkspaceTab[];
   recentlyClosed: WorkspaceTab[];
@@ -106,6 +112,9 @@ interface TabState {
 }
 
 export const useTabStore = create<TabState>((set, get) => ({
+  openCreateTable:(sessionId,database,engine)=>{if(!['mysql','postgres','sqlite'].includes(engine))return;const id=nextId('create-table');set({tabs:[...get().tabs,{id,kind:'createTable',sessionId,database,title:'新建表*',draft:newTableState(engine)}],activeId:id});window.dispatchEvent(new Event('dw:show-workspace'));},
+  updateCreateTable:(id,draft)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==='createTable'?{...t,draft}:t)}),
+  finishCreateTable:(id,table,schema)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==='createTable'?{id:t.id,kind:'table',sessionId:t.sessionId,database:t.database,table,schema,title:table,view:'info'}:t)}),
   openMysqlTool:(sessionId,database,mode,table)=>{const id=nextId('mysql-tool');set({tabs:[...get().tabs,{id,kind:'mysqlTool',sessionId,database,mode,table,title:mode==='import'?'SQL 导入':'数据库对象'+(database?' · '+database:'')}],activeId:id});window.dispatchEvent(new Event('dw:show-workspace'));},
   openSqlExport:(draft)=>{const id=nextId("sql-export");set({tabs:[...get().tabs,{id,kind:"sqlExport",sessionId:"",database:"",title:"SQL 导出",draft}],activeId:id});return id;},
   updateSqlExport:(id,draft)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==="sqlExport"?{...t,draft,title:"SQL 导出"+(draft.database?" · "+draft.database:"")}:t)}),

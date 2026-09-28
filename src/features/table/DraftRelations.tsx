@@ -1,0 +1,40 @@
+import {useEffect,useState,type ReactNode} from 'react';
+import {Button,Dropdown,Option,Input,Select,Table,TableHeader,TableBody,TableRow,TableHeaderCell,TableCell} from '@fluentui/react-components';
+import {AddRegular,DeleteRegular} from '@fluentui/react-icons';
+import {api,normalizeError} from '../../ipc';
+import type {ColumnMeta,DraftForeignKey,DraftIndex,Engine,TableRef} from '../../ipc/types';
+import {TypedColumns,MetadataTag} from './MetadataText';
+
+function Cell({label,text,children,disabled}:{label:string;text:ReactNode;children:ReactNode;disabled:boolean}){
+ const [active,setActive]=useState(false);
+ return <TableCell aria-label={label} tabIndex={disabled?-1:0} onDoubleClick={()=>!disabled&&setActive(true)} onKeyDown={e=>{if(e.key==='Enter'&&!active&&!disabled){e.preventDefault();setActive(true);}if(e.key==='Escape')setActive(false);}}>
+ {active&&!disabled?<div className="dw-draft-cell-editor">{children}<Button size="small" appearance="subtle" aria-label={'完成编辑 '+label} onClick={()=>setActive(false)}>完成</Button></div>:<span className="dw-inline-column-text" title="双击编辑">{text||'—'}</span>}</TableCell>;
+}
+function ColumnsSelect({label,value,columns,onChange,disabled}:{label:string;value:string[];columns:ColumnMeta[];onChange:(v:string[])=>void;disabled:boolean}){
+ return <Dropdown size="small" aria-label={label} multiselect value={value.join(', ')} selectedOptions={value} disabled={disabled} onOptionSelect={(_,d)=>onChange(d.selectedOptions)}>{columns.filter(c=>c.name.trim()).map(c=><Option key={c.name} value={c.name}>{c.name}</Option>)}</Dropdown>;
+}
+export function DraftIndexes({value,onChange,columns,disabled}:{value:DraftIndex[];onChange:(v:DraftIndex[])=>void;columns:ColumnMeta[];engine:Engine;disabled:boolean}){
+ const update=(at:number,p:Partial<DraftIndex>)=>onChange(value.map((v,i)=>i===at?{...v,...p}:v));
+ return <><div className="dw-draft-toolbar"><Button size="small" icon={<AddRegular/>} disabled={disabled} onClick={()=>onChange([...value,{name:'',columns:[],unique:false}])}>添加索引</Button></div><Table className="dw-schema-list" size="extra-small" aria-label="索引草稿"><TableHeader><TableRow>{['名称','类型','列','操作'].map(t=><TableHeaderCell key={t}>{t}</TableHeaderCell>)}</TableRow></TableHeader><TableBody>{value.map((v,i)=><TableRow key={i}>
+ <Cell label={`索引 ${i+1} 名称`} text={v.name} disabled={disabled}><Input size="small" aria-label={`索引 ${i+1} 名称输入`} value={v.name} onChange={(_,d)=>update(i,{name:d.value})}/></Cell>
+ <Cell label={`索引 ${i+1} 类型`} text={<MetadataTag category="index" value={v.unique?'唯一':'普通'}/>} disabled={disabled}><Select size="small" aria-label={`索引 ${i+1} 类型选择`} value={v.unique?'unique':'index'} onChange={(_,d)=>update(i,{unique:d.value==='unique'})}><option value="index">普通</option><option value="unique">唯一</option></Select></Cell>
+ <Cell label={`索引 ${i+1} 列`} text={<TypedColumns names={v.columns.map(c=>c.name)} columns={columns}/>} disabled={disabled}><ColumnsSelect label={`索引 ${i+1} 列选择`} value={v.columns.map(c=>c.name)} columns={columns} onChange={names=>update(i,{columns:names.map(name=>({name,desc:v.columns.find(c=>c.name===name)?.desc??false}))})} disabled={disabled}/></Cell>
+ <TableCell className="dw-schema-actions"><span className="dw-schema-action-row"><Button size="small" appearance="subtle" icon={<DeleteRegular/>} aria-label={`删除索引 ${i+1}`} disabled={disabled} onClick={()=>onChange(value.filter((_,at)=>at!==i))}/></span></TableCell>
+ </TableRow>)}</TableBody></Table>{!value.length&&<p className="dw-draft-hint">暂无索引，主键在结构页设置。</p>}</>;
+}
+export function DraftForeignKeys({value,onChange,columns,sessionId,database,schema,engine,disabled}:{value:DraftForeignKey[];onChange:(v:DraftForeignKey[])=>void;columns:ColumnMeta[];sessionId:string;database:string;schema:string;engine:Engine;disabled:boolean}){
+ const [tables,setTables]=useState<TableRef[]>([]),[error,setError]=useState('');
+ useEffect(()=>{let alive=true;void api.listTables(sessionId,database).then(t=>{if(alive){setTables(t.filter(v=>v.kind==='table'));setError('');}}).catch(e=>{if(alive)setError(normalizeError(e).message);});return()=>{alive=false;};},[sessionId,database]);
+ return <><div className="dw-draft-toolbar"><Button size="small" icon={<AddRegular/>} disabled={disabled} onClick={()=>onChange([...value,{name:'',columns:[],refTable:'',refSchema:null,refColumns:[],onDelete:'NO ACTION',onUpdate:'NO ACTION'}])}>添加外键</Button></div>{error&&<div role="alert">引用表加载失败：{error}</div>}<Table className="dw-schema-list" size="extra-small" aria-label="外键草稿"><TableHeader><TableRow>{['名称','列','引用表','引用列','删除规则','更新规则','操作'].map(t=><TableHeaderCell key={t}>{t}</TableHeaderCell>)}</TableRow></TableHeader><TableBody>{value.map((v,i)=><ForeignRow key={i} value={v} index={i} columns={columns} tables={tables} sessionId={sessionId} database={database} schema={schema} engine={engine} disabled={disabled} update={patch=>onChange(value.map((old,at)=>at===i?{...old,...patch}:old))} remove={()=>onChange(value.filter((_,at)=>at!==i))}/>)}</TableBody></Table>{!value.length&&<p className="dw-draft-hint">暂无外键。</p>}</>;
+}
+function ForeignRow({value:v,index:i,columns,tables,sessionId,database,schema,engine,disabled,update,remove}:{value:DraftForeignKey;index:number;columns:ColumnMeta[];tables:TableRef[];sessionId:string;database:string;schema:string;engine:Engine;disabled:boolean;update:(p:Partial<DraftForeignKey>)=>void;remove:()=>void}){
+ const [refs,setRefs]=useState<ColumnMeta[]>([]),[error,setError]=useState('');
+ useEffect(()=>{let alive=true;setRefs([]);setError('');if(!v.refTable||v.selfReference)return;void api.tableDetail(sessionId,database,v.refTable,v.refSchema).then(meta=>{if(alive)setRefs(meta.columns);}).catch(e=>{if(alive)setError(normalizeError(e).message);});return()=>{alive=false;};},[sessionId,database,v.refTable,v.refSchema,v.selfReference]);
+ const options=v.selfReference?columns:refs;
+ const rule=(key:'onDelete'|'onUpdate',label:string)=><Cell label={`外键 ${i+1} ${label}`} text={<MetadataTag category="rule" value={v[key]}/> } disabled={disabled}><Select size="small" aria-label={`外键 ${i+1} ${label}选择`} value={v[key]} onChange={(_,d)=>update({[key]:d.value})}>{['NO ACTION','RESTRICT','CASCADE','SET NULL',...(engine==='mysql'?[]:['SET DEFAULT'])].map(a=><option key={a}>{a}</option>)}</Select></Cell>;
+ return <TableRow><Cell label={`外键 ${i+1} 名称`} text={v.name} disabled={disabled}><Input size="small" aria-label={`外键 ${i+1} 名称输入`} value={v.name} onChange={(_,d)=>update({name:d.value})}/></Cell>
+ <Cell label={`外键 ${i+1} 列`} text={<TypedColumns names={v.columns} columns={columns}/>} disabled={disabled}><ColumnsSelect label={`外键 ${i+1} 列选择`} value={v.columns} columns={columns} onChange={columns=>update({columns})} disabled={disabled}/></Cell>
+ <Cell label={`外键 ${i+1} 引用表`} text={v.selfReference?'当前新表':(v.refSchema?v.refSchema+'.':'')+v.refTable} disabled={disabled}><Select size="small" aria-label={`外键 ${i+1} 引用表选择`} value={v.selfReference?'self':v.refTable?JSON.stringify([v.refSchema??'',v.refTable]):''} onChange={(_,d)=>{if(d.value==='self')update({selfReference:true,refTable:'',refSchema:schema||null,refColumns:[]});else{const [refSchema,refTable]=d.value?JSON.parse(d.value):['',''];update({selfReference:false,refSchema:refSchema||null,refTable,refColumns:[]});}}}><option value="">选择引用表</option><option value="self">当前新表（自引用）</option>{tables.map(t=><option key={JSON.stringify([t.schema??'',t.name])} value={JSON.stringify([t.schema??'',t.name])}>{t.schema?t.schema+'.':''}{t.name}</option>)}</Select></Cell>
+ <Cell label={`外键 ${i+1} 引用列`} text={<TypedColumns names={v.refColumns} columns={options}/>} disabled={disabled}><ColumnsSelect label={`外键 ${i+1} 引用列选择`} value={v.refColumns} columns={options} onChange={refColumns=>update({refColumns})} disabled={disabled}/>{error&&<span role="alert">{error}</span>}</Cell>{rule('onDelete','删除规则')}{rule('onUpdate','更新规则')}
+ <TableCell className="dw-schema-actions"><span className="dw-schema-action-row"><Button size="small" appearance="subtle" icon={<DeleteRegular/>} aria-label={`删除外键 ${i+1}`} disabled={disabled} onClick={remove}/></span></TableCell></TableRow>;
+}

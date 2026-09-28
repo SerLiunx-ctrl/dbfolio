@@ -66,6 +66,7 @@ fn table_options(adapter:&dyn DbAdapter,database:&str,schema:Option<&str>,table:
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DdlSpec {
+    CreateTableDraft { draft:super::create_table::TableDraft },
     ColumnFlags {schema:Option<String>,table:String,changes:Vec<ColumnFlags>},
     TableOptions { schema:Option<String>, table:String, options:TableOptions },
     CreateTable {
@@ -1013,7 +1014,7 @@ fn build_drop_column(
 
 #[derive(Debug,Clone,Serialize,Deserialize,Default)]
 #[serde(rename_all="camelCase",deny_unknown_fields)]
-pub struct ColumnFlags {name:String,nullable:bool,unsigned:Option<bool>,new_name:Option<String>,data_type:Option<String>,comment:Option<String>,default_mode:Option<String>,default_value:Option<String>,auto_increment:Option<bool>,on_update:Option<String>}
+pub struct ColumnFlags {pub name:String,pub nullable:bool,pub unsigned:Option<bool>,pub new_name:Option<String>,pub data_type:Option<String>,pub comment:Option<String>,pub default_mode:Option<String>,pub default_value:Option<String>,pub auto_increment:Option<bool>,pub on_update:Option<String>}
 fn mysql_column_flags(raw:&str,changes:&[ColumnFlags])->AppResult<Vec<String>> {
  use sqlparser::{parser::Parser,dialect::MySqlDialect,ast::{Statement,ColumnOption}};
  let fail=|e:String|AppError::InvalidInput(format!("无法安全修改列属性：{e}"));
@@ -1065,17 +1066,19 @@ pub async fn preview(
 ) -> AppResult<Vec<String>> {
     let connected = state.connected(session_id).await?;
     let adapter = connected.adapter.as_ref();
+    if adapter.engine()==Engine::Sqlite && matches!(spec,DdlSpec::ColumnFlags{..}|DdlSpec::MoveColumn{..}|DdlSpec::DropColumn{..}) { return adapter.sqlite_schema_edit(database,spec,false).await; }
 
     match spec {
+        DdlSpec::CreateTableDraft {draft} => super::create_table::render(adapter.engine(),database,draft),
         DdlSpec::ColumnFlags {schema,table,changes} => {
             if changes.is_empty(){return Err(AppError::InvalidInput("没有列属性修改".into()));}
             let meta=adapter.introspect_table(database,schema.as_deref(),table).await?;
             if meta.kind!=TableKind::Table{return Err(AppError::InvalidInput("视图不支持列属性修改".into()));}
-            for c in changes {let column=meta.columns.iter().find(|v|v.name==c.name).ok_or_else(||AppError::InvalidInput("列不存在".into()))?;if c.nullable&&(column.auto_increment||meta.primary_key.contains(&c.name)){return Err(AppError::InvalidInput("主键或自增列不能设为可空".into()));}}
+            for c in changes {let column=meta.columns.iter().find(|v|v.name==c.name).ok_or_else(||AppError::InvalidInput("列不存在".into()))?;if c.nullable&&!column.nullable&&(column.auto_increment||meta.primary_key.contains(&c.name)){return Err(AppError::InvalidInput("主键或自增列不能设为可空".into()));}}
             let target=table_ref(adapter,database,schema.as_deref(),table);
             match adapter.engine(){
                 Engine::Mysql=>Ok(vec![format!("ALTER TABLE {} {}",target,mysql_column_flags(meta.raw_ddl.as_deref().ok_or_else(||AppError::InvalidInput("缺少原始建表定义".into()))?,changes)?.join(", "))]),
-                Engine::Postgres=>{if changes.iter().any(|c|c.unsigned.is_some()||c.new_name.is_some()||c.data_type.is_some()||c.comment.is_some()||c.default_mode.is_some()||c.auto_increment.is_some()||c.on_update.is_some()){return Err(AppError::InvalidInput("PostgreSQL 不支持 UNSIGNED".into()));}Ok(vec![format!("ALTER TABLE {} {}",target,changes.iter().map(|c|format!("ALTER COLUMN {} {} NOT NULL",quote(adapter,&c.name),if c.nullable{"DROP"}else{"SET"})).collect::<Vec<_>>().join(", "))])},
+                Engine::Postgres=>super::column_edit::postgres_columns(adapter,&target,&meta,changes),
                 _=>Err(AppError::InvalidInput("该引擎暂不支持直接勾选修改列属性".into()))
             }
         },
@@ -1420,7 +1423,13 @@ pub async fn apply(
         }
     }
 
+    let adapter=state.connected(session_id).await?.adapter.clone();
+    if adapter.engine()==Engine::Sqlite && matches!(spec,DdlSpec::ColumnFlags{..}|DdlSpec::MoveColumn{..}|DdlSpec::DropColumn{..}) { return adapter.sqlite_schema_edit(database,spec,true).await; }
     let statements = preview(state, session_id, database, spec).await?;
+    if (adapter.engine()==Engine::Postgres && matches!(spec,DdlSpec::ColumnFlags{..})) || (adapter.engine()!=Engine::Mysql && matches!(spec,DdlSpec::CreateTableDraft{..})) {
+        let items=statements.iter().map(|sql|crate::adapters::SqlParams{sql:sql.clone(),params:vec![]}).collect::<Vec<_>>();
+        adapter.execute_transaction(database,&items).await?;return Ok(statements);
+    }
     let connected = state.connected(session_id).await?;
     connected
         .adapter

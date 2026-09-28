@@ -1219,6 +1219,7 @@ mod tests {
             state.connections.lock().await.insert(
                 session.id,
                 Arc::new(crate::state::ConnectedSession {
+                    transport: None,
                     adapter,
                     key_value: None,
                     mongo: None,

@@ -2,12 +2,23 @@ import { useEditorTheme } from "../../useEditorTheme";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { Button } from "@fluentui/react-components";
 import { CodeRegular, SearchRegular, CopyRegular } from "@fluentui/react-icons";
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
+import { base64Image } from './base64Image';
+import { ImagePreview } from './ImagePreview';
+import { ExportImageButton } from './ExportImageButton';
 import type { editor } from "monaco-editor";
 import { useNotify } from "../../app/toast";
 import { api } from "../../ipc";
 
-export function ValueEditor({text,onChange,readOnly=false,binary=false}: {text:string;onChange?:(text:string)=>void;readOnly?:boolean;binary?:boolean}) {
+interface ValueEditorProps {text:string;onChange?:(text:string)=>void;readOnly?:boolean;binary?:boolean;allowImage?:boolean}
+export function ValueEditor(props: ValueEditorProps) {
+  const image=useMemo(()=>!props.binary && props.allowImage!==false ? base64Image(props.text) : null,[props.text,props.binary,props.allowImage]);
+  const [raw,setRaw]=useState(false),[failed,setFailed]=useState<string|null>(null);
+  if(!image) return <TextValueEditor {...props}/>;
+  return <><div className="dw-image-tools"><Button size="small" appearance={!raw?'primary':'secondary'} onClick={()=>setRaw(false)}>图片</Button><Button size="small" appearance={raw?'primary':'secondary'} onClick={()=>setRaw(true)}>原始文本</Button><ExportImageButton image={image}/></div>
+    {raw?<TextValueEditor {...props}/>:!image.previewable?<p>图片尺寸过大，无法在窗口内预览，可导出原图查看。</p>:failed===image.src?<><p>图片解码失败，可导出原图或查看原始文本。</p><TextValueEditor {...props}/></>:<ImagePreview image={image} onError={()=>setFailed(image.src)}/>}</>;
+}
+function TextValueEditor({text,onChange,readOnly=false,binary=false}: ValueEditorProps) {
   const notify=useNotify();
   const editorTheme=useEditorTheme();
   const ref=useRef<editor.IStandaloneCodeEditor|null>(null);

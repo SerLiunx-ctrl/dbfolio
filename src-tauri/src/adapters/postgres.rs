@@ -80,6 +80,10 @@ async fn connect_pool(params: &ConnectionParams, database: &str) -> AppResult<Pg
         .ssl_mode(map_ssl_mode(params.ssl_mode.as_deref()))
         .log_statements(tracing::log::LevelFilter::Trace);
 
+    if let Some(path)=&params.network.ca_file {opts=opts.ssl_root_cert(path);}
+    if let Some(path)=&params.network.client_cert {opts=opts.ssl_client_cert(path);}
+    if let Some(path)=&params.network.client_key {opts=opts.ssl_client_key(path);}
+    if let Some(name)=&params.network.server_name {opts=opts.tls_server_name(name);}
     if let Some(port) = params.port {
         opts = opts.port(port);
     }
@@ -368,6 +372,7 @@ fn bind_value<'q>(
 
 #[async_trait]
 impl DbAdapter for PostgresAdapter {
+    fn query_timeout_secs(&self)->u64 {self.params.network.query_timeout()}
     fn engine(&self) -> Engine {
         Engine::Postgres
     }

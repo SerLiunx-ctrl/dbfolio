@@ -20,6 +20,8 @@ pub struct SessionRecord {
     pub database: Option<String>,
     pub file_path: Option<String>,
     pub ssl_mode: Option<String>,
+    #[serde(default)]
+    pub network: crate::services::connection_config::NetworkConfig,
     pub redis_db: Option<u16>,
     pub tls: Option<bool>,
     pub auth_source: Option<String>,
@@ -43,9 +45,13 @@ pub struct SessionInput {
     pub username: Option<String>,
     /// None 表示不修改已保存密码；Some("") 表示删除密码；Some(pw) 表示保存
     pub password: Option<String>,
+    pub ssh_password: Option<String>,
+    pub ssh_key_passphrase: Option<String>,
     pub database: Option<String>,
     pub file_path: Option<String>,
     pub ssl_mode: Option<String>,
+    #[serde(default)]
+    pub network: crate::services::connection_config::NetworkConfig,
     pub redis_db: Option<u16>,
     pub tls: Option<bool>,
     pub auth_source: Option<String>,
@@ -95,6 +101,7 @@ fn row_to_session(row: &SqliteRow) -> AppResult<SessionRecord> {
         database: row.try_get("database")?,
         file_path: row.try_get("file_path")?,
         ssl_mode: row.try_get("ssl_mode")?,
+        network: serde_json::from_str(&row.try_get::<Option<String>,_>("network_config")?.unwrap_or_else(||"{}".into()))?,
         redis_db: row
             .try_get::<Option<i64>, _>("redis_db")?
             .map(|value| value.max(0) as u16),
@@ -160,6 +167,7 @@ impl LocalStore {
         let _ = sqlx::query("ALTER TABLE sessions ADD COLUMN allowed_databases TEXT").execute(&pool).await;
 
         // 兼容旧版本数据库：补充 Redis 相关列（已存在时报错忽略）
+        let _ = sqlx::query("ALTER TABLE sessions ADD COLUMN network_config TEXT").execute(&pool).await;
         let _ = sqlx::query("ALTER TABLE sessions ADD COLUMN auth_source TEXT").execute(&pool).await;
         let _ = sqlx::query("ALTER TABLE sessions ADD COLUMN redis_db INTEGER")
             .execute(&pool)
@@ -242,8 +250,8 @@ impl LocalStore {
         sqlx::query(
             "INSERT INTO sessions
              (id, name, engine, host, port, username, database, file_path, ssl_mode,
-              redis_db, tls, auth_source, read_only, group_name, color, allowed_databases, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              redis_db, tls, auth_source, read_only, group_name, color, allowed_databases, network_config, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&id)
         .bind(input.name.trim())
@@ -261,6 +269,7 @@ impl LocalStore {
         .bind(clean(&input.group_name))
         .bind(clean(&input.color))
         .bind(input.allowed_databases.as_ref().map(serde_json::to_string).transpose()?)
+        .bind(serde_json::to_string(&input.network)?)
         .bind(&now)
         .bind(&now)
         .execute(&self.pool)
@@ -270,6 +279,7 @@ impl LocalStore {
             crate::store::secrets::save_password(&id, password)?;
         }
 
+        crate::store::secrets::save_ssh(&id,input)?;
         self.get_session(&id).await
     }
 
@@ -282,7 +292,7 @@ impl LocalStore {
             "UPDATE sessions SET
                 name = ?, engine = ?, host = ?, port = ?, username = ?, database = ?,
                 file_path = ?, ssl_mode = ?, redis_db = ?, tls = ?, auth_source = ?, read_only = ?,
-                group_name = ?, color = ?, allowed_databases = ?, updated_at = ?
+                group_name = ?, color = ?, allowed_databases = ?, network_config = ?, updated_at = ?
              WHERE id = ?",
         )
         .bind(input.name.trim())
@@ -300,6 +310,7 @@ impl LocalStore {
         .bind(clean(&input.group_name))
         .bind(clean(&input.color))
         .bind(input.allowed_databases.as_ref().map(serde_json::to_string).transpose()?)
+        .bind(serde_json::to_string(&input.network)?)
         .bind(&now)
         .bind(id)
         .execute(&self.pool)
@@ -316,6 +327,7 @@ impl LocalStore {
             Some(password) => crate::store::secrets::save_password(id, password)?,
         }
 
+        crate::store::secrets::save_ssh(id,input)?;
         self.get_session(id).await
     }
 
@@ -329,6 +341,7 @@ impl LocalStore {
             return Err(AppError::NotFound(format!("会话不存在: {id}")));
         }
         let _ = crate::store::secrets::delete_password(id);
+        for suffix in ["ssh-password","ssh-key-passphrase"] {let _=crate::store::secrets::delete_password(&format!("{id}:{suffix}"));}
         Ok(())
     }
 
@@ -535,6 +548,7 @@ mod history_search_tests {
 }
 
 fn validate_input(input: &SessionInput) -> AppResult<()> {
+    input.network.validate(input.engine,input.host.as_deref())?;
     crate::services::database_access::validate(input.engine, input.allowed_databases.as_deref(), input.database.as_deref())?;
     if input.name.trim().is_empty() {
         return Err(AppError::InvalidInput("会话名称不能为空".into()));

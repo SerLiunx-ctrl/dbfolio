@@ -253,6 +253,7 @@ export function QueryWorkspace({ tab }: Props) {
           force,
           limit,
           sort: sortSpecs,
+          originTabId: tab.id,
         });
         setPageSize(limit);
         setResultTransaction(transaction.transaction?.id??null);
@@ -402,7 +403,7 @@ export function QueryWorkspace({ tab }: Props) {
 
   const cancel = async () => {
     try {
-      await api.queryCancel(tab.sessionId);
+      await api.queryCancel(tab.sessionId, tab.id);
     } catch (err) {
       notify.error(err, "取消失败");
     }
@@ -419,6 +420,7 @@ export function QueryWorkspace({ tab }: Props) {
         nextOffset,
         pageSize,
         sort,
+        tab.id,
       );
       setResult(outcome);
       setOffset(nextOffset);

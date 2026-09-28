@@ -182,6 +182,7 @@ pub struct MongoPage {
 }
 #[async_trait]
 pub trait DocumentAdapter: Send + Sync {
+    fn query_timeout_secs(&self)->u64 {60}
     async fn inspect(
         &self,
         database: &str,
@@ -233,6 +234,7 @@ impl Drop for ScanCleanup {
     }
 }
 pub struct MongoAdapter {
+    query_timeout_secs: u64,
     pub client: Client,
     default_database: Option<String>,
     scans: Arc<Mutex<HashMap<String, Scan>>>,
@@ -267,8 +269,15 @@ impl MongoAdapter {
         if p.tls == Some(true) && !matches!(options.tls.as_ref(), Some(Tls::Enabled(_))) {
             options.tls = Some(Tls::Enabled(TlsOptions::default()));
         }
-        options.server_selection_timeout = Some(Duration::from_secs(10));
-        options.connect_timeout = Some(Duration::from_secs(10));
+        if p.tunneled {options.direct_connection=Some(true);}
+        if p.tls_terminated {options.tls=Some(Tls::Disabled);}
+        else if let Some(Tls::Enabled(tls))=&mut options.tls {
+            if p.tls==Some(true){tls.allow_invalid_certificates=Some(false);}
+            if let Some(path)=&p.network.ca_file {tls.ca_file_path=Some(path.into());}
+            if let Some(path)=&p.network.client_cert {tls.cert_key_file_path=Some(path.into());}
+        }
+        options.server_selection_timeout = Some(Duration::from_secs(p.network.connect_timeout()));
+        options.connect_timeout = Some(Duration::from_secs(p.network.connect_timeout()));
         options.max_pool_size = Some(8);
         options.retry_writes = Some(false);
         options.app_name = Some("DBFolio".into());
@@ -295,6 +304,7 @@ impl MongoAdapter {
             }
         });
         Ok(Self {
+            query_timeout_secs:p.network.query_timeout(),
             client,
             default_database,
             scans,
@@ -303,6 +313,7 @@ impl MongoAdapter {
 }
 #[async_trait]
 impl DocumentAdapter for MongoAdapter {
+    fn query_timeout_secs(&self)->u64 {self.query_timeout_secs}
     async fn inspect(
         &self,
         database: &str,
@@ -514,6 +525,7 @@ impl DocumentAdapter for MongoAdapter {
 }
 #[async_trait]
 impl DbAdapter for MongoAdapter {
+    fn query_timeout_secs(&self)->u64 {self.query_timeout_secs}
     fn engine(&self) -> Engine {
         Engine::Mongodb
     }
@@ -684,6 +696,7 @@ mod integration_tests {
         let uri = std::env::var("DW_MONGO_TEST_URI").expect("设置专用测试 URI（不含账号密码）");
         let db = format!("dw_acceptance_{}", uuid::Uuid::new_v4().simple());
         let a = MongoAdapter::connect(&ConnectionParams {
+            network: Default::default(), tunneled:false, tls_terminated:false,
             allowed_databases: None,
             read_only: false,
             engine: Engine::Mongodb,

@@ -8,6 +8,7 @@ use crate::error::{AppError, AppResult};
 use crate::store::LocalStore;
 
 pub struct ConnectedSession {
+    pub transport: Option<Arc<crate::services::transport::Transport>>,
     pub adapter: Arc<dyn DbAdapter>,
     /// 键值引擎（Redis）适配器；SQL 会话为 None
     pub key_value: Option<Arc<dyn KeyValueAdapter>>,
@@ -91,7 +92,7 @@ impl AppState {
             }
         }
         let mut connections = self.connections.lock().await;
-        if let Some(old) = connections.remove(session_id) { if let Some(mongo) = &old.mongo { mongo.close().await; } }
+        if let Some(old) = connections.remove(session_id) { if let Some(t)=&old.transport {t.stop();} if let Some(mongo) = &old.mongo { mongo.close().await; } }
         let mut running = self.running_queries.lock().await;
         running.remove(session_id);
     }

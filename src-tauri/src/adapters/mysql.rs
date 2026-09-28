@@ -46,6 +46,10 @@ async fn connect_pool(params: &ConnectionParams, database: Option<&str>) -> AppR
         .ssl_mode(map_ssl_mode(params.ssl_mode.as_deref()))
         .log_statements(tracing::log::LevelFilter::Trace);
 
+    if let Some(path)=&params.network.ca_file {opts=opts.ssl_ca(path);}
+    if let Some(path)=&params.network.client_cert {opts=opts.ssl_client_cert(path);}
+    if let Some(path)=&params.network.client_key {opts=opts.ssl_client_key(path);}
+    if let Some(name)=&params.network.server_name {opts=opts.tls_server_name(name);}
     if let Some(port) = params.port {
         opts = opts.port(port);
     }
@@ -316,6 +320,7 @@ fn bind_value<'q>(
 
 #[async_trait]
 impl DbAdapter for MySqlAdapter {
+    fn query_timeout_secs(&self)->u64 {self.params.network.query_timeout()}
     async fn mysql_connection(&self, database: &str, write: bool) -> AppResult<sqlx::MySqlConnection> {
         crate::services::database_access::check(self.params.allowed_databases.as_deref(), database)?;
         if write && self.params.read_only { return Err(AppError::ReadOnly("当前会话为只读模式".into())); }

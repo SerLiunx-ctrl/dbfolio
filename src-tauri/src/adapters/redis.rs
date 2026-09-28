@@ -162,7 +162,7 @@ impl RedisAdapter {
         let url = build_url(params, default_db)?;
         let client = Client::open(url).map_err(redis_error)?;
         let manager = client
-            .get_connection_manager()
+            .get_connection_manager_with_config(redis::aio::ConnectionManagerConfig::new().set_connection_timeout(Some(super::connect_timeout(params))).set_response_timeout(Some(std::time::Duration::from_secs(params.network.query_timeout()))))
             .await
             .map_err(redis_error)?;
 
@@ -188,7 +188,8 @@ impl RedisAdapter {
         if let Some(manager) = managers.get(&db) {
             return Ok(manager.clone());
         }
-        let url = build_url(&self.params, db)?;
+        let params=&self.params;
+        let url = build_url(params, db)?;
         let client = Client::open(url).map_err(redis_error)?;
         let manager = client
             .get_connection_manager()
@@ -864,6 +865,7 @@ fn redis_value_to_json(value: &redis::Value) -> serde_json::Value {
 /// 所有 SQL 专属操作返回明确的不支持错误。
 #[async_trait]
 impl DbAdapter for RedisAdapter {
+    fn query_timeout_secs(&self)->u64 {self.params.network.query_timeout()}
     fn engine(&self) -> Engine {
         Engine::Redis
     }

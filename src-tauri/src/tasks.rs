@@ -56,8 +56,9 @@ pub fn checkpoint() -> AppResult<()> {
 pub async fn query<T>(adapter: &dyn crate::adapters::DbAdapter, ctx: &crate::adapters::QueryContext,
     work: impl Future<Output = AppResult<T>>) -> AppResult<T> {
     checkpoint()?;
-    let work = async { tokio::time::timeout(std::time::Duration::from_secs(60), work).await
-        .map_err(|_| AppError::Database("读取超过 60 秒，已停止等待；请缩小查询范围后重试".into()))? };
+    let seconds=adapter.query_timeout_secs();
+    let work = async { tokio::time::timeout(std::time::Duration::from_secs(seconds), work).await
+        .map_err(|_| AppError::Database(format!("读取超过 {seconds} 秒，已停止等待；服务器执行结果需重新确认，不会自动重试")))? };
     tokio::pin!(work);
     let mut timer = tokio::time::interval(std::time::Duration::from_millis(100));
     let mut attempted = false;

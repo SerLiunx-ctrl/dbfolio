@@ -8,7 +8,7 @@ use tauri::State;
 #[tauri::command]
 pub async fn mongo_inspect(state: State<'_, AppState>, session_id:String, database:String, collection:String, operation:String, text:String, task_id:Option<String>)->AppResult<serde_json::Value> {
     let a=adapter(&state,&session_id).await?;
-    state.tasks.scope(task_id,read(a.inspect(&database,&collection,&operation,&text))).await
+    state.tasks.scope(task_id,read(a.query_timeout_secs(),a.inspect(&database,&collection,&operation,&text))).await
 }
 #[tauri::command]
 pub async fn mongo_create_index(state: State<'_, AppState>, session_id:String, database:String, collection:String, text:String, task_id:Option<String>)->AppResult<serde_json::Value> {
@@ -33,8 +33,8 @@ async fn adapter(state: &AppState, id: &str) -> AppResult<Arc<dyn DocumentAdapte
         .clone()
         .ok_or_else(|| AppError::InvalidInput("当前会话不是 MongoDB".into()))
 }
-async fn read<T>(work: impl Future<Output = AppResult<T>>) -> AppResult<T> {
-    let work = tokio::time::timeout(Duration::from_secs(30), work);
+async fn read<T>(seconds:u64,work: impl Future<Output = AppResult<T>>) -> AppResult<T> {
+    let work = tokio::time::timeout(Duration::from_secs(seconds), work);
     tokio::pin!(work);
     loop {
         tokio::select! {result=&mut work=>return result.map_err(|_|AppError::Message("MongoDB 读取超时，请缩小查询范围".into()))?,_=tokio::time::sleep(Duration::from_millis(100))=>crate::tasks::checkpoint()?}
@@ -46,7 +46,8 @@ pub async fn mongo_collections(
     session_id: String,
     database: String,
 ) -> AppResult<Vec<String>> {
-    read(adapter(&state, &session_id).await?.collections(&database)).await
+    let a=adapter(&state,&session_id).await?;
+    read(a.query_timeout_secs(),a.collections(&database)).await
 }
 #[tauri::command]
 pub async fn mongo_find(
@@ -56,7 +57,7 @@ pub async fn mongo_find(
     task_id: Option<String>,
 ) -> AppResult<MongoPage> {
     let a = adapter(&state, &session_id).await?;
-    state.tasks.scope(task_id, read(a.find(request))).await
+    state.tasks.scope(task_id, read(a.query_timeout_secs(),a.find(request))).await
 }
 #[tauri::command]
 pub async fn mongo_next(
@@ -66,7 +67,7 @@ pub async fn mongo_next(
     task_id: Option<String>,
 ) -> AppResult<MongoPage> {
     let a = adapter(&state, &session_id).await?;
-    let result = state.tasks.scope(task_id, read(a.next(&cursor))).await;
+    let result = state.tasks.scope(task_id, read(a.query_timeout_secs(),a.next(&cursor))).await;
     if result.is_err() {
         a.release(&cursor).await;
     }
@@ -92,6 +93,7 @@ pub async fn mongo_document(
     id: String,
 ) -> AppResult<String> {
     read(
+        adapter(&state,&session_id).await?.query_timeout_secs(),
         adapter(&state, &session_id)
             .await?
             .document(&database, &collection, &id),

@@ -15,6 +15,9 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
 $version = (Get-Content -LiteralPath (Join-Path $root 'package.json') -Raw | ConvertFrom-Json).version
+if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+    throw 'Version must be a safe semantic version, for example 1.0.0-alpha.'
+}
 $hostTarget = (& rustc -vV | Select-String '^host: ').ToString().Substring(6)
 if ($LASTEXITCODE -ne 0 -or $hostTarget -ne 'x86_64-pc-windows-msvc') {
     throw 'This packaging script currently supports Windows x64 MSVC only.'
@@ -34,7 +37,7 @@ if ($Profile -eq 'release-fast') {
     if ($LASTEXITCODE -ne 0) { throw 'Tauri build failed.' }
 }
 
-$releaseDir = Join-Path $root 'release'
+$releaseDir = Join-Path (Join-Path $root 'release') $version
 New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 $suffix = if ($Profile -eq 'release-fast') { 'portable-fast' } else { 'portable' }
 $baseName = "DBFolio_${version}_windows_x64"
@@ -84,16 +87,20 @@ DBFolio $version ($Profile) - Windows x64 便携版
     if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
     [IO.Compression.ZipFile]::CreateFromDirectory($packageDir, $archive, [IO.Compression.CompressionLevel]::Optimal, $true)
     $artifacts = @($archive)
+    $portableChecksums = @("$(Get-Sha256 $archive)  $([IO.Path]::GetFileName($archive))")
+    $portableChecksums += Get-ChildItem -LiteralPath $packageDir -File -Recurse | Sort-Object FullName | ForEach-Object {
+        $relative = $_.FullName.Substring($releaseDir.Length + 1).Replace('\', '/')
+        "$(Get-Sha256 $_.FullName)  $relative"
+    }
+    [IO.File]::WriteAllLines((Join-Path $releaseDir "${baseName}_${suffix}_SHA256SUMS.txt"), [string[]]$portableChecksums, [Text.UTF8Encoding]::new($false))
     if ($Installer) {
         $setupSource = Join-Path $root "src-tauri/target/$Profile/bundle/nsis/DBFolio_${version}_x64-setup.exe"
         $setupTarget = Join-Path $releaseDir "${baseName}_setup.exe"
         Copy-Item -LiteralPath $setupSource -Destination $setupTarget -Force
+        "$(Get-Sha256 $setupTarget)  $([IO.Path]::GetFileName($setupTarget))" |
+            Set-Content -LiteralPath (Join-Path $releaseDir "${baseName}_setup_SHA256SUMS.txt") -Encoding ASCII
         $artifacts += $setupTarget
     }
-    $artifacts | ForEach-Object {
-        $hash = Get-Sha256 $_
-        "$hash  $([IO.Path]::GetFileName($_))"
-    } | Set-Content -LiteralPath (Join-Path $releaseDir "${baseName}_${suffix}_SHA256SUMS.txt") -Encoding ASCII
     Write-Host "Portable directory: $packageDir"
     $artifacts | ForEach-Object { Write-Host "Artifact: $_" }
 } finally {

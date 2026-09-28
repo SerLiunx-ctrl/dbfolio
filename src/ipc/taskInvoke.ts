@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { connectionBridge } from "./connectionBridge";
-import { errorText, updateTask, useTaskStore, isTaskActive, type TaskKind, type TaskProgress } from "../stores/useTaskStore";
+import { errorText, updateTask, useTaskStore, isTaskActive, isBackgroundTask, type TaskKind, type TaskProgress } from "../stores/useTaskStore";
 
 const commands: Record<string, [TaskKind, string]> = {
   sql_import_preview: ['导入','预检 SQL 文件'],sql_import_execute:['导入','导入 SQL 文件'],mysql_procedure_call:['修改','调用存储过程'],
@@ -46,13 +46,15 @@ export async function trackedInvoke<T>(command: string, args?: Record<string, un
     try { return await invoke<T>(command, args); }
     catch (error) { if (networkOperation) connectionBridge.onFailure?.(sessionIds); throw error; }
   }
+  const background = isBackgroundTask({ kind: spec[0] }) ||
+    ["generation_write", "mongo_create_index", "mongo_inspect"].includes(command);
   const id = crypto.randomUUID();
   const tab = connectionBridge.currentTab?.();
   const originTabId=args?.originTabId as string|undefined;
   const tabId = originTabId ?? ((spec[0]==="同步" || command==="query_ai" || command==="export_sql") ? undefined : tab && sessionIds.includes(tab.sessionId) && (!request.database || request.database === tab.database) ? tab.id : undefined);
   const queryLabel = spec[0] === "查询" && typeof request.sql === "string" ? " · " + request.sql.replace(/\s+/g, " ").trim().slice(0, 100) : "";
   await invoke("task_begin", { id });
-  useTaskStore.setState(s => ({ tasks: [{ id, tabId, kind: spec[0], label: `${spec[1]}${request.table ? ` · ${request.table}` : request.database ? ` · ${request.database}` : ""}` + queryLabel, sessionIds, startedAt: Date.now(), status: "running" }, ...s.tasks.filter(isTaskActive), ...s.tasks.filter(t => !isTaskActive(t)).slice(0, 99)] }));
+  useTaskStore.setState(s => ({ tasks: [{ id, tabId, background, kind: spec[0], label: `${spec[1]}${request.table ? ` · ${request.table}` : request.database ? ` · ${request.database}` : ""}` + queryLabel, sessionIds, startedAt: Date.now(), status: "running" }, ...s.tasks.filter(isTaskActive), ...s.tasks.filter(t => !isTaskActive(t) && isBackgroundTask(t)).slice(0, 99)] }));
   let polling = false;
   const poll = async () => {
     if (polling) return;
@@ -77,5 +79,6 @@ export async function trackedInvoke<T>(command: string, args?: Record<string, un
     // 最后一次读取保留已提交数量与回滚目录，即使操作被取消或失败。
     try { const progress = await invoke<TaskProgress | null>("task_progress", { id }); if (progress) updateTask(id, { progress }); } catch { /* 保留最后一次成功的进度 */ }
     await invoke("task_release", { id }).catch(() => undefined);
+    if (!background) useTaskStore.setState(s => ({ tasks: s.tasks.filter(t => t.id !== id) }));
   }
 }

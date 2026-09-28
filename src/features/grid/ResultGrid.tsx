@@ -11,6 +11,7 @@ import { AgGridReact } from "ag-grid-react";
 import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
 import { CopyRegular, ZoomInRegular } from "@fluentui/react-icons";
 import { ValueEditor } from "./ValueEditor";
+import { ImageCell } from './ImageCell';
 import type { ColDef, GridApi } from "ag-grid-community";
 import { api } from "../../ipc";
 import { ContextMenuPortal, ContextMenuSurface } from "../../app/ContextMenuPortal";
@@ -104,6 +105,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
         comparator: onSortChange ? () => 0 : undefined,
         valueGetter: (params) => params.data?.cells[index],
         valueFormatter: (params) => formatDbValue(params.value as DbValue),
+        cellRenderer: (params: {value?:DbValue}) => <ImageCell value={params.value} text={formatDbValue(params.value as DbValue)} onOpen={()=>{if(params.value)setDetail({name:column.name,value:params.value});}}/>,
         cellStyle: (params) => valueCellStyle(column.rawType, params.value as DbValue),
       })),
     [columns, onSortChange],
@@ -270,7 +272,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
       <Dialog open={detail!==null} onOpenChange={(_,d)=>{if(!d.open)setDetail(null);}}><DialogSurface style={{width:"90vw",maxWidth:1000}}><DialogBody>
         <DialogTitle>单元格详情 · {detail?.name}</DialogTitle><DialogContent>
           {detail && <><p>{detail.value[0]==="null" ? "NULL" : detail.value[0]==="readonly" ? "扩展类型或解析提示，只读显示。" : isReadOnlyValue(detail.value) ? "查询结果为截断预览；请在表数据页按主键查看完整值。" : "查询结果只读"}</p>
-          <ValueEditor text={String(detail.value[1]??"")} binary={detail.value[0]==="bytes"} readOnly /></>}
+          <ValueEditor text={String(detail.value[1]??"")} binary={detail.value[0]==="bytes"} allowImage={detail.value[0]==='text'} readOnly /></>}
         </DialogContent><DialogActions><Button onClick={()=>setDetail(null)}>关闭</Button></DialogActions>
       </DialogBody></DialogSurface></Dialog>
     </div>

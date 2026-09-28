@@ -1,3 +1,4 @@
+import {ConnectionSecurity} from './ConnectionSecurity';
 import {InfoHint} from '../../common/InfoHint';
 import {
   Button,
@@ -24,7 +25,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState } from "react";
 import { useNotify } from "../../app/toast";
 import { api } from "../../ipc";
-import type { Engine, SessionInput, SessionRecord } from "../../ipc/types";
+import type { Engine, SessionInput, SessionRecord, NetworkConfig, DiagnosticStep } from "../../ipc/types";
 import { useSessionStore } from "../../stores/useSessionStore";
 import { DEFAULT_PORTS, DEFAULT_USERNAMES, ENGINE_LABELS, ENGINE_OPTIONS } from "./engine";
 
@@ -82,11 +83,11 @@ const useStyles = makeStyles({
 });
 
 const SSL_OPTIONS = [
-  { value: "prefer", label: "prefer（默认）" },
-  { value: "disable", label: "disable" },
-  { value: "require", label: "require" },
-  { value: "verify-ca", label: "verify-ca" },
-  { value: "verify-full", label: "verify-full" },
+  { value: "prefer", label: "prefer（默认，允许明文回退）" },
+  { value: "disable", label: "disable（关闭 TLS）" },
+  { value: "require", label: "require（强制加密）" },
+  { value: "verify-ca", label: "verify-ca（验证证书链）" },
+  { value: "verify-full", label: "verify-full（验证证书与主机名）" },
 ];
 
 import { environmentLabels, setSessionEnvironment, useObjectPreferences, type Environment } from "../../stores/useObjectPreferences";
@@ -116,6 +117,9 @@ export function SessionDialog({
   const createSession = useSessionStore((s) => s.createSession);
   const updateSession = useSessionStore((s) => s.updateSession);
 
+  const [network,setNetwork]=useState<NetworkConfig>({});
+  const [sshPassword,setSshPassword]=useState<string|null>(null),[sshPassphrase,setSshPassphrase]=useState<string|null>(null);
+  const [steps,setSteps]=useState<DiagnosticStep[]>([]);
   const [name, setName] = useState("");
   const [environment, setEnvironment] = useState<Environment>("none");
   const [engine, setEngine] = useState<Engine>("mysql");
@@ -143,6 +147,7 @@ export function SessionDialog({
 
   useEffect(() => {
     if (!isOpen) return;
+    setNetwork(session?.network??{});setSshPassword(null);setSshPassphrase(null);setSteps([]);
     setConfirmWritable(false);
     setRestrictDatabases(session?.allowedDatabases != null);
     setAllowedDatabases((session?.allowedDatabases ?? []).join("\n"));
@@ -204,6 +209,7 @@ export function SessionDialog({
       passwordValue = "";
     }
     return {
+      network:isSqlite?{queryTimeoutSecs:network.queryTimeoutSecs}:network,sshPassword,sshKeyPassphrase:sshPassphrase,
       name: name.trim(),
       engine,
       host: isSqlite ? null : host.trim(),
@@ -224,11 +230,11 @@ export function SessionDialog({
   };
 
   const handleTest = async () => {
-    setTesting(true);
+    setTesting(true);setSteps([]);
     setTestMessage(null);
     try {
       const result = await api.testSession(buildInput(), session?.id ?? null);
-      setTestMessage({ ok: true, text: `连接成功 · 服务器版本 ${result.serverVersion}` });
+      setSteps(result.steps??[]);setTestMessage({ok:result.ok,text:result.ok?`连接成功 · 服务器版本 ${result.serverVersion}`:"连接未通过，请查看分步诊断"});
     } catch (error) {
       const message =
         typeof error === "object" && error !== null && "message" in error
@@ -284,7 +290,7 @@ export function SessionDialog({
     <Dialog
       open={isOpen}
       onOpenChange={(_, data) => {
-        if (!data.open) onClose();
+        if (!data.open && !testing && !saving) onClose();
       }}
     >
       <DialogSurface style={{ maxWidth: "560px" }}>
@@ -419,6 +425,7 @@ export function SessionDialog({
                 </>
               )}
 
+              <ConnectionSecurity engine={engine} value={network} onChange={setNetwork} sshPassword={sshPassword} onPassword={setSshPassword} sshPassphrase={sshPassphrase} onPassphrase={setSshPassphrase} disabled={testing||saving}/>
               <Field label="分组">
                 <Combobox
                   freeform
@@ -457,6 +464,7 @@ export function SessionDialog({
           </DialogContent>
           <DialogActions>
             <div className={styles.footerColumn}>
+              {steps.length>0&&<div aria-label="连接诊断" style={{maxHeight:160,overflow:"auto",width:"100%",fontSize:12}}>{steps.map(s=><div key={s.key} style={{display:"grid",gridTemplateColumns:"100px 1fr 54px",gap:6,padding:"3px 0",color:s.status==="failed"?tokens.colorPaletteRedForeground1:undefined}}><span>{s.status==="ok"?"✓":s.status==="failed"?"✕":"—"} {s.label}</span><span style={{overflowWrap:"anywhere"}}>{s.message}</span><span>{s.durationMs} ms</span></div>)}</div>}
               {testMessage && (
                 <div
                   className={`${styles.testResult} ${
@@ -476,13 +484,13 @@ export function SessionDialog({
                   测试连接
                 </Button>
                 <div className={styles.gap} />
-                <Button appearance="secondary" onClick={onClose} disabled={saving}>
+                <Button appearance="secondary" onClick={onClose} disabled={saving||testing}>
                   取消
                 </Button>
                 <Button
                   appearance="primary"
                   onClick={() => void handleSave()}
-                  disabled={saving || !canSave}
+                  disabled={saving || testing || !canSave}
                 >
                   保存
                 </Button>

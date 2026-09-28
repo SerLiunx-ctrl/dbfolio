@@ -1,21 +1,57 @@
-import {fieldTypeStyle} from '../grid/valueColor';
-import {useState,type ReactNode} from 'react';
-import {Checkbox,Input,Select,TableCell,TableRow,Button,Badge} from '@fluentui/react-components';
-import {DeleteRegular} from '@fluentui/react-icons';import type {ColumnMeta} from '../../ipc/types';import {typeOptions} from './columnTypes';import './inline-columns.css';
-export interface ColumnEdit {nullable:boolean;unsigned?:boolean;newName?:string;dataType?:string;comment?:string;defaultMode?:string;defaultValue?:string;autoIncrement?:boolean;onUpdate?:string}
-function parts(raw:string){const s=raw.replace(/\s+(unsigned|zerofill)\b/gi,'').trim();const m=s.match(/^([^()]+?)(?:\((.*)\))?$/);return {type:m?.[1].toLowerCase()??s,args:m?.[2]??''};}
-export function InlineColumnRow({column:c,edit,primary,disabled,onEdit,onDelete,onContextMenu}:{column:ColumnMeta;edit?:ColumnEdit;primary:boolean;disabled:boolean;onEdit:(patch:Partial<ColumnEdit>)=>void;onDelete:()=>void;onContextMenu:(e:React.MouseEvent)=>void}){
- const [active,setActive]=useState<string|null>(null);
- const typeStyle=fieldTypeStyle(edit?.dataType??c.rawType,edit?.dataType?undefined:c.canonical);
- const cell=(key:string,text:string,control:ReactNode,locked=false)=><TableCell aria-label={c.name+' '+key+' 单元格'} onDoubleClick={()=>{if(!disabled&&!locked)setActive(key);}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node))setActive(null);}} onKeyDown={e=>{if(e.key==='Enter'&&active!==key&&!disabled&&!locked){e.preventDefault();setActive(key);}else if(e.key==='Escape'){e.stopPropagation();setActive(null);}}} tabIndex={disabled?-1:0}>{active===key&&!disabled?control:<span className="dw-inline-column-text" style={text&&['字段名','字段类型','长度/集合'].includes(key)?typeStyle:undefined} title={text||'双击编辑'}>{text||'—'}</span>}</TableCell>;
- const p=parts(edit?.dataType??c.rawType);const numeric=/^(tinyint|smallint|mediumint|int|integer|bigint|decimal|numeric|float|double|real)$/.test(p.type),integer=/^(tinyint|smallint|mediumint|int|integer|bigint)$/.test(p.type),temporal=/^(timestamp|datetime)$/.test(p.type);const auto=edit?.autoIncrement??c.autoIncrement;
- const combine=(type:string,args:string)=>type+(args?`(${args})`:'');const input=(label:string,value:string,change:(value:string)=>void,extra=false)=><Input autoFocus size="small" aria-label={c.name+' '+label} value={value} disabled={disabled||extra} onChange={(_,d)=>change(d.value)}/>;
- return <TableRow onContextMenu={onContextMenu} className={edit?'dw-column-dirty':''}><TableCell>{c.ordinal}</TableCell>{cell('字段名',edit?.newName??c.name,input('字段名',edit?.newName??c.name,newName=>onEdit({newName})))}
- {cell('字段类型',p.type,<Select autoFocus size="small" aria-label={c.name+' 字段类型'} value={p.type} disabled={disabled} onChange={(_,d)=>{const type=d.value;onEdit({dataType:combine(type,['varchar','char','varbinary','binary'].includes(type)?'255':['decimal','numeric'].includes(type)?'10,0':['enum','set'].includes(type)?"'值1'":''),unsigned:/^(tinyint|smallint|mediumint|int|integer|bigint|decimal|numeric|float|double|real)$/.test(type)?(edit?.unsigned??c.unsigned):undefined,...(!/^(tinyint|smallint|mediumint|int|integer|bigint)$/.test(type)?{autoIncrement:false}:{}),...(!/^(timestamp|datetime)$/.test(type)?{onUpdate:''}:{})});}}>{[...new Set([...typeOptions('mysql',p.type),'enum','set','binary','varbinary'])].map(t=><option key={t}>{t}</option>)}</Select>)}
- {cell('长度/集合',p.args,input('长度/集合',p.args,args=>onEdit({dataType:combine(p.type,args)})))}
- <TableCell><Checkbox aria-label={c.name+' 可空'} checked={edit?.nullable??c.nullable} disabled={disabled||primary||auto} onChange={(_,d)=>onEdit({nullable:d.checked===true})}/></TableCell><TableCell>{numeric?<Checkbox aria-label={c.name+' 无符号'} checked={edit?.unsigned??c.unsigned} disabled={disabled} onChange={(_,d)=>onEdit({unsigned:d.checked===true})}/>:<span>—</span>}</TableCell>
- {cell('默认值',edit?.defaultMode==='literal'?edit.defaultValue??'':edit?.defaultMode==='null'?'NULL':edit?.defaultMode==='timestamp'?'CURRENT_TIMESTAMP':edit?.defaultMode==='none'?'无默认值':c.defaultValue??'无默认值',<div className={'dw-inline-default'+(edit?.defaultMode==='literal'?' dw-inline-default-custom':'')}><Select autoFocus size="small" aria-label={c.name+' 默认值模式'} value={edit?.defaultMode??'keep'} disabled={disabled||auto} onChange={(_,d)=>onEdit({defaultMode:d.value==='keep'?undefined:d.value,defaultValue:undefined})}><option value="keep">{c.defaultValue==null?'无默认值':c.defaultValue}</option><option value="none">无默认值</option><option value="null" disabled={!(edit?.nullable??c.nullable)}>NULL</option><option value="literal">自定义值</option>{temporal&&<option value="timestamp">CURRENT_TIMESTAMP</option>}</Select>{edit?.defaultMode==='literal'&&input('默认值',edit.defaultValue??'',defaultValue=>onEdit({defaultValue}))}</div>,auto)}
- <TableCell><Checkbox aria-label={c.name+' 自动增长'} checked={auto} disabled={disabled||!integer} onChange={(_,d)=>onEdit(d.checked?{autoIncrement:true,nullable:false,defaultMode:'none'}:{autoIncrement:false})}/></TableCell>
- {cell('ON UPDATE',temporal?(edit?.onUpdate??'保持原设置'):'—',temporal?<Select autoFocus size="small" aria-label={c.name+' ON UPDATE'} value={edit?.onUpdate??'keep'} disabled={disabled} onChange={(_,d)=>onEdit({onUpdate:d.value==='keep'?undefined:d.value})}><option value="keep">保持原设置</option><option value="">无</option><option value="CURRENT_TIMESTAMP">CURRENT_TIMESTAMP</option></Select>:'—',!temporal)}
- <TableCell>{primary&&<Badge size="small">PK</Badge>}</TableCell>{cell('注释',edit?.comment??c.comment??'',input('注释',edit?.comment??c.comment??'',comment=>onEdit({comment})))}<TableCell><Button appearance="subtle" size="small" icon={<DeleteRegular/>} aria-label={'删除列 '+c.name} disabled={disabled||!!edit} onClick={onDelete}/></TableCell></TableRow>;
+import { fieldTypeStyle } from '../grid/valueColor';
+import { useState, type ReactNode } from 'react';
+import { Checkbox, Input, Select, TableCell, TableRow, Button, Badge } from '@fluentui/react-components';
+import { DeleteRegular } from '@fluentui/react-icons';
+import type { ColumnMeta, Engine } from '../../ipc/types';
+import { typeOptions, supportsIdentity } from './columnTypes';
+import { columnCapabilities, splitColumnType, joinColumnType } from './columnCapabilities';
+import './inline-columns.css';
+export interface ColumnEdit { nullable: boolean; unsigned?: boolean; newName?: string; dataType?: string; comment?: string; defaultMode?: string; defaultValue?: string; autoIncrement?: boolean; onUpdate?: string }
+export function InlineColumnRow({ column: c, engine, edit, primary, singlePrimary, disabled, deleteDisabled, onEdit, onDelete, onContextMenu, creating=false, onPrimaryChange }: {
+  creating?:boolean; onPrimaryChange?:(checked:boolean)=>void;
+  column: ColumnMeta; engine: Engine; edit?: ColumnEdit; primary: boolean; singlePrimary: boolean;
+  disabled: boolean; deleteDisabled: boolean; onEdit: (patch: Partial<ColumnEdit>) => void; onDelete: () => void; onContextMenu: (e: React.MouseEvent) => void;
+}) {
+  const [active, setActive] = useState<string | null>(null);
+  const caps = columnCapabilities(engine), p = splitColumnType(edit?.dataType ?? c.rawType, engine);
+  const type = p.type.toLowerCase(), auto = edit?.autoIncrement ?? c.autoIncrement;
+  const numeric = /^(tinyint|smallint|mediumint|int|integer|bigint|decimal|numeric|float|double|real)$/.test(type);
+  const temporal = /^(date|time|timetz|datetime|timestamp|timestamptz)(\b|$)/.test(type);
+  const canAuto = (creating || caps.identityEditable) && supportsIdentity(engine, type) && (engine !== 'sqlite' || (primary && singlePrimary));
+  const autoHint = engine === 'postgres' ? (creating ? 'GENERATED BY DEFAULT AS IDENTITY' : 'PostgreSQL 的序列/IDENTITY 属性通过 SQL 管理') : engine === 'sqlite' ? 'AUTOINCREMENT 仅适用于普通表的单列 INTEGER 主键；INTEGER 主键未启用此项时仍可自动分配 rowid' : '仅整数列支持自动增长';
+  const typeStyle = fieldTypeStyle(edit?.dataType ?? c.rawType, edit?.dataType ? undefined : c.canonical);
+  const cell = (key: string, text: string, control: ReactNode, reason = '') => <TableCell aria-label={c.name + ' ' + key + ' 单元格'}
+    onDoubleClick={() => { if (!disabled && !reason) setActive(key); }}
+    onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setActive(null); }}
+    onKeyDown={e => { if (e.key === 'Enter' && active !== key && !disabled && !reason) { e.preventDefault(); setActive(key); } else if (e.key === 'Escape') { e.stopPropagation(); setActive(null); } }}
+    tabIndex={disabled || reason ? -1 : 0}>
+    {active === key && !disabled ? control : <span className="dw-inline-column-text" style={text && ['字段名', '字段类型', '长度/集合'].includes(key) ? typeStyle : undefined} title={reason || text || '双击编辑'}>{text || '—'}</span>}
+  </TableCell>;
+  const input = (label: string, value: string, change: (value: string) => void) => <Input autoFocus size="small" aria-label={c.name + ' ' + label} value={value} disabled={disabled} onChange={(_, d) => change(d.value)} />;
+  const defaultText = edit?.defaultMode === 'literal' ? edit.defaultValue ?? '' : edit?.defaultMode === 'null' ? 'NULL' : edit?.defaultMode === 'timestamp' ? 'CURRENT_TIMESTAMP' : edit?.defaultMode === 'none' ? '无默认值' : c.defaultValue ?? '无默认值';
+  const types = typeOptions(engine, p.type);
+  return <TableRow onContextMenu={onContextMenu} className={edit ? 'dw-column-dirty' : ''}>
+    <TableCell>{c.ordinal}</TableCell>
+    {cell('字段名', edit?.newName ?? c.name, input('字段名', edit?.newName ?? c.name, newName => onEdit({ newName })))}
+    {cell('字段类型', p.type, <Select autoFocus size="small" aria-label={c.name + ' 字段类型'} value={p.type} disabled={disabled} onChange={(_, d) => {
+      const next = d.value, patch: Partial<ColumnEdit> = { dataType: joinColumnType(next, ['varchar', 'char', 'varbinary', 'binary'].includes(next) ? '255' : ['decimal', 'numeric'].includes(next) && engine !== 'sqlite' ? '10,0' : ['enum', 'set'].includes(next) ? "'值1'" : '') };
+      if (caps.unsigned) patch.unsigned = /^(tinyint|smallint|mediumint|int|integer|bigint|decimal|numeric|float|double|real)$/.test(next) ? edit?.unsigned ?? c.unsigned : undefined;
+      if ((creating || caps.identityEditable) && auto && !supportsIdentity(engine, next)) patch.autoIncrement = false;
+      if (caps.onUpdate && !['timestamp', 'datetime'].includes(next)) patch.onUpdate = '';
+      onEdit(patch);
+    }}>{[...new Set([...types, ...(engine === 'mysql' ? ['enum', 'set', 'binary', 'varbinary'] : [])])].map(t => <option key={t}>{t}</option>)}</Select>)}
+    {cell('长度/集合', p.args, input('长度/集合', p.args, args => onEdit({ dataType: joinColumnType(p.type, args) })))}
+    <TableCell><Checkbox aria-label={c.name + ' 可空'} checked={edit?.nullable ?? c.nullable} disabled={disabled || primary || auto} onChange={(_, d) => onEdit({ nullable: d.checked === true })} /></TableCell>
+    {caps.unsigned && <TableCell>{numeric ? <Checkbox aria-label={c.name + ' 无符号'} checked={edit?.unsigned ?? c.unsigned} disabled={disabled} onChange={(_, d) => onEdit({ unsigned: d.checked === true })} /> : '—'}</TableCell>}
+    {cell('默认值', defaultText, <div className={'dw-inline-default' + (edit?.defaultMode === 'literal' ? ' dw-inline-default-custom' : '')}>
+      <Select autoFocus size="small" aria-label={c.name + ' 默认值模式'} value={edit?.defaultMode ?? 'keep'} disabled={disabled || auto} onChange={(_, d) => onEdit({ defaultMode: d.value === 'keep' ? undefined : d.value, defaultValue: undefined })}>
+        <option value="keep">{c.defaultValue ?? '无默认值'}</option><option value="none">无默认值</option><option value="null" disabled={!(edit?.nullable ?? c.nullable)}>NULL</option><option value="literal">自定义值</option>{(temporal || engine === 'sqlite') && <option value="timestamp">CURRENT_TIMESTAMP</option>}
+      </Select>{edit?.defaultMode === 'literal' && input('默认值', edit.defaultValue ?? '', defaultValue => onEdit({ defaultValue }))}
+    </div>, auto ? '自动增长列的默认值由数据库管理' : '')}
+    <TableCell title={autoHint}><Checkbox aria-label={c.name + ' 自动增长'} checked={auto} disabled={disabled || !canAuto} onChange={(_, d) => onEdit(d.checked ? { autoIncrement: true, nullable: false, defaultMode: 'none' } : { autoIncrement: false })} /></TableCell>
+    {caps.onUpdate && cell('ON UPDATE', temporal ? edit?.onUpdate ?? '保持原设置' : '—', <Select autoFocus size="small" aria-label={c.name + ' ON UPDATE'} value={edit?.onUpdate ?? 'keep'} onChange={(_, d) => onEdit({ onUpdate: d.value === 'keep' ? undefined : d.value })}><option value="keep">保持原设置</option><option value="">无</option><option value="CURRENT_TIMESTAMP">CURRENT_TIMESTAMP</option></Select>, temporal ? '' : '仅时间戳/日期时间列支持 ON UPDATE')}
+    <TableCell>{creating?<Checkbox aria-label={c.name+' 主键'} checked={primary} disabled={disabled} onChange={(_,d)=>onPrimaryChange?.(d.checked===true)}/>:primary && <Badge size="small">PK</Badge>}</TableCell>
+    {cell('注释', edit?.comment ?? c.comment ?? '', input('注释', edit?.comment ?? c.comment ?? '', comment => onEdit({ comment })), caps.comment ? '' : 'SQLite 不支持列注释元数据')}
+    <TableCell className="dw-schema-actions"><span className="dw-schema-action-row"><Button appearance="subtle" size="small" icon={<DeleteRegular />} aria-label={'删除列 ' + c.name} disabled={disabled || deleteDisabled} onClick={onDelete} /></span></TableCell>
+  </TableRow>;
 }

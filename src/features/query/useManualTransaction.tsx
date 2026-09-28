@@ -31,7 +31,7 @@ export function useManualTransaction(tabId:string,sessionId:string,database:stri
   const execute=async(sql:string,force:boolean,offset=0,sort:SortSpec[]=[],limit=200):Promise<QueryOutcome>=>{
     const tx=current.current;if(!tx||lost)throw Error('事务已失效，请先结束事务模式');
     if(lock.current)throw Error('事务操作进行中');
-    try{const result=await api.transactionExecute(tx.id,sessionId,sql,force,offset,sort,limit);const next={...tx,statements:tx.statements+1};current.current=next;setTransaction(next);if(!offset)statements.current=[...statements.current,sql].slice(-100);return result;}
+    try{const result=await api.transactionExecute(tx.id,sessionId,sql,force,offset,sort,limit,tabId);const next={...tx,statements:tx.statements+1};current.current=next;setTransaction(next);if(!offset)statements.current=[...statements.current,sql].slice(-100);return result;}
     catch(e){try{const status=await api.transactionStatus(tx.id);if(!status){setLost(true);setMessage(normalizeError(e).message);}}catch{setLost(true);setMessage('无法确认事务状态，请结束事务模式并核对数据库。');}throw e;}
   };
   return {transaction,busy,lost,message,begin,finish,execute};

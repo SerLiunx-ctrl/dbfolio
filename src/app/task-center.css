@@ -1,5 +1,5 @@
-.dw-task-trigger{flex-shrink:0!important;white-space:nowrap;gap:7px!important}
-.dw-task-trigger.is-active{color:var(--colorBrandForeground1)!important;background:var(--colorBrandBackground2)!important;border:1px solid var(--colorBrandStroke1)!important;font-weight:600;box-shadow:inset 0 -2px var(--colorBrandStroke1)}
+.dw-task-trigger{flex-shrink:0!important;white-space:nowrap;gap:7px!important;border:1px solid transparent!important}
+.dw-task-trigger.is-active{color:var(--colorBrandForeground1)!important;background:transparent!important;border-color:var(--colorBrandStroke1)!important;font-weight:400;box-shadow:none}
 .dw-task-hover{width:360px;max-width:min(400px,calc(100vw - 24px))!important;max-height:min(560px,75vh);overflow:auto;padding:12px!important;background:var(--colorNeutralBackground1)!important;color:var(--colorNeutralForeground1)!important;border:1px solid var(--colorNeutralStroke2);box-shadow:var(--shadow16);border-radius:10px!important}
 .dw-task-hover-header,.dw-task-hover-row{display:flex;align-items:center;gap:8px;justify-content:space-between}
 .dw-task-hover-header{margin-bottom:8px}

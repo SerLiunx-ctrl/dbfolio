@@ -1,6 +1,6 @@
 [package]
 name = "dbfolio"
-version = "0.180.0"
+version = "1.0.0-alpha.6"
 description = "DBFolio - multi-database desktop client with cross-session sync"
 authors = ["SerLiunx"]
 license = "MIT"
@@ -22,6 +22,7 @@ webview2-com = "0.38.2"
 windows-core = "0.61.2"
 
 [dependencies]
+base64 = "0.22"
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
@@ -63,6 +64,13 @@ mongodb = "=3.3.0"
 futures-util = "0.3"
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
 sqlparser = "0.59"
+russh = { version = "=0.63.1", default-features = false, features = ["ring", "rsa"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rustls-pemfile = "2"
+webpki-roots = "1"
+
+[dev-dependencies]
+rcgen = "0.14"
 
 [profile.release]
 codegen-units = 1
@@ -74,6 +82,7 @@ strip = true
 # 保留服务器字符集语义，修复 _bin 文本被 SQLx 0.8.6 识别为二进制。
 [patch.crates-io]
 sqlx-mysql = { path = "vendor/sqlx-mysql" }
+sqlx-postgres = { path = "vendor/sqlx-postgres" }
 
 # 快速迭代构建：牺牲少量运行时优化换取编译速度（供 scripts/build-app-fast.ps1 使用）
 [profile.release-fast]

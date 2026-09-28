@@ -2,7 +2,7 @@ import type { Engine } from "../../ipc/types";
 const TYPES: Record<Engine, string[]> = {
   mysql: ["tinyint", "smallint", "mediumint", "int", "bigint", "boolean", "decimal", "float", "double", "varchar", "char", "text", "mediumtext", "longtext", "date", "time", "datetime", "timestamp", "json", "blob", "mediumblob", "longblob"],
   postgres: ["smallint", "integer", "bigint", "boolean", "numeric", "real", "double precision", "varchar", "char", "text", "date", "time", "timetz", "timestamp", "timestamptz", "interval", "json", "jsonb", "bytea", "uuid", "inet", "cidr", "macaddr"],
-  sqlite: ["integer", "real", "text", "blob", "numeric"],
+  sqlite: ["integer", "int", "bigint", "real", "numeric", "decimal", "text", "varchar", "char", "blob", "boolean", "date", "datetime", "timestamp", "any"],
   mongodb: [], redis: [],
 };
 export const typeOptions = (engine: Engine, current?: string) => current && !TYPES[engine].includes(current) ? [current, ...TYPES[engine]] : TYPES[engine];

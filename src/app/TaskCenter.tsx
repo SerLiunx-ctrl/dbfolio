@@ -2,9 +2,9 @@ import { useTabStore } from "../stores/useTabStore";
 import { api } from "../ipc";
 import { useNotify } from "./toast";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, ProgressBar, Badge, Spinner, Popover, PopoverTrigger, PopoverSurface, tokens } from "@fluentui/react-components";
+import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, ProgressBar, Badge, Popover, PopoverTrigger, PopoverSurface, tokens } from "@fluentui/react-components";
 import { TaskListSquareLtrRegular, StopRegular, DismissRegular, ArrowLeftRegular, CopyRegular } from "@fluentui/react-icons";
-import { cancelTask, isTaskActive, useTaskStore } from "../stores/useTaskStore";
+import { cancelTask, isTaskActive, isBackgroundTask, useTaskStore } from "../stores/useTaskStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import {progressDisplay} from "./taskProgress";
 import "./task-center.css";
@@ -12,7 +12,7 @@ const labels = { running: "进行中", cancelling: "正在取消", success: "已
 export function TaskCenter() {
   const notify=useNotify();
   const tabs=useTabStore(s=>s.tabs);
-  const tasks = useTaskStore(s => s.tasks);
+  const tasks = useTaskStore(s => s.tasks).filter(isBackgroundTask);
   const sessions = useSessionStore(s => s.sessions);
   const [open, setOpen] = useState(false);
   const [hovered,setHovered]=useState(false);
@@ -38,8 +38,8 @@ export function TaskCenter() {
   return <>
     <Popover openOnHover mouseLeaveDelay={250} unstable_disableAutoFocus positioning="above-end" open={hovered&&!open} onOpenChange={onPreviewChange}>
       <PopoverTrigger disableButtonEnhancement>
-      <Button className={'dw-task-trigger'+(active.length?' is-active':'')} appearance="subtle" size="small" icon={active.length?<Spinner size="extra-tiny"/>:<TaskListSquareLtrRegular />} aria-haspopup="dialog" onFocus={event=>{if(event.currentTarget.matches(':focus-visible'))setHovered(true);}} onBlur={event=>{if(!previewRef.current?.contains(event.relatedTarget as Node))setHovered(false);}} onClick={() => {setHovered(false);setOpen(true);}}>
-        {active.length?'任务中心 · 进行中':'任务中心'}{active.length?<Badge appearance="filled" size="small">{active.length}</Badge>:tasks[0]?' · '+labels[tasks[0].status]:''}
+      <Button className={'dw-task-trigger'+(active.length?' is-active':'')} appearance="subtle" size="small" icon={<TaskListSquareLtrRegular />} aria-haspopup="dialog" onFocus={event=>{if(event.currentTarget.matches(':focus-visible'))setHovered(true);}} onBlur={event=>{if(!previewRef.current?.contains(event.relatedTarget as Node))setHovered(false);}} onClick={() => {setHovered(false);setOpen(true);}}>
+        {active.length?'任务中心 · 进行中':'任务中心'}{active.length?<Badge appearance="outline" size="small">{active.length}</Badge>:tasks[0]?' · '+labels[tasks[0].status]:''}
       </Button>
       </PopoverTrigger>
       {/* Tooltip hides escaped surfaces relative to the footer's scroll container. */}
@@ -61,7 +61,7 @@ export function TaskCenter() {
         <DialogBody>
           <DialogTitle>任务中心</DialogTitle>
           <DialogContent style={{ maxHeight: "65vh", overflowY: "auto" }}>
-            <p>取消仅停止后续处理，已提交数据不会回滚。</p>
+            <p>显示导入、导出、同步、生成、AI 等后台作业。取消仅停止后续处理，已提交数据不会回滚。</p>
             {!tasks.length && <p>暂无任务</p>}
             {open && tasks.map(task => <section key={task.id} style={{ padding: 12, marginBottom: 10, border: `1px solid ${tokens.colorNeutralStroke2}`, borderRadius: 8 }}>
               <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>

@@ -1,11 +1,13 @@
-import {fieldTypeStyle} from "../grid/valueColor";
+import Editor from "@monaco-editor/react";
+import { useEditorTheme } from "../../useEditorTheme";
+import { MetadataTag, TypedColumns, useReferenceColumns } from "./MetadataText";
+import { columnCapabilities } from "./columnCapabilities";
 import {InlineColumnRow,type ColumnEdit} from "./InlineColumnRow";
 import {usePendingEdit} from "../../stores/useEditGuard";
 import {InfoHint} from '../../common/InfoHint';
 import { renderTypeOptions } from "./TypeOptions";
 import { defaultColumnType, hasPrecision, typeHint } from "./columnTypes";
 import {
-  Badge,
   Button,
   Checkbox,
   Dropdown,
@@ -33,7 +35,6 @@ import {
   DeleteRegular,
   DismissRegular,
   EditRegular,
-  KeyRegular,
   LinkRegular,
 } from "@fluentui/react-icons";
 import { useState } from "react";
@@ -51,7 +52,6 @@ import type {
   TableMeta,
 } from "../../ipc/types";
 import type { TableTab } from "../../stores/useTabStore";
-import { ColumnDialog } from "./ColumnDialog";
 import { ConfirmSqlDialog } from "./ConfirmSqlDialog";
 import { ForeignKeyDialog } from "./ForeignKeyDialog";
 import { IndexDialog } from "./IndexDialog";
@@ -88,18 +88,6 @@ const useStyles = makeStyles({
     fontWeight: 400,
   },
   muted: { color: tokens.colorNeutralForeground3 },
-  ddl: {
-    margin: 0,
-    padding: "12px 14px",
-    borderRadius: "6px",
-    backgroundColor: tokens.colorNeutralBackground3,
-    fontSize: tokens.fontSizeBase200,
-    lineHeight: "20px",
-    overflowX: "auto",
-    userSelect: "text",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-  },
   empty: {
     color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase200,
@@ -135,10 +123,6 @@ const useStyles = makeStyles({
   },
 });
 
-function nullText(value: string | null | undefined): string {
-  if (value === null || value === undefined || value === "") return "—";
-  return value;
-}
 
 interface PanelProps {
   tab: TableTab;
@@ -168,7 +152,6 @@ export function ColumnsPanel({
 }: PanelProps) {
   const styles = useStyles();
   const notify = useNotify();
-  const [columnDialog, setColumnDialog] = useState<{ column: ColumnMeta } | null>(null);
   const [dropColumn, setDropColumn] = useState<ColumnMeta | null>(null);
   const [dropTable, setDropTable] = useState(false);
   const [draft, setDraft] = useState<AddDraft | null>(null);
@@ -182,14 +165,13 @@ export function ColumnsPanel({
   const [flags,setFlags]=useState<Record<string,ColumnEdit>>({});
   const [flagsOpen,setFlagsOpen]=useState(false),[flagsBusy,setFlagsBusy]=useState(false);
   const dirtyFlags=Object.keys(flags).length>0;
-  const numeric=(c:ColumnMeta)=>/^(tinyint|smallint|mediumint|int|integer|bigint|decimal|numeric|float|double|real)\b/i.test(c.rawType);
-  const changeFlag=(c:ColumnMeta,key:'nullable'|'unsigned',value:boolean)=>setFlags(old=>{const next={...old};const item={...(old[c.name]??{nullable:c.nullable,...(engine==='mysql'&&numeric(c)?{unsigned:c.unsigned}:{})}),[key]:value};if(item.nullable===c.nullable&&(item.unsigned===undefined||item.unsigned===c.unsigned))delete next[c.name];else next[c.name]=item;return next;});
+  const caps = columnCapabilities(engine);
   const flagSpec:DdlSpec={type:'columnFlags',schema:tab.schema,table:tab.table,changes:Object.entries(flags).map(([name,v])=>({name,...v}))};
   const saveFlags=async()=>{if(readOnly)throw Error('当前会话为只读模式');setFlagsBusy(true);try{await api.ddlApply(tab.sessionId,tab.database,flagSpec,true);setFlags({});onChanged();}finally{setFlagsBusy(false);}};
   usePendingEdit({tabId:tab.id,sessionId:tab.sessionId,label:'列属性',save:saveFlags,discard:()=>setFlags({}),preview:()=>api.ddlPreview(tab.sessionId,tab.database,flagSpec),busy:()=>flagsBusy},dirtyFlags,tab.id+':column-flags');
 
   const [columnIndex,setColumnIndex]=useState<{initial?:IndexMeta;selectedColumns:string[]}|null>(null);
-  const supportsMove = engine !== "postgres";
+  const supportsMove = caps.reorder;
   const engineLabel =
     engine === "postgres" ? "PostgreSQL" : engine === "sqlite" ? "SQLite" : "MySQL";
 
@@ -286,7 +268,7 @@ export function ColumnsPanel({
           onChange={(_, data) => setDraft((current) => current ? { ...current, name: data.value } : current)}
         />
       </TableCell>
-      <TableCell colSpan={engine==='mysql'?2:1}>
+      <TableCell colSpan={2}>
         <div className={styles.addCell}>
           <Dropdown
             size="small"
@@ -326,7 +308,7 @@ export function ColumnsPanel({
           }
         />
       </TableCell>
-      {engine==='mysql'&&<TableCell/>}
+      {caps.unsigned&&<TableCell/>}
       <TableCell>
         <Input
           size="small"
@@ -337,14 +319,14 @@ export function ColumnsPanel({
           }
         />
       </TableCell>
-      {engine==='mysql'&&<><TableCell/><TableCell/></>}
+      <TableCell/>{caps.onUpdate&&<TableCell/>}
       <TableCell className={styles.muted}>
         {engine !== "mysql" && (
           <span className={styles.addHint}>{engineLabel} 只能追加到末尾</span>
         )}
       </TableCell>
       <TableCell className={styles.muted} />
-      <TableCell>
+      <TableCell className="dw-schema-actions"><span className="dw-schema-action-row">
         <Button
           appearance="primary"
           size="small"
@@ -360,73 +342,14 @@ export function ColumnsPanel({
           aria-label="取消"
           onClick={() => setDraft(null)}
         />
-      </TableCell>
-    </TableRow>
-  );
-
-  const renderRow = (column: ColumnMeta) => (
-    <TableRow
-      key={column.name}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        if(dirtyFlags||flagsBusy)return;
-        setRowMenu({ x: event.clientX, y: event.clientY, column });
-      }}
-    >
-      <TableCell className={styles.muted}>{column.ordinal}</TableCell>
-      <TableCell>
-        <span className={styles.mono} style={fieldTypeStyle(column.rawType,column.canonical)}>{column.name}</span>
-      </TableCell>
-      <TableCell>
-        <span className={styles.mono} style={fieldTypeStyle(column.rawType,column.canonical)}>{column.rawType}</span>
-      </TableCell>
-      <TableCell><Checkbox size="medium" aria-label={column.name+' 可空'} checked={flags[column.name]?.nullable??column.nullable} disabled={!canEdit||flagsBusy||!!draft||engine==='sqlite'||detail.primaryKey.includes(column.name)||column.autoIncrement} onChange={(_,d)=>changeFlag(column,'nullable',d.checked===true)}/></TableCell>
-      {engine==='mysql'&&<TableCell>{numeric(column)?<Checkbox aria-label={column.name+' 无符号'} checked={flags[column.name]?.unsigned??column.unsigned} disabled={!canEdit||flagsBusy||!!draft} onChange={(_,d)=>changeFlag(column,'unsigned',d.checked===true)}/>:<span className={styles.muted}>—</span>}</TableCell>}
-      <TableCell>
-        <span className={styles.mono}>{nullText(column.defaultValue)}</span>
-      </TableCell>
-      <TableCell>
-        <span style={{ display: "inline-flex", gap: 4 }}>
-          {detail.primaryKey.includes(column.name) && (
-            <Badge appearance="tint" color="brand" size="small" icon={<KeyRegular />}>
-              PK
-            </Badge>
-          )}
-          {column.autoIncrement && (
-            <Badge appearance="tint" color="informative" size="small">
-              自增
-            </Badge>
-          )}
-        </span>
-      </TableCell>
-      <TableCell className={styles.muted}>{nullText(column.comment)}</TableCell>
-      {canEdit && (
-        <TableCell>
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<EditRegular />}
-            disabled={dirtyFlags||flagsBusy}
-            aria-label="编辑列"
-            onClick={() => setColumnDialog({ column })}
-          />
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<DeleteRegular />}
-            disabled={dirtyFlags||flagsBusy}
-            aria-label="删除列"
-            onClick={() => setDropColumn(column)}
-          />
-        </TableCell>
-      )}
+      </span></TableCell>
     </TableRow>
   );
 
   const rows: React.ReactNode[] = [];
   detail.columns.forEach((column, index) => {
     if (draft && addIndex === index) rows.push(renderAddRow());
-    rows.push(engine==='mysql'?<InlineColumnRow key={column.name} column={column} edit={flags[column.name]} primary={detail.primaryKey.includes(column.name)} disabled={!canEdit||flagsBusy||!!draft} onEdit={patch=>setFlags(old=>({...old,[column.name]:{...(old[column.name]??{nullable:column.nullable}),...patch}}))} onDelete={()=>{if(!dirtyFlags)setDropColumn(column);}} onContextMenu={event=>{event.preventDefault();setRowMenu({x:event.clientX,y:event.clientY,column});}}/>:renderRow(column));
+    rows.push(<InlineColumnRow key={column.name} column={column} engine={engine} singlePrimary={detail.primaryKey.length===1} deleteDisabled={dirtyFlags} edit={flags[column.name]} primary={detail.primaryKey.includes(column.name)} disabled={!canEdit||flagsBusy||!!draft} onEdit={patch=>setFlags(old=>({...old,[column.name]:{...(old[column.name]??{nullable:column.nullable}),...patch}}))} onDelete={()=>{if(!dirtyFlags)setDropColumn(column);}} onContextMenu={event=>{event.preventDefault();setRowMenu({x:event.clientX,y:event.clientY,column});}}/>);
   });
   if (draft && addIndex >= detail.columns.length) rows.push(renderAddRow());
 
@@ -449,7 +372,7 @@ export function ColumnsPanel({
           </Button>
           <Button size="small" appearance="primary" disabled={!dirtyFlags||flagsBusy} onClick={()=>setFlagsOpen(true)}>保存</Button>
           <Button size="small" disabled={!dirtyFlags||flagsBusy} onClick={()=>setFlags({})}>废弃</Button>
-          <span className={styles.addHint}>右键列表可插入到指定位置 / 调整顺序</span>
+          <span className={styles.addHint}>双击单元格编辑，保存后生效</span>
           <div className={styles.spacer} />
           <Button size="small" icon={<DeleteRegular />} disabled={dirtyFlags||flagsBusy} onClick={() => setDropTable(true)}>
             删除表
@@ -457,26 +380,26 @@ export function ColumnsPanel({
         </div>
       )}
       {engine === "sqlite" && <InfoHint label="SQLite 类型说明">声明类型直接来自 SQLite 元数据；varchar(256) 等声明按类型亲和性处理，不自动限制文本长度。</InfoHint>}
-      <Table className={"dw-schema-list"+(engine==="mysql"?" dw-inline-columns":"")} size="extra-small" aria-label="列信息">
+      <Table className={"dw-schema-list dw-inline-columns"+(engine!=="mysql"?" dw-inline-columns-standard":"")} size="extra-small" aria-label="列信息">
         <TableHeader>
           <TableRow>
             <TableHeaderCell style={{ width: 36 }}>#</TableHeaderCell>
             <TableHeaderCell>名称</TableHeaderCell>
             <TableHeaderCell>{engine === "sqlite" ? "声明类型" : "类型"}</TableHeaderCell>
-            {engine==="mysql"&&<TableHeaderCell>长度/集合</TableHeaderCell>}
+            <TableHeaderCell>长度/集合</TableHeaderCell>
             <TableHeaderCell style={{ width: 60 }}>可空</TableHeaderCell>
-            {engine==="mysql"&&<TableHeaderCell style={{width:76}}>无符号</TableHeaderCell>}
+            {caps.unsigned&&<TableHeaderCell style={{width:76}}>无符号</TableHeaderCell>}
             <TableHeaderCell>默认值</TableHeaderCell>
-            {engine==="mysql"&&<><TableHeaderCell style={{width:76}}>自动增长</TableHeaderCell><TableHeaderCell>ON UPDATE</TableHeaderCell></>}
+            <TableHeaderCell style={{width:76}}>自动增长</TableHeaderCell>{caps.onUpdate&&<TableHeaderCell>ON UPDATE</TableHeaderCell>}
             <TableHeaderCell style={{width:50}}>键</TableHeaderCell>
             <TableHeaderCell>注释</TableHeaderCell>
-            {(canEdit||engine==="mysql") && <TableHeaderCell style={{ width: 60 }}>操作</TableHeaderCell>}
+            <TableHeaderCell className="dw-schema-actions">操作</TableHeaderCell>
           </TableRow>
         </TableHeader>
         <TableBody>{rows}</TableBody>
       </Table>
 
-      <ConfirmSqlDialog open={flagsOpen} title="保存列属性" sessionId={tab.sessionId} tabId={tab.id} warning="收紧可空性或改变无符号属性可能因现有数据不兼容而失败，并可能重建或锁定表。" loadPreview={()=>api.ddlPreview(tab.sessionId,tab.database,flagSpec)} onApply={saveFlags} onClose={()=>setFlagsOpen(false)} onDone={()=>setFlagsOpen(false)}/>
+      <ConfirmSqlDialog open={flagsOpen} title="保存列属性" sessionId={tab.sessionId} tabId={tab.id} warning={engine==="sqlite"?"SQLite 修改类型、默认值或可空性时会在事务内重建表；保留原约束、索引和触发器，数据不兼容时整批回滚。":"类型或可空性变更可能因现有数据不兼容而失败，并可能重建或锁定表。"} loadPreview={()=>api.ddlPreview(tab.sessionId,tab.database,flagSpec)} onApply={saveFlags} onClose={()=>setFlagsOpen(false)} onDone={()=>setFlagsOpen(false)}/>
       {rowMenu && (
         <ContextMenuPortal>
           <div
@@ -492,6 +415,7 @@ export function ColumnsPanel({
               <MenuItem onClick={()=>{void navigator.clipboard.writeText(rowMenu.column.name).catch(error=>notify.error(error,'复制失败'));setRowMenu(null);}}>复制字段名</MenuItem>
               {canEdit && (
                 <>
+                  {caps.insertPosition ? <>
                   <MenuItem
                     disabled={dirtyFlags||flagsBusy||!!draft}
                     icon={<AddRegular />}
@@ -518,6 +442,7 @@ export function ColumnsPanel({
                   >
                     在下方添加
                   </MenuItem>
+                  </> : <MenuItem disabled={dirtyFlags||flagsBusy||!!draft} icon={<AddRegular />} onClick={()=>{startAdd({first:false,after:detail.columns[detail.columns.length-1]?.name??null});setRowMenu(null);}}>追加列</MenuItem>}
                   <MenuDivider />
                   <MenuItem
                     icon={<ArrowUpRegular />}
@@ -576,21 +501,6 @@ export function ColumnsPanel({
       )}
 
       {columnIndex&&<IndexDialog open sessionId={tab.sessionId} database={tab.database} schema={tab.schema} table={tab.table} columns={detail.columns} initial={columnIndex.initial} selectedColumns={columnIndex.selectedColumns} onClose={()=>setColumnIndex(null)} onDone={onChanged}/>}
-      {columnDialog && (
-        <ColumnDialog
-          open
-          mode="edit"
-          sessionId={tab.sessionId}
-          database={tab.database}
-          schema={tab.schema}
-          table={tab.table}
-          engine={engine}
-          initial={columnDialog.column}
-          onClose={() => setColumnDialog(null)}
-          onDone={onChanged}
-        />
-      )}
-
       {dropColumn && (
         <ConfirmSqlDialog
           open
@@ -694,7 +604,7 @@ export function IndexesPanel({
               <TableHeaderCell>类型</TableHeaderCell>
               <TableHeaderCell>列</TableHeaderCell>
               <TableHeaderCell>方法</TableHeaderCell>
-              {canEdit && <TableHeaderCell style={{ width: 88 }}>操作</TableHeaderCell>}
+              {canEdit && <TableHeaderCell className="dw-schema-actions">操作</TableHeaderCell>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -704,25 +614,18 @@ export function IndexesPanel({
                   <span className={styles.mono}>{index.name}</span>
                 </TableCell>
                 <TableCell>
-                  {index.primary ? "主键" : index.unique ? "唯一" : "普通"}
+                  <MetadataTag category="index" value={index.primary ? "主键" : index.unique ? "唯一" : "普通"} />
                 </TableCell>
                 <TableCell>
                   <span className={styles.mono}>
-                    {index.columns
-                      .map(
-                        (c) =>
-                          `${c.name}${c.desc ? " DESC" : ""}${
-                            c.prefixLen ? `(${c.prefixLen})` : ""
-                          }`,
-                      )
-                      .join(", ")}
+                    {<TypedColumns names={index.columns.map(c => c.name)} columns={detail.columns} suffixes={index.columns.map(c => `${c.prefixLen ? `(${c.prefixLen})` : ""}${c.desc ? " DESC" : ""}`)} />}
                   </span>
                 </TableCell>
-                <TableCell className={styles.muted}>{nullText(index.method)}</TableCell>
+                <TableCell><MetadataTag category="method" value={index.method ?? ""} /></TableCell>
                 {canEdit && (
-                  <TableCell>
+                  <TableCell className="dw-schema-actions">
                     {!index.primary && (
-                      <span style={{display: "inline-flex", flexWrap: "nowrap", gap: 2}}>
+                      <span className="dw-schema-action-row">
                         <Button
                           appearance="subtle"
                           size="small"
@@ -815,6 +718,7 @@ export function ForeignKeysPanel({
   const notify = useNotify();
   const [fkDialog, setFkDialog] = useState<{ initial?: ForeignKeyMeta } | null>(null);
   const [dropFk, setDropFk] = useState<ForeignKeyMeta | null>(null);
+  const referenceColumns = useReferenceColumns(tab, detail);
   const canEdit = !readOnly && detail.kind === "table" && engine !== "sqlite";
 
   return (
@@ -845,7 +749,7 @@ export function ForeignKeysPanel({
               <TableHeaderCell>引用</TableHeaderCell>
               <TableHeaderCell>删除规则</TableHeaderCell>
               <TableHeaderCell>更新规则</TableHeaderCell>
-              {canEdit && <TableHeaderCell style={{ width: 88, minWidth: 88 }}>操作</TableHeaderCell>}
+              {canEdit && <TableHeaderCell className="dw-schema-actions">操作</TableHeaderCell>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -855,18 +759,18 @@ export function ForeignKeysPanel({
                   <span className={styles.mono}>{fk.name}</span>
                 </TableCell>
                 <TableCell>
-                  <span className={styles.mono}>{fk.columns.join(", ")}</span>
+                  <span className={styles.mono}><TypedColumns names={fk.columns} columns={detail.columns} /></span>
                 </TableCell>
                 <TableCell>
                   <span className={styles.mono}>
-                    {fk.refTable}({fk.refColumns.join(", ")})
+                    {fk.refSchema ?? fk.refDatabase ? `${fk.refSchema ?? fk.refDatabase}.` : ""}{fk.refTable}(<TypedColumns names={fk.refColumns} columns={referenceColumns(fk)} />)
                   </span>
                 </TableCell>
-                <TableCell>{fk.onDelete}</TableCell>
-                <TableCell>{fk.onUpdate}</TableCell>
+                <TableCell><MetadataTag category="rule" value={fk.onDelete} /></TableCell>
+                <TableCell><MetadataTag category="rule" value={fk.onUpdate} /></TableCell>
                 {canEdit && (
-                  <TableCell style={{width:88,minWidth:88,whiteSpace:"nowrap"}}>
-                    <span style={{display:"inline-flex",flexWrap:"nowrap",alignItems:"center",gap:2}}>
+                  <TableCell className="dw-schema-actions">
+                    <span className="dw-schema-action-row">
                     <Button
                       appearance="subtle"
                       size="small"
@@ -937,15 +841,19 @@ export function ForeignKeysPanel({
 
 export function DdlPanel({ detail, engine }: { detail: TableMeta; engine: Engine }) {
   const styles = useStyles();
+  const theme = useEditorTheme();
   const ddl = detail.rawDdl ?? (detail.kind === "table" ? generateDdl(engine, detail) : null);
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} dw-ddl-panel`}>
       <div className={styles.sectionTitle}>
         <CodeRegular fontSize={16} />
         DDL
       </div>
       {ddl ? (
-        <pre className={styles.ddl}>{ddl}</pre>
+        <div className="dw-ddl-editor"><Editor language="sql" theme={theme.name} beforeMount={theme.beforeMount}
+          value={ddl} options={{ ariaLabel: "表 DDL（只读）", readOnly: true, domReadOnly: true,
+            minimap: { enabled: false }, fontSize: 13, lineNumbers: "on", scrollBeyondLastLine: false,
+            automaticLayout: true, wordWrap: "on", tabSize: 2 }} /></div>
       ) : (
         <div className={styles.empty}>
           当前视图定义无法从元数据重建（PostgreSQL 视图），可在「列 / 索引 / 外键」页签查看结构详情

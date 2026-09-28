@@ -24,3 +24,11 @@ pub fn delete_password(session_id: &str) -> AppResult<()> {
         Err(err) => Err(err.into()),
     }
 }
+
+pub fn save_ssh(id:&str,input:&crate::store::SessionInput)->AppResult<()> {
+    for (suffix,value) in [("ssh-password",&input.ssh_password),("ssh-key-passphrase",&input.ssh_key_passphrase)] {
+        let key=format!("{id}:{suffix}");
+        match value.as_deref(){None=>{},Some("")=>delete_password(&key)?,Some(v)=>save_password(&key,v)?}
+    }
+    Ok(())
+}

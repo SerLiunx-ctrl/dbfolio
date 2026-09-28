@@ -1,4 +1,7 @@
 pub mod ddl;
+pub mod create_table;
+pub mod column_edit;
+#[cfg(test)] mod column_edit_tests;
 pub mod explain;
 pub mod grid;
 pub mod query;
@@ -20,3 +23,7 @@ pub mod sql_import;
 pub mod database_access;
 
 pub mod sql_risk;
+
+pub mod connection_config;
+pub mod transport;
+#[cfg(test)] mod transport_tests;

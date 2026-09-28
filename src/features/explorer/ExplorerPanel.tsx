@@ -39,7 +39,7 @@ import { useSessionStore } from "../../stores/useSessionStore";
 import { useTabStore } from "../../stores/useTabStore";
 import { InfoDialog } from "../info/InfoDialog";
 import { ConfirmSqlDialog } from "../table/ConfirmSqlDialog";
-import { CreateTableDialog } from "../table/CreateTableDialog";
+
 import { CreateDatabaseDialog } from "./CreateDatabaseDialog";
 import { ObjectFinder } from "./ObjectFinder";
 import { FavoriteButton } from "./FavoriteButton";
@@ -153,7 +153,7 @@ function SqlExplorerPanel() {
 
   const [searchDatabases, setSearchDatabases] = useState<Record<string, string>>({});
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [createTable, setCreateTable] = useState<string | null>(null);
+
   const [createDatabase, setCreateDatabase] = useState(false);
   const [dropDatabase, setDropDatabase] = useState<string | null>(null);
   const [dropTable, setDropTable] = useState<{ database: string; table: TableRef } | null>(
@@ -487,7 +487,6 @@ function SqlExplorerPanel() {
             className={`${styles.contextMenu} dw-context-menu`} x={contextMenu.x} y={contextMenu.y}>
             <MenuList>
               {session?.engine==='mysql'&&contextMenu.kind==='database'&&<><MenuItem onClick={()=>{useTabStore.getState().openMysqlTool(session.id,contextMenu.database,'import');setContextMenu(null);}}>导入 SQL 文件…</MenuItem><MenuItem onClick={()=>{useTabStore.getState().openMysqlTool(session.id,contextMenu.database,'objects');setContextMenu(null);}}>管理数据库对象…</MenuItem></>}
-              {session?.engine==='mysql'&&contextMenu.kind==='database'&&<><MenuItem onClick={()=>{useTabStore.getState().openMysqlTool(session.id,contextMenu.database,'import');setContextMenu(null);}}>导入 SQL 文件…</MenuItem><MenuItem onClick={()=>{useTabStore.getState().openMysqlTool(session.id,contextMenu.database,'objects');setContextMenu(null);}}>管理数据库对象…</MenuItem></>}
               {session?.engine==="mysql" && (contextMenu.kind==="database" || contextMenu.table?.kind==="table") && <MenuItem icon={<ArrowExportRegular />} onClick={()=>{useTabStore.getState().openSqlExport({sessionId:session.id,database:contextMenu.database,tables:contextMenu.table?[contextMenu.table.name]:[],allTables:contextMenu.kind==="database"});window.dispatchEvent(new Event("dw:show-workspace"));setContextMenu(null);}}>导出 SQL 文件…</MenuItem>}
               {contextMenu.kind === "database" && session?.engine === "redis" ? (
                 <>
@@ -542,7 +541,7 @@ function SqlExplorerPanel() {
                   {!readOnly && (<MenuItem
                     icon={<AddRegular />}
                     onClick={() => {
-                      setCreateTable(contextMenu.database);
+                      if(session)useTabStore.getState().openCreateTable(session.id, contextMenu.database, session.engine);
                       setContextMenu(null);
                     }}
                   >
@@ -691,17 +690,7 @@ function SqlExplorerPanel() {
         />
       )}
 
-      {session && createTable && (
-        <CreateTableDialog
-          open
-          sessionId={session.id}
-          database={createTable}
-          schema={null}
-          engine={session.engine}
-          onClose={() => setCreateTable(null)}
-          onDone={() => refreshTables(createTable)}
-        />
-      )}
+
 
       <InfoDialog
         open={infoDialog !== null}

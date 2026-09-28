@@ -7,3 +7,8 @@
 - 依据：[MySQL 官方类型说明](https://dev.mysql.com/doc/c-api/8.0/en/c-api-data-structures.html)。
 - 回归：主项目的 `mysql_text_binary_decoding`，覆盖预处理和文本协议、二进制排序规则的中文文本、普通文本、NULL、空串、长文本预览及二进制值；`mysql_r01_r03_roundtrip` 覆盖导入导出。
 - 维护：后续升级 SQLx 时核对上游是否已有同等修复，确认后移除本目录及 `[patch.crates-io]` 配置；不能只删除补丁而保留旧版驱动。
+
+## R04：隧道中的 TLS 主机名
+
+- 新增 `MySqlConnectOptions::tls_server_name` 并在 TLS 握手中使用；TCP 可连接本地隧道端口，同时按原数据库地址或用户明确指定的服务器名校验证书。
+- 新增修改位于 `src/options/mod.rs` 与 `src/connection/tls.rs`。无覆盖值时与上游行为一致；升级时必须同时核对这项补丁。

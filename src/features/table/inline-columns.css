@@ -2,3 +2,5 @@
 .dw-inline-columns th{white-space:nowrap}.dw-inline-default{display:flex;gap:4px;min-width:0}.dw-inline-default-custom>.fui-Select{width:78px;flex-shrink:0}.dw-inline-default-custom>.fui-Input{flex:1;width:0}
 
 .dw-inline-column-text{display:block;min-height:24px;line-height:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:400}
+
+.dw-inline-columns-standard{min-width:960px}

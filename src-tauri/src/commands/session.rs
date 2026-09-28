@@ -101,3 +101,6 @@ pub async fn session_health(state: State<'_, AppState>, id: String) -> AppResult
 pub async fn session_duplicate(state: State<'_, AppState>, source_id:String, input:SessionInput) -> AppResult<SessionRecord> {
     session::duplicate(&state,&source_id,input).await
 }
+
+#[tauri::command]
+pub async fn session_ssh_fingerprint(ssh:crate::services::connection_config::SshConfig,timeout_secs:Option<u64>)->AppResult<String>{crate::services::transport::fingerprint(&ssh,timeout_secs.unwrap_or(15)).await}

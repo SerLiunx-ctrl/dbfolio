@@ -183,7 +183,7 @@ async fn mysql_r01_r03_roundtrip() {
         assert!(interrupted_export.is_err());assert_eq!(std::fs::read_to_string(&protected)?,"original");
         // Service-level read-only and allowlist checks use fresh local records, not only adapter state.
         let guarded=AppState::with_local(crate::store::LocalStore::initialize_in(dir.path().join("guard-store")).await?);
-        for readonly in [true,false]{let input=serde_json::from_value(json!({"name":"验收隔离","engine":"mysql","host":"127.0.0.1","readOnly":readonly,"allowedDatabases":[source]})).unwrap();let record=guarded.local.create_session(&input).await?;guarded.connections.lock().await.insert(record.id.clone(),Arc::new(ConnectedSession{adapter:adapter.clone(),key_value:None,mongo:None,server_version:"test".into()}));
+        for readonly in [true,false]{let input=serde_json::from_value(json!({"name":"验收隔离","engine":"mysql","host":"127.0.0.1","readOnly":readonly,"allowedDatabases":[source]})).unwrap();let record=guarded.local.create_session(&input).await?;guarded.connections.lock().await.insert(record.id.clone(),Arc::new(ConnectedSession{transport:None,adapter:adapter.clone(),key_value:None,mongo:None,server_version:"test".into()}));
             std::fs::write(&file,format!("USE `{target}`;"))?;assert!(sql_import::preview(&guarded,sql_import::Request{session_id:record.id.clone(),database:source.clone(),path:file.to_string_lossy().into(),encoding:"utf-8".into(),continue_on_error:false}).await.is_err());
             assert!(objects::apply(&guarded,objects::Change{session_id:record.id.clone(),database:source.clone(),kind:objects::Kind::Procedure,name:"blocked".into(),sql:Some("CREATE PROCEDURE blocked() SELECT 1".into()),original:None,confirmed:true}).await.is_err());
         }
@@ -193,7 +193,7 @@ async fn mysql_r01_r03_roundtrip() {
         conn.execute(format!("GRANT SELECT ON `{source}`.* TO '{test_user}'@'localhost'").as_str()).await?;
         let input=serde_json::from_value(json!({"name":"权限验收","engine":"mysql","host":"127.0.0.1","readOnly":false})).unwrap();let limited=guarded.local.create_session(&input).await?;
         let params=serde_json::from_value(json!({"engine":"mysql","host":"127.0.0.1","port":session.port,"username":test_user,"password":password,"database":source})).unwrap();
-        let restricted=crate::adapters::mysql::MySqlAdapter::connect(&params).await?;guarded.connections.lock().await.insert(limited.id.clone(),Arc::new(ConnectedSession{adapter:Arc::new(restricted),key_value:None,mongo:None,server_version:"test".into()}));
+        let restricted=crate::adapters::mysql::MySqlAdapter::connect(&params).await?;guarded.connections.lock().await.insert(limited.id.clone(),Arc::new(ConnectedSession{transport:None,adapter:Arc::new(restricted),key_value:None,mongo:None,server_version:"test".into()}));
         assert!(objects::apply(&guarded,objects::Change{session_id:limited.id.clone(),database:source.clone(),kind:objects::Kind::View,name:"denied".into(),sql:Some("CREATE VIEW denied AS SELECT 1".into()),original:None,confirmed:true}).await.is_err());
         assert!(objects::apply(&state,objects::Change{session_id:session.id.clone(),database:source.clone(),kind:objects::Kind::View,name:"bad_dep".into(),sql:Some("CREATE VIEW bad_dep AS SELECT * FROM missing_table".into()),original:None,confirmed:true}).await.is_err());
         guarded.disconnect(&limited.id).await;

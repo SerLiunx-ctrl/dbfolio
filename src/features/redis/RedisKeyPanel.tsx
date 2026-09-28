@@ -591,6 +591,7 @@ export function RedisKeyPanel({ tab, keyName, onChanged, onAction }: Props) {
                 <Button size="small" appearance="primary" icon={<SaveRegular />}
                   disabled={!dirty || writeLocked || Boolean(preview.truncated)}
                   onClick={() => void runEdit({ op: "setString", value: stringDraft, ttlMs: null }, "保存值")}>保存</Button>
+                <Button size="small" disabled={!dirty||writeLocked} onClick={()=>setStringDraft(stringBaseline)}>废弃</Button>
               </div>
               <RedisValueEditor value={stringDraft} language={editorLanguage}
                 height={expandedEditor ? 480 : undefined}

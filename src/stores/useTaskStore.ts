@@ -8,9 +8,13 @@ export interface WorkTask {
   id: string; kind: TaskKind; label: string; sessionIds: string[];
   startedAt: number; endedAt?: number; status: TaskStatus;
   tabId?: string;
+  background?: boolean;
   progress?: TaskProgress; result?: string; error?: string; cancelError?: string;
 }
 export const isTaskActive = (task: WorkTask) => task.status === "running" || task.status === "cancelling";
+// 前台查询仍注册任务以支持取消和连接保护，但不进入后台任务中心。
+export const isBackgroundTask = (task: Pick<WorkTask, "kind" | "background">) =>
+  task.background ?? !["查询", "修改"].includes(task.kind);
 export const useTaskStore = create<{ tasks: WorkTask[] }>(() => ({ tasks: [] }));
 export function updateTask(id: string, patch: Partial<WorkTask>) {
   useTaskStore.setState(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, ...patch } : t) }));

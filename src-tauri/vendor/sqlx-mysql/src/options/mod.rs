@@ -62,6 +62,7 @@ pub use ssl_mode::MySqlSslMode;
 #[derive(Debug, Clone)]
 pub struct MySqlConnectOptions {
     pub(crate) host: String,
+    pub(crate) tls_server_name: Option<String>,
     pub(crate) port: u16,
     pub(crate) socket: Option<PathBuf>,
     pub(crate) username: String,
@@ -94,6 +95,7 @@ impl MySqlConnectOptions {
         Self {
             port: 3306,
             host: String::from("localhost"),
+            tls_server_name: None,
             socket: None,
             username: String::from("root"),
             password: None,
@@ -118,6 +120,11 @@ impl MySqlConnectOptions {
     ///
     /// The default behavior when the host is not specified,
     /// is to connect to localhost.
+    /// 指定 TLS 校验名称，独立于 TCP 隧道端点。
+    pub fn tls_server_name(mut self, name: &str) -> Self {
+        self.tls_server_name = Some(name.to_owned()); self
+    }
+
     pub fn host(mut self, host: &str) -> Self {
         host.clone_into(&mut self.host);
         self

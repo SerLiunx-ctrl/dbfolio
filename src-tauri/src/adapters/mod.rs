@@ -18,6 +18,10 @@ use crate::meta::{CharsetMeta, DatabaseMeta, Engine, InfoEntry, TableExtraInfo, 
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionParams {
     #[serde(default)]
+    pub network: crate::services::connection_config::NetworkConfig,
+    #[serde(skip)] pub tunneled: bool,
+    #[serde(skip)] pub tls_terminated: bool,
+    #[serde(default)]
     pub read_only: bool,
     #[serde(default)]
     pub allowed_databases: Option<Vec<String>>,
@@ -95,6 +99,7 @@ pub enum RowChange {
 
 #[async_trait]
 pub trait DbAdapter: Send + Sync {
+    fn query_timeout_secs(&self)->u64 {60}
     /// Dedicated connection: session state from scripts must never return to a query pool.
     async fn mysql_connection(&self, _database: &str, _write: bool) -> AppResult<sqlx::MySqlConnection> {
         Err(AppError::InvalidInput("此功能仅支持 MySQL".into()))
@@ -163,6 +168,9 @@ pub trait DbAdapter: Send + Sync {
 
     /// 顺序执行一组 DDL / 管理语句（无参数）。
     async fn execute_statements(&self, database: &str, statements: &[String]) -> AppResult<()>;
+    async fn sqlite_schema_edit(&self, _database: &str, _spec: &crate::services::ddl::DdlSpec, _apply: bool) -> AppResult<Vec<String>> {
+        Err(crate::error::AppError::InvalidInput("该引擎不支持 SQLite 结构操作".into()))
+    }
 
     /// 在单个事务中执行一组参数化语句，返回受影响行数总和。
     async fn execute_transaction(&self, database: &str, items: &[SqlParams]) -> AppResult<u64>;

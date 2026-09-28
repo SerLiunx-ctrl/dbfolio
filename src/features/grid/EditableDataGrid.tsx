@@ -22,6 +22,8 @@ import { api } from "../../ipc";
 import { ContextMenuPortal, ContextMenuSurface } from "../../app/ContextMenuPortal";
 import type { CellValue, ColumnMeta, DbValue, RowChange, SortSpec } from "../../ipc/types";
 import { FullValueDialog } from "./FullValueDialog";
+import { ImageCell } from './ImageCell';
+import { ImageValueDialog, type ImageValueTarget } from './ImageValueDialog';
 import { isNullValue, isReadOnlyValue } from "../../ipc/types";
 import { parseCell } from "./value";
 import { useGridTheme } from "./register";
@@ -168,6 +170,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       [columns, pkColumns],
     );
     const [data, setData] = useState<GridRow[]>([]);
+    const [imageTarget,setImageTarget]=useState<ImageValueTarget|null>(null);
     const rowsRef = useRef(rows);
 
 
@@ -421,11 +424,18 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
             comparator: onSortChange ? () => 0 : undefined,
             editable: (params) => editableAt(params.data,index),
             valueGetter: (params) => params.data?.cells[index]?.text ?? "",
+            cellRenderer: (params:{data?:GridRow}) => {
+              const row=params.data,cell=row?.cells[index];
+              const keys=pkColumns.map(pk=>({column:pk,value:row?.cells[columns.findIndex(c=>c.name===pk)]?.value}));
+              const canLoad=row?.state==='clean' && row.originalIndex!==null && keys.length>0 && keys.every(k=>k.value&&k.value[0]!=='null'&&!isReadOnlyValue(k.value));
+              const loadValue=canLoad?(limit:number)=>api.cellFullValue(sessionId,database,schema??null,table,column.name,keys as CellValue[],limit):undefined;
+              return <ImageCell value={cell?.value} text={cell?.text??''} loadValue={loadValue} onOpen={()=>{if(cell)setImageTarget({name:column.name,value:cell.value,loadValue});}}/>;
+            },
             valueSetter: valueSetter(index),
             cellStyle: (params) => valueCellStyle(column.rawType, params.data?.cells[index]?.value, column.canonical),
           };
         }),
-      [columns, onSortChange, pkColumns, editableAt, valueSetter],
+      [columns, onSortChange, pkColumns, editableAt, valueSetter, sessionId, database, schema, table],
     );
 
     const rowClassRules = useMemo<RowClassRules<GridRow>>(
@@ -457,7 +467,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       <div
         style={{ width: "100%", height: "100%" }}
         onKeyDownCapture={(event) => {
-          if(fullValue || (event.target as HTMLElement).closest("input,textarea,[contenteditable=true]"))return;
+          if(fullValue || imageTarget || (event.target as HTMLElement).closest("input,textarea,[contenteditable=true]"))return;
           if (!(event.ctrlKey || event.metaKey)) return;
           const key = event.key.toLowerCase();
           if (key === "c") {
@@ -625,6 +635,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
             </ContextMenuSurface>
           </ContextMenuPortal>
         )}
+        {imageTarget&&<ImageValueDialog target={imageTarget} onClose={()=>setImageTarget(null)}/>}
         {fullValue &&
           (() => {
             const keys = rowKeys(fullValue.rowIndex);

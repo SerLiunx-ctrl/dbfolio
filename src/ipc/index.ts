@@ -55,9 +55,10 @@ export function normalizeError(error: unknown): AppErrorPayload {
 
 export interface TransactionInfo {id:string;tabId:string;sessionId:string;database:string;statements:number}
 export const api = {
+  exportImage: (path:string, base64:string) => invoke<void>('image_export', {path,base64}),
   transactionBegin:(sessionId:string,database:string,tabId:string)=>invoke<TransactionInfo>('transaction_begin',{sessionId,database,tabId}),
   transactionStatus:(id:string)=>invoke<TransactionInfo|null>('transaction_status',{id}),
-  transactionExecute:(id:string,sessionId:string,sql:string,force=false,offset=0,sort:SortSpec[]=[],limit=200)=>invoke<QueryOutcome>('transaction_execute',{id,sessionId,sql,force,offset,sort,limit}),
+  transactionExecute:(id:string,sessionId:string,sql:string,force=false,offset=0,sort:SortSpec[]=[],limit=200,originTabId?:string)=>invoke<QueryOutcome>('transaction_execute',{id,sessionId,sql,force,offset,sort,limit,originTabId}),
   transactionFinish:(id:string,sessionId:string,commit:boolean)=>invoke<void>('transaction_finish',{id,sessionId,commit}),
   listSessions: () => invoke<SessionRecord[]>("session_list"),
   duplicateSession: (sourceId:string,input:SessionInput) => invoke<SessionRecord>("session_duplicate",{sourceId,input}),
@@ -65,6 +66,7 @@ export const api = {
   updateSession: (id: string, input: SessionInput) =>
     invoke<SessionRecord>("session_update", { id, input }),
   deleteSession: (id: string) => invoke<void>("session_delete", { id }),
+  sshFingerprint: (ssh: import("./types").SshConfig, timeoutSecs=15) => invoke<string>("session_ssh_fingerprint", {ssh, timeoutSecs}),
   testSession: (input: SessionInput, sessionId?: string | null) =>
     invoke<TestResult>("session_test", { input, sessionId: sessionId ?? null }),
   connectSession: (id: string) => invoke<ConnectionStatus>("session_connect", { id }),
@@ -126,12 +128,13 @@ export const api = {
     sessionId: string,
     database: string,
     sql: string,
-    options?: { force?: boolean; limit?: number; sort?: SortSpec[] },
+    options?: { force?: boolean; limit?: number; sort?: SortSpec[]; originTabId?: string },
   ) =>
     invoke<QueryOutcome>("query_execute", {
       sessionId,
       database,
       sql,
+      originTabId: options?.originTabId,
       force: options?.force ?? false,
       limit: options?.limit ?? null,
       sort: options?.sort ?? null,
@@ -143,8 +146,10 @@ export const api = {
     offset: number,
     limit: number,
     sort?: SortSpec[],
+    originTabId?: string,
   ) =>
     invoke<QueryOutcome>("query_fetch_page", {
+      originTabId,
       sessionId,
       database,
       sql,
@@ -152,10 +157,10 @@ export const api = {
       limit,
       sort: sort ?? null,
     }),
-  queryCancel: async (sessionId: string) => {
-    const tasks = activeSessionTasks(sessionId).filter(t => t.kind === "查询");
+  queryCancel: async (sessionId: string, tabId?: string) => {
+    const tasks = activeSessionTasks(sessionId).filter(t => t.kind === "查询" && (!tabId || t.tabId === tabId));
     if (tasks.length === 1) return cancelTask(tasks[0].id);
-    if (tasks.length > 1) throw new Error("该会话有多个查询，请在任务中心选择要取消的任务");
+    if (tasks.length > 1) throw new Error("存在多个查询，请在对应查询页停止执行");
     throw new Error("当前没有正在执行的查询");
   },
   queryHistorySearch: (filters: { sessionId?: string; database?: string; text: string; from?: string; to?: string; success?: boolean; offset: number }) => invoke<HistoryEntry[]>("query_history_search", filters),
@@ -292,6 +297,7 @@ export const api = {
     table: string,
     column: string,
     keys: CellValue[],
+    maxChars?: number,
   ) =>    invoke<DbValue | null>("cell_full_value", {
       sessionId,
       database,
@@ -299,6 +305,7 @@ export const api = {
       table,
       column,
       keys,
+      maxChars,
     }),
   updateCell: (
     sessionId: string,

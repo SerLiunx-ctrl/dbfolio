@@ -1,5 +1,8 @@
 export type Engine = "mysql" | "postgres" | "sqlite" | "redis" | "mongodb";
 
+export interface SshConfig { host:string; port:number; username:string; auth:'password'|'key'; privateKey?:string|null; fingerprint:string }
+export interface NetworkConfig { ssh?:SshConfig|null; caFile?:string|null; clientCert?:string|null; clientKey?:string|null; serverName?:string|null; connectTimeoutSecs?:number|null; queryTimeoutSecs?:number|null }
+export interface DiagnosticStep {key:string;label:string;status:'pending'|'running'|'ok'|'failed'|'skipped';message:string;durationMs:number}
 export interface SessionRecord {
   id: string;
   name: string;
@@ -10,6 +13,7 @@ export interface SessionRecord {
   database?: string | null;
   filePath?: string | null;
   sslMode?: string | null;
+  network?: NetworkConfig;
   redisDb?: number | null;
   tls?: boolean | null;
   authSource?: string | null;
@@ -30,9 +34,12 @@ export interface SessionInput {
   username?: string | null;
   /** null 表示不修改已保存密码；"" 表示删除；其他表示保存 */
   password?: string | null;
+  sshPassword?:string|null;
+  sshKeyPassphrase?:string|null;
   database?: string | null;
   filePath?: string | null;
   sslMode?: string | null;
+  network?: NetworkConfig;
   redisDb?: number | null;
   tls?: boolean | null;
   authSource?: string | null;
@@ -114,6 +121,7 @@ export interface ConnectionStatus {
 }
 
 export interface TestResult {
+  steps:DiagnosticStep[];
   ok: boolean;
   serverVersion: string;
 }
@@ -540,7 +548,12 @@ export interface IndexColumnSpec {
   desc?: boolean;
 }
 
+export interface DraftColumn {id:string;name:string;dataType:string;nullable:boolean;primaryKey:boolean;autoIncrement:boolean;unsigned:boolean;defaultMode:string;defaultValue:string;comment:string;onUpdate:string}
+export interface DraftIndex {name:string;columns:IndexColumnSpec[];unique:boolean}
+export interface DraftForeignKey {selfReference?:boolean;name:string;columns:string[];refTable:string;refSchema?:string|null;refColumns:string[];onDelete:string;onUpdate:string}
+export interface TableDraft {schema?:string|null;table:string;columns:DraftColumn[];indexes:DraftIndex[];foreignKeys:DraftForeignKey[];options:{comment?:string;engine?:string;charset?:string;collation?:string;autoIncrement?:string;rowFormat?:string}}
 export type DdlSpec =
+  | {type:'createTableDraft';draft:TableDraft}
   | {type:"columnFlags";schema?:string|null;table:string;changes:{name:string;nullable:boolean;unsigned?:boolean;newName?:string;dataType?:string;comment?:string;defaultMode?:string;defaultValue?:string;autoIncrement?:boolean;onUpdate?:string}[]}
   | {type:"tableOptions";schema?:string|null;table:string;options:{name?:string;comment?:string;engine?:string;charset?:string;collation?:string;autoIncrement?:string;rowFormat?:string}}
   | { type: "createTable"; schema?: string | null; table: string; columns: ColumnSpec[] }

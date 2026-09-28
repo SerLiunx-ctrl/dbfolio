@@ -1,24 +1,15 @@
+import {TableViewTabs} from './TableViewTabs';
 import { openAnalysis } from "../analysis/AnalysisWorkspace";
 import { newPlan } from "../analysis/model";
 import { qualifiedTableSql } from "../grid/value";
 import {
-  Badge,
   Button,
   Spinner,
-  Tab,
-  TabList,
   Tag,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
 import { DataBarVerticalRegular, AddRegular, ArrowClockwiseRegular, CodeRegular } from "@fluentui/react-icons";
-import {
-  ArrowSortRegular,
-  ColumnTripleRegular,
-  GridRegular,
-  InfoRegular,
-  LinkRegular,
-} from "@fluentui/react-icons";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../ipc";
 import type { TableMeta } from "../../ipc/types";
@@ -35,7 +26,7 @@ import {
 import { InfoPanel } from "./InfoPanel";
 import { TableDataPanel } from "./TableDataPanel";
 
-const useStyles = makeStyles({
+export const useTableWorkspaceStyles = makeStyles({
   root: {
     flex: 1,
     minWidth: 0,
@@ -95,7 +86,7 @@ interface Props {
 }
 
 export function TableWorkspace({ tab }: Props) {
-  const styles = useStyles();
+  const styles = useTableWorkspaceStyles();
   const session = useSessionStore((s) => s.sessions.find((x) => x.id === tab.sessionId));
   const openQuery = useTabStore((s) => s.openQuery);
   const closeTab = useTabStore((s) => s.close);
@@ -185,48 +176,7 @@ export function TableWorkspace({ tab }: Props) {
           刷新
         </Button>
       </div>
-      <TabList
-        selectedValue={view}
-        onTabSelect={(_, data) => selectView(data.value as TableView)}
-        style={{ padding: "0 12px" }}
-      >
-        <Tab value="info" icon={<InfoRegular fontSize={14} />}>
-          信息
-        </Tab>
-        <Tab value="data" icon={<GridRegular fontSize={14} />}>
-          数据
-        </Tab>
-        <Tab value="structure" icon={<ColumnTripleRegular fontSize={14} />}>
-          <span className={styles.tabLabel}><span>结构</span>
-          {detail ? (
-            <Badge className={styles.tabCount} size="small" appearance="tint">
-              {detail.columns.length}
-            </Badge>
-          ) : null}
-          </span>
-        </Tab>
-        <Tab value="indexes" icon={<ArrowSortRegular fontSize={14} />}>
-          <span className={styles.tabLabel}><span>索引</span>
-          {detail ? (
-            <Badge className={styles.tabCount} size="small" appearance="tint">
-              {detail.indexes.length}
-            </Badge>
-          ) : null}
-          </span>
-        </Tab>
-        <Tab value="foreignKeys" icon={<LinkRegular fontSize={14} />}>
-          <span className={styles.tabLabel}><span>外键</span>
-          {detail ? (
-            <Badge className={styles.tabCount} size="small" appearance="tint">
-              {detail.foreignKeys.length}
-            </Badge>
-          ) : null}
-          </span>
-        </Tab>
-        <Tab value="ddl" icon={<CodeRegular fontSize={14} />}>
-          DDL
-        </Tab>
-      </TabList>
+      <TableViewTabs view={view} onSelect={selectView} counts={detail?{columns:detail.columns.length,indexes:detail.indexes.length,foreignKeys:detail.foreignKeys.length}:undefined}/>
       <div className={styles.content}>
         {loading && !detail ? (
           <div className={styles.centered}>

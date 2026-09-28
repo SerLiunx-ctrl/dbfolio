@@ -35,6 +35,7 @@ pub async fn cell_full_value(
     table: String,
     column: String,
     keys: Vec<CellValue>,
+    max_chars: Option<usize>,
 ) -> AppResult<Option<DbValue>> {
     let connected = state.connected(&session_id).await?;
     let adapter = connected.adapter.as_ref();
@@ -69,13 +70,41 @@ pub async fn cell_full_value(
             )
         })
         .collect();
+    let select = full_value_selection(adapter.engine(), &adapter.quote_ident(&column), max_chars);
     let sql = format!(
         "SELECT {} FROM {} WHERE {} LIMIT 1",
-        adapter.quote_ident(&column),
+        select,
         table_ref,
         where_parts.join(" AND ")
     );
     adapter.fetch_full_value(&database, &sql).await
+}
+
+fn full_value_selection(engine: crate::meta::Engine, column_sql: &str, max_chars: Option<usize>) -> String {
+    if let Some(limit) = max_chars {
+        let limit = limit.clamp(1, 64 * 1024 * 1024);
+        let length = if engine == crate::meta::Engine::Sqlite { "LENGTH" } else { "CHAR_LENGTH" };
+        format!("CASE WHEN {length}({column_sql}) <= {limit} THEN {column_sql} ELSE NULL END")
+    } else { column_sql.to_owned() }
+}
+
+#[cfg(test)]
+mod image_read_tests {
+    use super::full_value_selection;
+    use crate::meta::Engine;
+    #[tokio::test]
+    async fn bounded_image_read_preserves_text_and_skips_large_values() {
+        let pool=sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+        sqlx::query("CREATE TABLE t(v TEXT)").execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO t VALUES ('图片'), ('long base64 value'), (NULL)").execute(&pool).await.unwrap();
+        let select=full_value_selection(Engine::Sqlite,"v",Some(2));
+        let values:Vec<Option<String>>=sqlx::query_scalar(&format!("SELECT {select} FROM t ORDER BY rowid")).fetch_all(&pool).await.unwrap();
+        assert_eq!(values,vec![Some("图片".into()),None,None]);
+        assert_eq!(full_value_selection(Engine::Sqlite,"v",None),"v");
+        for engine in [Engine::Mysql,Engine::Postgres] {
+            assert!(full_value_selection(engine,"v",Some(usize::MAX)).contains("CHAR_LENGTH(v) <= 67108864"));
+        }
+    }
 }
 
 #[tauri::command]

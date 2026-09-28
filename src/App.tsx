@@ -1,3 +1,4 @@
+import { CreateTableWorkspace } from './features/table/CreateTableWorkspace';
 import {useExplorerStore} from "./stores/useExplorerStore";
 import {DatabaseOverview} from "./features/explorer/DatabaseOverview";
 import {TabIndicator} from "./app/TabIndicator";
@@ -313,7 +314,7 @@ const WorkspaceContent = memo(function WorkspaceContent({tab,active}:{tab:Worksp
   if(tab.kind==="sqlExport")return <SqlExportWorkspace tab={tab}/>;
   if(tab.kind==="mysqlTool")return <MysqlToolsWorkspace tab={tab}/>;
   if(tab.kind==="sync")return <SyncWorkspace tab={tab} active={active}/>;
-  return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab}/>}</>;
+  return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "createTable" ? <CreateTableWorkspace tab={tab}/> : tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab}/>}</>;
 });
 function VisitedWorkspace({tab,active}:{tab:WorkspaceTab;active:boolean}) {
   const visited=useRef(false);
@@ -391,7 +392,7 @@ function AppShell() {
     let disposed=false; let unlisten: (()=>void)|undefined;
     const appWindow = getCurrentWindow();
     appWindow.onCloseRequested(createCloseHandler({
-      confirm: async () => { if (useTaskStore.getState().tasks.some(isTaskActive)) { notify.error(new Error("请在任务中心取消任务并等待结果，或等待任务完成后再退出"), "仍有任务正在运行"); return false; } return confirmEdits(); },
+      confirm: async () => { if (useTaskStore.getState().tasks.some(isTaskActive)) { notify.error(new Error("请在查询页停止查询，或在任务中心取消后台任务，等待结束后再退出"), "仍有任务正在运行"); return false; } return confirmEdits(); },
       flush: async () => { await flushWorkspace(); await flushWindowState(); await flushLayoutPresets(); await flushDockLayout(); },
       destroy: () => appWindow.destroy(),
       onError: error => notify.error(error, "退出失败"),

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+mod schema_edit;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions, SqliteRow};
 use sqlx::{Column, ConnectOptions, Connection, Executor, Row, Sqlite};
 use std::path::Path;
@@ -16,6 +17,8 @@ use super::{connect_timeout, ColumnInfo, ConnectionParams, DbAdapter, QueryConte
 pub struct SqliteAdapter {
     pool: SqlitePool,
     path: String,
+    read_only: bool,
+    query_timeout_secs:u64,
 }
 
 impl SqliteAdapter {
@@ -48,6 +51,8 @@ impl SqliteAdapter {
         Ok(Self {
             pool,
             path: path.to_string(),
+            read_only: params.read_only,
+            query_timeout_secs:params.network.query_timeout(),
         })
     }
 }
@@ -165,6 +170,7 @@ fn bind_value<'q>(
 
 #[async_trait]
 impl DbAdapter for SqliteAdapter {
+    fn query_timeout_secs(&self)->u64 {self.query_timeout_secs}
     fn engine(&self) -> Engine {
         Engine::Sqlite
     }
@@ -263,13 +269,14 @@ impl DbAdapter for SqliteAdapter {
         .fetch_all(&self.pool)
         .await?;
 
+        let auto_columns = crate::services::column_edit::sqlite_auto_columns(raw_ddl.as_deref());
         let mut columns = Vec::new();
         let mut primary_key: Vec<(i64, String)> = Vec::new();
         for row in &col_rows {
             let name = text(row, "name");
             let raw_type = text(row, "type");
             let pk = int_opt(row, "pk").unwrap_or(0);
-            let auto_increment = pk > 0 && raw_type.eq_ignore_ascii_case("integer");
+            let auto_increment = auto_columns.contains(&name);
             if pk > 0 {
                 primary_key.push((pk, name.clone()));
             }
@@ -503,6 +510,13 @@ impl DbAdapter for SqliteAdapter {
             sqlx::query(statement).execute(&mut *conn).await?;
         }
         Ok(())
+    }
+
+    async fn sqlite_schema_edit(&self, database: &str, spec: &crate::services::ddl::DdlSpec, apply: bool) -> AppResult<Vec<String>> {
+        if apply && self.read_only { return Err(AppError::ReadOnly("只读连接不能修改表结构".into())); }
+        let table=schema_edit::target(spec).ok_or_else(||crate::services::column_edit::invalid("不支持的结构操作"))?;
+        let meta=self.introspect_table(database,None,table).await?;
+        schema_edit::run(&self.path,&meta,spec,apply).await
     }
 
     async fn execute_transaction(&self, _database: &str, items: &[SqlParams]) -> AppResult<u64> {

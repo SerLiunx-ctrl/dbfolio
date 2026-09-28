@@ -167,10 +167,18 @@
 /* 表结构、索引、外键共用紧凑列表，不改变数据网格和其他表单。 */
 .dw-schema-list {font-size:12px;line-height:16px;font-weight:400}
 .dw-schema-list .fui-TableRow {height:26px;min-height:26px}
-.dw-schema-list :is(.fui-TableCell,.fui-TableHeaderCell) {height:26px;box-sizing:border-box;padding:2px 8px!important;font-size:12px!important;line-height:16px;font-weight:400!important}
+.dw-schema-list :is(.fui-TableCell,.fui-TableHeaderCell) {height:26px;box-sizing:border-box;vertical-align:middle;padding:2px 8px!important;font-size:12px!important;line-height:16px;font-weight:400!important}
 .dw-schema-list :is(.fui-TableCell,.fui-TableHeaderCell) :is(span,strong,code) {font-size:inherit;font-weight:400!important}
 .dw-schema-list .fui-Badge {font-size:10px!important;line-height:12px;height:16px;min-width:0;padding-inline:4px}
 .dw-schema-list .fui-Button {min-height:22px;height:22px;padding:1px 4px;font-size:12px;font-weight:400}
+.dw-schema-list .dw-schema-actions {width:80px;min-width:80px;white-space:nowrap}
+.dw-schema-action-row {display:inline-flex;flex-flow:row nowrap;align-items:center;gap:2px;vertical-align:middle}
+.dw-schema-list .dw-schema-action-row > .fui-Button {flex:none;min-width:26px!important;min-height:22px!important;height:22px!important;padding:1px 4px!important}
+.dw-metadata-column {white-space:nowrap}
+.dw-metadata-type {font-size:10px;line-height:14px;margin-left:5px}
+.dw-metadata-tag {white-space:nowrap}
+.dw-ddl-panel {display:flex;flex-direction:column;overflow:hidden!important}
+.dw-ddl-editor {flex:1;min-height:120px;min-width:0;overflow:hidden}
 /* 控件外框、Select 内框与 Fluent 焦点伪元素共用圆角，避免主题圆角与紧凑样式错位。 */
 :root :is(.fui-Input,.fui-Combobox,.fui-Dropdown,.fui-Select,.fui-Textarea,.fui-SpinButton) {
   --borderRadiusMedium: 5px;

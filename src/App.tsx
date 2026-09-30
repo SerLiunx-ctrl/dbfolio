@@ -61,6 +61,8 @@ import { ExplorerPanel } from "./features/explorer/ExplorerPanel";
 import { QueryWorkspace } from "./features/query/QueryWorkspace";
 import { RedisWorkspace } from "./features/redis/RedisWorkspace";
 import { SessionDialog } from "./features/sessions/SessionDialog";
+import {SqliteFileDrop,type SqliteFileDraft} from './features/sessions/SqliteFileDrop';
+import {useTabPointerSort} from './app/useTabPointerSort';
 import { SessionList } from "./features/sessions/SessionList";
 import { SettingsWorkspace } from "./features/settings/SettingsWorkspace";
 import { SyncWorkspace } from "./features/sync/SyncWorkspace";
@@ -353,8 +355,8 @@ function AppShell() {
   const activeId = useTabStore((s) => s.activeId);
   const moveTab = useTabStore(s => s.moveTab);
   const wrapTabs = useSettingsStore(s => s.wrapTabs);
-  const draggingTab = useRef<string | null>(null);
-  const [tabDrop, setTabDrop] = useState<{id: string; after: boolean} | null>(null);
+  const tabSort=useTabPointerSort(moveTab);
+  const tabDrop=tabSort.target;
   const setActiveTab = useTabStore((s) => s.setActive);
   const closeTab = useTabStore((s) => s.close);
   const closeOthers = useTabStore((s) => s.closeOthers);
@@ -363,6 +365,7 @@ function AppShell() {
 
   const [copyingSession,setCopyingSession]=useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [sqliteFile,setSqliteFile]=useState<SqliteFileDraft|null>(null);
   const [editing, setEditing] = useState<SessionRecord | null>(null);
   const [defaultGroup, setDefaultGroup] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -506,6 +509,7 @@ function AppShell() {
   }, [tabs, settingsOpen]);
 
   const handleNew = (group?: string | null) => {
+    setSqliteFile(null);
     setCopyingSession(false);
     setEditing(null);
     setDefaultGroup(group ?? null);
@@ -596,21 +600,8 @@ function AppShell() {
               {visibleTabs.map((tab) => (
                 <div
                   key={tab.id}
-                  draggable
-                  onDragStart={event => { draggingTab.current = tab.id; event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-workbench-tab", tab.id); }}
-                  onDragOver={event => {
-                    if (!draggingTab.current || draggingTab.current === tab.id) return;
-                    event.preventDefault(); event.dataTransfer.dropEffect = "move";
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    setTabDrop({id: tab.id, after: event.clientX > rect.left + rect.width / 2});
-                  }}
-                  onDrop={event => {
-                    event.preventDefault();
-                    const source = draggingTab.current;
-                    if (source) { const rect = event.currentTarget.getBoundingClientRect(); moveTab(source, tab.id, event.clientX > rect.left + rect.width / 2); }
-                    draggingTab.current = null; setTabDrop(null);
-                  }}
-                  onDragEnd={() => { draggingTab.current = null; setTabDrop(null); }}
+                  data-sort-tab={tab.id}
+                  onPointerDown={event=>tabSort.start(event,tab.id)}
                   style={{flexShrink: 0, maxWidth: "100%", boxShadow: tabDrop?.id === tab.id ? `inset ${tabDrop.after ? "-2" : "2"}px 0 ${tokens.colorBrandStroke1}` : undefined}}
                   data-active-tab={tab.id === activeId}
                   title={(tab.kind==="sync"||tab.kind==="sqlExport")?"全局 · "+tab.title:tab.database+" / "+tab.title}
@@ -620,7 +611,7 @@ function AppShell() {
                     styles.tab, "dw-workspace-tab",
                     tab.id === activeId && styles.tabActive,
                   )}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {if(!tabSort.consumeClick())setActiveTab(tab.id);}}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -742,14 +733,19 @@ function AppShell() {
         </ContextMenuPortal>
       )}
       <SessionDialog
+        sqliteFile={sqliteFile}
         open={dialogOpen}
         session={editing}
         copy={copyingSession}
         folders={folders}
         defaultGroup={defaultGroup}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {setDialogOpen(false);setSqliteFile(null);}}
         onSaved={handleSaved}
       />
+      <SqliteFileDrop contextKey={`${dialogOpen}:${editing?.id??''}:${copyingSession}:${settingsOpen}`} onFile={file=>{
+        if(!dialogOpen){setEditing(null);setCopyingSession(false);setDefaultGroup(null);}
+        setSqliteFile(file);setDialogOpen(true);
+      }}/>
     </div>
   );
 }

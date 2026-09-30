@@ -433,6 +433,8 @@ export function SessionList({ onNew, onEdit, onCopy, toolbarTarget }: Props) {
             还没有会话
             <br />
             点击标题栏 + 添加数据库连接
+            <br />
+            或拖入 SQLite 数据库文件
           </div>
         )}
         {groups.map((group) => {

@@ -22,7 +22,8 @@ import {
 } from "@fluentui/react-components";
 import { FolderOpenRegular } from "@fluentui/react-icons";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type {SqliteFileDraft} from './SqliteFileDrop';
 import { useNotify } from "../../app/toast";
 import { api } from "../../ipc";
 import type { Engine, SessionInput, SessionRecord, NetworkConfig, DiagnosticStep } from "../../ipc/types";
@@ -93,6 +94,7 @@ const SSL_OPTIONS = [
 import { environmentLabels, setSessionEnvironment, useObjectPreferences, type Environment } from "../../stores/useObjectPreferences";
 
 interface Props {
+  sqliteFile?: SqliteFileDraft | null;
   open: boolean;
   session: SessionRecord | null;
   folders: string[];
@@ -103,6 +105,7 @@ interface Props {
 }
 
 export function SessionDialog({
+  sqliteFile,
   open: isOpen,
   session,
   folders,
@@ -144,9 +147,11 @@ export function SessionDialog({
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testMessage, setTestMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const generatedName=useRef('');
 
   useEffect(() => {
     if (!isOpen) return;
+    generatedName.current='';
     setNetwork(session?.network??{});setSshPassword(null);setSshPassphrase(null);setSteps([]);
     setConfirmWritable(false);
     setRestrictDatabases(session?.allowedDatabases != null);
@@ -185,6 +190,17 @@ export function SessionDialog({
     setAuthSource(session?.authSource ?? "admin");
     setPassword("");
   }, [isOpen, session, defaultGroup, copy]);
+
+  useEffect(()=>{
+    if(!isOpen||!sqliteFile||session||copy)return;
+    setEngine('sqlite');setPort('');setFilePath(sqliteFile.path);
+    setPassword('');setSshPassword(null);setSshPassphrase(null);
+    setNetwork(previous=>({queryTimeoutSecs:previous.queryTimeoutSecs}));
+    const previousGenerated=generatedName.current;
+    setName(previous=>!previous.trim()||previous===previousGenerated?sqliteFile.name:previous);
+    generatedName.current=sqliteFile.name;
+    setTestMessage(null);setSteps([]);
+  },[isOpen,sqliteFile,session,copy]);
 
   const handleEngineChange = (next: Engine) => {
     const previousDefault = DEFAULT_USERNAMES[engine];
@@ -293,7 +309,7 @@ export function SessionDialog({
         if (!data.open && !testing && !saving) onClose();
       }}
     >
-      <DialogSurface style={{ maxWidth: "560px" }}>
+      <DialogSurface data-sqlite-drop-allowed={!session&&!copy&&!saving&&!testing&&!confirmWritable?'true':'false'} style={{ maxWidth: "560px" }}>
         {confirmWritable?<DialogBody><DialogTitle>{environment==="production"?"关闭生产会话的只读保护？":"关闭只读保护？"}</DialogTitle><DialogContent>非只读情况下存在危险操作：可以修改或删除数据、表结构，也可以通过导入和同步写入。{environment==="production"?"当前为生产环境，请确认已核对操作范围并具备恢复措施。":"请确认你确实需要写入。"} 保存后生效，当前连接将断开。</DialogContent><DialogActions><Button appearance="primary" onClick={()=>setConfirmWritable(false)}>保持只读</Button><Button onClick={()=>{setReadOnly(false);setConfirmWritable(false);}}>我已了解风险，允许写入</Button></DialogActions></DialogBody>:<DialogBody>
           <DialogTitle>{copy ? "复制会话" : session ? "编辑会话" : "新建会话"}</DialogTitle>
           <DialogContent>
@@ -339,6 +355,7 @@ export function SessionDialog({
                       浏览
                     </Button>
                   </div>
+                  {!session&&!copy&&<span style={{fontSize:12,color:tokens.colorNeutralForeground3}}>可拖入 SQLite 文件，自动填写名称和路径</span>}
                 </Field>
               ) : (
                 <>

@@ -55,6 +55,7 @@ export function normalizeError(error: unknown): AppErrorPayload {
 
 export interface TransactionInfo {id:string;tabId:string;sessionId:string;database:string;statements:number}
 export const api = {
+  inspectSqliteFile: (path:string) => invoke<{path:string;name:string}>('sqlite_file_inspect',{path}),
   exportImage: (path:string, base64:string) => invoke<void>('image_export', {path,base64}),
   transactionBegin:(sessionId:string,database:string,tabId:string)=>invoke<TransactionInfo>('transaction_begin',{sessionId,database,tabId}),
   transactionStatus:(id:string)=>invoke<TransactionInfo|null>('transaction_status',{id}),

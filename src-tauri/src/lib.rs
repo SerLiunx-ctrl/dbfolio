@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod browser_guards;
+mod sqlite_drop;
 mod adapters;
 mod commands;
 mod error;
@@ -72,6 +73,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            sqlite_drop::sqlite_file_inspect,
             commands::mysql_tools::sql_import_preview,
             commands::mysql_tools::sql_import_execute,
             commands::mysql_tools::mysql_objects,

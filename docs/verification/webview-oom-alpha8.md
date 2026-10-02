@@ -23,3 +23,8 @@
 - `npm run app:build`：通过；生成 NSIS 安装包、portable 目录和 ZIP，打包时 EXE 对外置 `web/` 完成资源自检。
 - SHA256：portable 清单 106 条、setup 清单 1 条，逐条独立重算均无不匹配；ZIP 含 EXE、`web/web-manifest.json`，共 105 个条目。
 - 长时锁屏与原始数据库工作负载复现：本次没有可自动复现的环境，需要后续使用观察。
+
+## 提交归档
+
+- 2026-10-03：代码提交 [e6c9389](https://github.com/SerLiunx-ctrl/dbfolio/commit/e6c9389683618f644bafc80976aba5ee58423b0e)，说明为 `fix: 降低后台页签与图片预览的内存占用`。
+- 同日重新计算两份 SHA256SUMS 共 107 条摘要，全部通过；本次归档仅修改文档，复用 v1.0.0-alpha.8 的正式安装包与完整便携版。

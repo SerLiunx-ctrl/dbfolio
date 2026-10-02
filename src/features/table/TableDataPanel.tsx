@@ -95,13 +95,14 @@ const useStyles = makeStyles({
 
 interface Props {
   tab: TableTab;
+  active: boolean;
   detail: TableMeta;
   engine: Engine;
   readOnly: boolean;
   onChanged: () => void;
 }
 
-export function TableDataPanel({ tab, detail, engine, readOnly, onChanged }: Props) {
+export function TableDataPanel({ tab, active, detail, engine, readOnly, onChanged }: Props) {
   const styles = useStyles();
   const pageSizeRef = useRef(useSettingsStore.getState().queryPageSize);
   const [pageSize, setPageSize] = useState(pageSizeRef.current);
@@ -111,10 +112,16 @@ export function TableDataPanel({ tab, detail, engine, readOnly, onChanged }: Pro
   const notify = useNotify();
   const gridRef = useRef<EditableDataGridHandle | null>(null);
   const requestIdRef = useRef(0);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const changesRef = useRef(0);
+  const [stale, setStale] = useState(false);
+  const [gridSuspended, setGridSuspended] = useState(false);
   const [rows, setRows] = useState<DbValue[][]>([]);
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
   const [changes, setChanges] = useState<RowChange[]>([]);
+  changesRef.current = changes.length;
   const [selected, setSelected] = useState(0);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -197,8 +204,39 @@ export function TableDataPanel({ tab, detail, engine, readOnly, onChanged }: Pro
 
   useEffect(() => {
     setChanges([]);
-    void load(0);
+    if (active) void load(0);
+    else setStale(true);
+  // 查询条件改变时仍按原逻辑重新加载；后台页签待激活再加载。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
+
+  useEffect(() => {
+    if (active) {
+      setGridSuspended(false);
+      if (stale) { setStale(false); void load(offset); }
+      return;
+    }
+    // 先结束正在输入的单元格，让 AG Grid 将值写入待提交变更。
+    gridRef.current?.finishEditing();
+    const suspendTimer = window.setTimeout(() => {
+      if (!activeRef.current && changesRef.current === 0) {
+        setGridSuspended(true);
+        setSelected(0);
+      }
+    }, 300);
+    // 保留短时间切换的结果；长期闲置且没有待提交编辑时释放行数据。
+    const timer = window.setTimeout(() => {
+      if (activeRef.current || changesRef.current > 0) return;
+      ++requestIdRef.current;
+      setLoading(false);
+      setRows([]);
+      setSelected(0);
+      setStale(true);
+    }, 30_000);
+    return () => { window.clearTimeout(suspendTimer); window.clearTimeout(timer); };
+  // 重新激活只在数据被回收后读取；普通切换不重复查询。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, changes.length, stale]);
 
   const canEdit =
     !readOnly && detail.kind === "table" && detail.primaryKey.length > 0;
@@ -453,7 +491,7 @@ export function TableDataPanel({ tab, detail, engine, readOnly, onChanged }: Pro
           <div className={styles.centered}>
             <Spinner label="加载数据…" />
           </div>
-        ) : (
+        ) : (active || changes.length > 0 || !gridSuspended) ? (
           <EditableDataGrid
             tabId={tab.id}
             ref={gridRef}
@@ -473,7 +511,7 @@ export function TableDataPanel({ tab, detail, engine, readOnly, onChanged }: Pro
             onSelectionChange={setSelected}
             onSaved={() => void load(offset)}
           />
-        )}
+        ) : null}
       </div>
 
       {related&&<RelatedRecords key={related.column+JSON.stringify(related.row)} source={relationSource} meta={detail} engine={engine} selection={related} onClose={()=>setRelated(null)}/>}

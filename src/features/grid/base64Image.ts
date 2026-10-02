@@ -2,7 +2,8 @@ import type { DbValue } from '../../ipc/types';
 
 export const IMAGE_TEXT_LIMIT = 64 * 1024 * 1024;
 export const THUMBNAIL_TEXT_LIMIT = 2 * 1024 * 1024;
-export const IMAGE_PIXEL_LIMIT = 100_000_000;
+// 一张 4 通道位图在解码时可占用约 160 MiB；更大的图片仍可导出原图。
+export const IMAGE_PIXEL_LIMIT = 40_000_000;
 export interface Base64Image { src: string; mime: string; width:number; height:number; previewable:boolean }
 
 // 只接受有文件签名的内嵌位图，不将任意字符串、URL 或 SVG 当作图片。

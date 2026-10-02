@@ -1,6 +1,26 @@
 import { useEffect, useState } from 'react';
 import type { Base64Image } from './base64Image';
 
+// WebView2 的图片解码可能先展开完整位图，再应用缩略尺寸。
+// 所有页签共用一个解码槽，避免多个高分辨率图片同时占满渲染进程。
+interface DecodeJob { run:()=>Promise<void>; cancelled:boolean }
+const decodeQueue:DecodeJob[]=[];
+let decoding=false;
+function pumpDecodeQueue() {
+  if(decoding)return;
+  const job=decodeQueue.shift();
+  if(!job)return;
+  if(job.cancelled){pumpDecodeQueue();return;}
+  decoding=true;
+  void job.run().catch(()=>{}).finally(()=>{decoding=false;pumpDecodeQueue();});
+}
+function enqueueDecode(run:()=>Promise<void>) {
+  const job:DecodeJob={run,cancelled:false};
+  decodeQueue.push(job);
+  pumpDecodeQueue();
+  return()=>{job.cancelled=true;const index=decodeQueue.indexOf(job);if(index>=0)decodeQueue.splice(index,1);};
+}
+
 export function imageBlob(image:Base64Image):Blob {
   const body=image.src.slice(image.src.indexOf(',')+1),parts:Uint8Array<ArrayBuffer>[]=[];
   // 分段解码避免对几十 MiB 字符串构造同等大小的数字数组。
@@ -11,9 +31,12 @@ export function imageBlob(image:Base64Image):Blob {
 export function useImageSource(image:Base64Image|null,maxEdge?:number) {
   const [result,setResult]=useState<{image:Base64Image;maxEdge?:number;src?:string;failed?:boolean;isActive:()=>boolean}|null>(null);
   useEffect(()=>{
+    setResult(null);
     if(!image||!image.previewable)return;
     let alive=true,url:string|undefined;
-    void (async()=>{
+    const cancel=enqueueDecode(async()=>{
+      try {
+      if(!alive)return;
       let blob=imageBlob(image);
       if(maxEdge&&Math.max(image.width,image.height)>maxEdge&&!(image.mime==='image/gif'&&maxEdge>96)){
         const scale=Math.min(1,maxEdge/Math.max(image.width,image.height));
@@ -21,8 +44,9 @@ export function useImageSource(image:Base64Image|null,maxEdge?:number) {
         try{if(!alive)return;const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas unavailable');ctx.drawImage(bitmap,0,0);blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Image decode failed')),'image/png'));}finally{bitmap.close();}
       }
       if(!alive)return;url=URL.createObjectURL(blob);setResult({image,maxEdge,src:url,isActive:()=>alive});
-    })().catch(()=>{if(alive)setResult({image,maxEdge,failed:true,isActive:()=>alive});});
-    return()=>{alive=false;if(url)URL.revokeObjectURL(url);};
+      } catch { if(alive)setResult({image,maxEdge,failed:true,isActive:()=>alive}); }
+    });
+    return()=>{alive=false;cancel();if(url)URL.revokeObjectURL(url);};
   },[image,maxEdge]);
   return result?.image===image&&result.maxEdge===maxEdge&&result.isActive()?result:null;
 }

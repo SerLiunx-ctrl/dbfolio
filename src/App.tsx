@@ -316,7 +316,7 @@ const WorkspaceContent = memo(function WorkspaceContent({tab,active}:{tab:Worksp
   if(tab.kind==="sqlExport")return <SqlExportWorkspace tab={tab}/>;
   if(tab.kind==="mysqlTool")return <MysqlToolsWorkspace tab={tab}/>;
   if(tab.kind==="sync")return <SyncWorkspace tab={tab} active={active}/>;
-  return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "createTable" ? <CreateTableWorkspace tab={tab}/> : tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab}/>}</>;
+  return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "createTable" ? <CreateTableWorkspace tab={tab}/> : tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab} active={active}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab} active={active}/>}</>;
 });
 function VisitedWorkspace({tab,active}:{tab:WorkspaceTab;active:boolean}) {
   const visited=useRef(false);

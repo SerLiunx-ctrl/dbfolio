@@ -131,9 +131,10 @@ const useStyles = makeStyles({
 
 interface Props {
   tab: QueryTab;
+  active: boolean;
 }
 
-export function QueryWorkspace({ tab }: Props) {
+export function QueryWorkspace({ tab, active }: Props) {
   const [pageSize,setPageSize] = useState(useSettingsStore.getState().queryPageSize);
   const targetSession = useSessionStore(state => state.sessions.find(item => item.id === tab.sessionId));
   const styles = useStyles();
@@ -385,6 +386,14 @@ export function QueryWorkspace({ tab }: Props) {
   const completionRef=useRef<{dispose:()=>void}|null>(null);
   const completionContext=useRef({sessionId:tab.sessionId,database});completionContext.current={sessionId:tab.sessionId,database};
   useEffect(()=>()=>{completionRef.current?.dispose();menuRef.current?.dispose();},[]);
+  useEffect(()=>{
+    if(active)return;
+    editorRef.current=null;
+    queryIdleRef.current=null;
+    fileIdleRef.current=null;
+    completionRef.current?.dispose();completionRef.current=null;
+    menuRef.current?.dispose();menuRef.current=null;
+  },[active]);
   const onMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor;
     queryIdleRef.current=editor.createContextKey("dwQueryIdle",!running && !parameterBusy && !parameters && !danger);
@@ -537,7 +546,7 @@ export function QueryWorkspace({ tab }: Props) {
         <span title={filePath} style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:12}}>{filePath || "本地草稿"}{sql!==baseline ? " · 未保存" : " · 已保存"}</span>
       </header>
 <div className="dw-sql-editor-body">
-        <Editor
+        {active && <Editor
           language="sql"
           theme={editorTheme.name} beforeMount={editorTheme.beforeMount}
           value={sql}
@@ -553,7 +562,7 @@ export function QueryWorkspace({ tab }: Props) {
             wordWrap: "on",
             tabSize: 2,
           }}
-        />
+        />}
       </div></div><div hidden={!smartOpen} className="dw-smart-side">{smartOpen!==null&&<SmartSqlPanel visible={!!smartOpen} key={tab.sessionId+database} sessionId={tab.sessionId} database={database} tabId={tab.id} sql={sql} executionError={error&&failedSql===sql?error:""} disabled={fileBusy} onClose={()=>setSmartOpen(false)} onAppend={text=>setSql(v=>appendGeneratedSql(v,text))} />}</div></SqlSplit></ResizableSqlArea>
 
       {error && <div className={styles.error}>{error}</div>}
@@ -614,7 +623,7 @@ export function QueryWorkspace({ tab }: Props) {
           </Button>
         </div>
         <div className={styles.grid}>
-          {result && result.columns.length > 0 ? (
+          {active && result && result.columns.length > 0 ? (
             <ResultGrid
               ref={resultGridRef}
               columns={result.columns}

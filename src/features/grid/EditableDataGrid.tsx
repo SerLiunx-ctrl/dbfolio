@@ -81,6 +81,7 @@ function sameValue(a: DbValue, b: DbValue): boolean {
 }
 
 export interface EditableDataGridHandle {
+  finishEditing: () => void;
   addRow: () => void;
   deleteSelected: () => void;
   discard: () => void;
@@ -327,6 +328,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
     useImperativeHandle(
       ref,
       () => ({
+        finishEditing: () => apiRef.current?.stopEditing(),
         addRow: () => {
           if (readOnly) return;
           const id = `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

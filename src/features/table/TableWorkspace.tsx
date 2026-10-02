@@ -83,9 +83,10 @@ export const useTableWorkspaceStyles = makeStyles({
 
 interface Props {
   tab: TableTab;
+  active: boolean;
 }
 
-export function TableWorkspace({ tab }: Props) {
+export function TableWorkspace({ tab, active }: Props) {
   const styles = useTableWorkspaceStyles();
   const session = useSessionStore((s) => s.sessions.find((x) => x.id === tab.sessionId));
   const openQuery = useTabStore((s) => s.openQuery);
@@ -196,6 +197,7 @@ export function TableWorkspace({ tab }: Props) {
               >
                 <TableDataPanel
                   tab={tab}
+                  active={active && view === "data"}
                   detail={detail}
                   engine={session.engine}
                   readOnly={session.readOnly}

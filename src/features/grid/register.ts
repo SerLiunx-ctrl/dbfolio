@@ -4,12 +4,26 @@ import {
   AllCommunityModule,
   ModuleRegistry,
   colorSchemeDark,
+  provideGlobalGridOptions,
   themeQuartz,
 } from "ag-grid-community";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 import { useIsDark, withAlpha } from "../../theme";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
+// 当前界面统一使用中文；表数据与查询结果共用默认提示。
+provideGlobalGridOptions({
+  localeText: {
+    noRowsToShow: "暂无数据",
+    loadingOoo: "正在加载…",
+    ariaRowSelect: "按空格键选中行",
+    ariaRowDeselect: "按空格键取消选中行",
+    ariaRowSelectAll: "按空格键切换全选",
+    ariaRowToggleSelection: "按空格键切换行选中状态",
+    ariaRowSelectionDisabled: "此行无法选中",
+    ariaSortableColumn: "按回车键排序",
+  },
+});
 
 export function useGridTheme() {
   const dark = useIsDark();

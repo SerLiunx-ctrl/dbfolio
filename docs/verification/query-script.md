@@ -69,4 +69,26 @@ DEALLOCATE PREPARE migration_stmt;
 
 便携 ZIP SHA256：`92103f090aefa4b1de284591b6ffd1fd501ef9029db9864e145aa141c2affb94`。
 
-本轮未提交或推送代码。
+实现提交：[05ac694](https://github.com/SerLiunx-ctrl/dbfolio/commit/05ac6942eb1587e6c1663c79b28ca79d14db1606)，远程推送随本次汇总完成。
+
+## 提交归档
+
+2026-10-20：本项实现与 alpha.10～alpha.14 的相关变更统一归档至 [05ac694](https://github.com/SerLiunx-ctrl/dbfolio/commit/05ac6942eb1587e6c1663c79b28ca79d14db1606)。本节补录提交，不覆盖前述历史验收和分发边界。
+
+## 提交前重打包（2026-10-20）
+
+统一发布版本常量后再次执行 `npm run app:build`，前端与正式 Rust LTO、NSIS 构建成功。替换原 portable 目录时，用户正在运行其中的 DBFolio.exe，导致原打包脚本清理部分资源后失败；已从此前校验通过的 ZIP 恢复缺失资源，原目录两份清单 107 条和 ZIP 105 个文件重新核验一致，保留运行中的会话。
+
+使用本次正式构建输出组装独立 `rebuilt` 版本，避免覆盖运行目录。EXE 资源自检、两份校验清单 107 条及 ZIP 105 个文件匹配全部通过。原分发包保留，最新重打包产物为：
+
+- `DBFolio_1.0.0-alpha.14_windows_x64_setup-rebuilt.exe`，11449124 字节。
+- `DBFolio_1.0.0-alpha.14_windows_x64_portable-rebuilt/`。
+- `DBFolio_1.0.0-alpha.14_windows_x64_portable-rebuilt.zip`，16624854 字节。
+- `DBFolio_1.0.0-alpha.14_windows_x64_setup-rebuilt_SHA256SUMS.txt`。
+- `DBFolio_1.0.0-alpha.14_windows_x64_portable-rebuilt_SHA256SUMS.txt`。
+
+安装包 SHA256：`873bf24281abddfa4a5bfcb05e9f53d670c970fb3b372faad019bd0f57e3d1b9`。
+
+便携 ZIP SHA256：`b318689eb255e194c192fdc27d71effe0a14db9a0d7c767f737c2a6930ee2471`。
+
+本次未修改打包脚本遇到占用目录时的清理行为；后续覆盖同名便携目录前需先退出其中的程序。代码归档于 [05ac694](https://github.com/SerLiunx-ctrl/dbfolio/commit/05ac6942eb1587e6c1663c79b28ca79d14db1606)。

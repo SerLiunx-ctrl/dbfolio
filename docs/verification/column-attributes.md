@@ -45,4 +45,8 @@
 - 安装包 SHA256：`421E020C8F637F8827A84C68A73D02FDDF6BA871C5E0BCAC2717090B6707943C`。
 - ZIP SHA256：`B672521BA3F0E40C5C67064A9169C5BF0D980A2C2305653B6878BBB82E5AC15C`。
 
-代码未提交。
+代码已归档至 [05ac694](https://github.com/SerLiunx-ctrl/dbfolio/commit/05ac6942eb1587e6c1663c79b28ca79d14db1606)。
+
+## 提交归档
+
+2026-10-20：本项实现与 alpha.10～alpha.14 的相关变更统一归档至 [05ac694](https://github.com/SerLiunx-ctrl/dbfolio/commit/05ac6942eb1587e6c1663c79b28ca79d14db1606)。本节补录提交，不覆盖前述历史验收和分发边界。

@@ -44,3 +44,7 @@
 ## 参考
 
 [MySQL 8.0 标识符规则](https://dev.mysql.com/doc/refman/8.0/en/identifiers.html)：数据库、表和列名不能以空格结尾。
+
+## 提交归档
+
+2026-10-20：本项实现与 alpha.10～alpha.14 的相关变更统一归档至 [05ac694](https://github.com/SerLiunx-ctrl/dbfolio/commit/05ac6942eb1587e6c1663c79b28ca79d14db1606)。本节补录提交，不覆盖前述历史验收和分发边界。

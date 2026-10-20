@@ -65,7 +65,7 @@ node scripts/check-grid-scroll.cjs
 
 ## 正式交付
 
-`npm run app:build` 已完成正式 LTO 构建与 NSIS 打包；EXE 自检外置资源通过。独立复核两份 SHA256SUMS 共 107 条、ZIP 内 105 个文件与 portable 目录一致。版本源文件、资源清单和 distribution.json 均为 1.0.0-alpha.13。本轮尚未提交或推送。
+`npm run app:build` 已完成正式 LTO 构建与 NSIS 打包；EXE 自检外置资源通过。独立复核两份 SHA256SUMS 共 107 条、ZIP 内 105 个文件与 portable 目录一致。版本源文件、资源清单和 distribution.json 均为 1.0.0-alpha.13。实现提交：[05ac694](https://github.com/SerLiunx-ctrl/dbfolio/commit/05ac6942eb1587e6c1663c79b28ca79d14db1606)，远程推送随本次汇总完成。
 
 产物目录：`release/1.0.0-alpha.13/`。
 
@@ -77,3 +77,7 @@ node scripts/check-grid-scroll.cjs
 安装包 SHA256：`0a37ff6bc9050902010a94664e02dd5201b9c69702d7de535f0ad7459d779b49`。
 
 便携 ZIP SHA256：`77ede84040f5f1db85cf30e8dcd8d5b0b50c165a7ab1d4ecffc26c8ce8cbf2d6`。
+
+## 提交归档
+
+2026-10-20：本项实现与 alpha.10～alpha.14 的相关变更统一归档至 [05ac694](https://github.com/SerLiunx-ctrl/dbfolio/commit/05ac6942eb1587e6c1663c79b28ca79d14db1606)。本节补录提交，不覆盖前述历史验收和分发边界。

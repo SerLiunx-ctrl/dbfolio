@@ -269,7 +269,7 @@ fn format_date_time(value: NaiveDateTime) -> String {
     value.format("%Y-%m-%d %H:%M:%S%.f").to_string()
 }
 
-fn rows_to_outcome(rows: Vec<MySqlRow>, fallback: Vec<ColumnInfo>) -> QueryOutcome {
+pub(crate) fn rows_to_outcome(rows: Vec<MySqlRow>, fallback: Vec<ColumnInfo>) -> QueryOutcome {
     let columns = rows
         .first()
         .map(|row| {
@@ -290,6 +290,7 @@ fn rows_to_outcome(rows: Vec<MySqlRow>, fallback: Vec<ColumnInfo>) -> QueryOutco
         columns,
         rows: data,
         affected: None,
+        ..Default::default()
     }
 }
 

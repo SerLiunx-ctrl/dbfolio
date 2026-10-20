@@ -336,6 +336,7 @@ fn rows_to_outcome(rows: Vec<PgRow>, fallback: Vec<ColumnInfo>) -> QueryOutcome 
         columns,
         rows: data,
         affected: None,
+        ..Default::default()
     }
 }
 

@@ -77,7 +77,7 @@ pub struct HistoryEntry {
 }
 
 pub struct LocalStore {
-    pool: SqlitePool,
+    pub(super) pool: SqlitePool,
 }
 
 pub fn app_data_dir() -> PathBuf {
@@ -86,7 +86,7 @@ pub fn app_data_dir() -> PathBuf {
         .join("data-workbench")
 }
 
-fn row_to_session(row: &SqliteRow) -> AppResult<SessionRecord> {
+pub(super) fn row_to_session(row: &SqliteRow) -> AppResult<SessionRecord> {
     let engine_raw: String = row.try_get("engine")?;
     let engine = Engine::parse(&engine_raw)
         .ok_or_else(|| AppError::Internal(format!("未知引擎类型: {engine_raw}")))?;
@@ -547,7 +547,7 @@ mod history_search_tests {
     }
 }
 
-fn validate_input(input: &SessionInput) -> AppResult<()> {
+pub(super) fn validate_input(input: &SessionInput) -> AppResult<()> {
     input.network.validate(input.engine,input.host.as_deref())?;
     crate::services::database_access::validate(input.engine, input.allowed_databases.as_deref(), input.database.as_deref())?;
     if input.name.trim().is_empty() {

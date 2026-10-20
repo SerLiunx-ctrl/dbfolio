@@ -67,6 +67,7 @@ fn table_options(adapter:&dyn DbAdapter,database:&str,schema:Option<&str>,table:
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DdlSpec {
     CreateTableDraft { draft:super::create_table::TableDraft },
+    AddColumnDraft {schema:Option<String>,table:String,column:super::create_table::DraftColumn,key:super::add_column::ColumnKey,position:Option<ColumnPosition>},
     ColumnFlags {schema:Option<String>,table:String,changes:Vec<ColumnFlags>},
     TableOptions { schema:Option<String>, table:String, options:TableOptions },
     CreateTable {
@@ -170,6 +171,11 @@ fn escape(engine: Engine, text: &str) -> String {
         Engine::Mysql => text.replace('\\', "\\\\").replace('\'', "''"),
         _ => text.replace('\'', "''"),
     }
+}
+
+fn postgres_column_comment(target: &str, name: &str, comment: &str) -> String {
+    format!("COMMENT ON COLUMN {target}.{} IS E'{}'",
+        super::column_edit::ident(name), comment.replace('\\', "\\\\").replace('\'', "''"))
 }
 
 fn with_precision(base: &str, precision: Option<u8>) -> String {
@@ -1023,7 +1029,7 @@ fn mysql_column_flags(raw:&str,changes:&[ColumnFlags])->AppResult<Vec<String>> {
  let mut result=Vec::new();
  for change in changes {
   let col=create.columns.iter_mut().find(|c|c.name.value==change.name).ok_or_else(||fail("列不存在".into()))?;
-  if let Some(name)=&change.new_name {if name.trim().is_empty()||name.contains('\0'){return Err(fail("字段名无效".into()));}col.name=sqlparser::ast::Ident::with_quote('`',name);}
+  if let Some(name)=&change.new_name {super::column_edit::validate_column_name(Engine::Mysql,name)?;col.name=sqlparser::ast::Ident::with_quote('`',name);}
   if let Some(ty)=&change.data_type {
    let p=Parser::parse_sql(&MySqlDialect{},&format!("CREATE TABLE x (c {ty})")).map_err(|e|fail(e.to_string()))?;
    if p.len()!=1{return Err(fail("类型包含额外语句".into()));}
@@ -1032,14 +1038,32 @@ fn mysql_column_flags(raw:&str,changes:&[ColumnFlags])->AppResult<Vec<String>> {
   }
   if let Some(comment)=&change.comment{col.options.retain(|o|!matches!(o.option,ColumnOption::Comment(_)));col.options.push(sqlparser::ast::ColumnOptionDef{name:None,option:ColumnOption::Comment(comment.clone())});}
   let parse_option=|text:&str|->AppResult<sqlparser::ast::ColumnOptionDef>{let p=Parser::parse_sql(&MySqlDialect{},&format!("CREATE TABLE x (c INT {text})")).map_err(|e|fail(e.to_string()))?;let Statement::CreateTable(t)=&p[0] else{return Err(fail("属性无效".into()));};if p.len()!=1||t.columns.len()!=1||t.columns[0].options.len()!=1{return Err(fail("属性包含额外内容".into()));}Ok(t.columns[0].options[0].clone())};
+  // 调整时间精度时同步保留 CURRENT_TIMESTAMP 的精度，避免旧默认值使 ALTER 失败。
+  if change.data_type.is_some() {
+   let ty=col.data_type.to_string();
+   if let Ok(timestamp)=super::column_edit::current_timestamp(Engine::Mysql,&ty) {
+    for option in &mut col.options {
+     let replacement=match &option.option {
+      ColumnOption::Default(expr) if change.default_mode.is_none() && expr.to_string().to_ascii_uppercase().starts_with("CURRENT_TIMESTAMP")=>Some(format!("DEFAULT {timestamp}")),
+      ColumnOption::OnUpdate(expr) if change.on_update.is_none() && expr.to_string().to_ascii_uppercase().starts_with("CURRENT_TIMESTAMP")=>Some(format!("ON UPDATE {timestamp}")),
+      _=>None,
+     };
+     if let Some(text)=replacement {*option=parse_option(&text)?;}
+    }
+   }
+  }
+  if !change.nullable && change.default_mode.as_deref()==Some("null"){return Err(fail("不可空字段不能使用 NULL 默认值".into()));}
   if let Some(mode)=&change.default_mode {
    col.options.retain(|o|!matches!(o.option,ColumnOption::Default(_)));
-   let text=match mode.as_str(){"none"=>None,"null"=>Some("DEFAULT NULL".to_string()),"literal"=>Some(format!("DEFAULT '{}'",escape(Engine::Mysql,change.default_value.as_deref().unwrap_or("")))),"timestamp"=>Some("DEFAULT CURRENT_TIMESTAMP".into()),_=>return Err(fail("默认值模式无效".into()))};
+   let text=match mode.as_str(){"none"=>None,"null"=>Some("DEFAULT NULL".to_string()),"literal"=>Some(format!("DEFAULT '{}'",escape(Engine::Mysql,change.default_value.as_deref().unwrap_or("")))),"timestamp"=>Some(format!("DEFAULT {}",super::column_edit::current_timestamp(Engine::Mysql,&col.data_type.to_string())?)),_=>return Err(fail("默认值模式无效".into()))};
    if let Some(text)=text{col.options.push(parse_option(&text)?);}
   }
-  if let Some(value)=&change.on_update {col.options.retain(|o|!matches!(o.option,ColumnOption::OnUpdate(_)));if !value.is_empty(){if value!="CURRENT_TIMESTAMP"{return Err(fail("ON UPDATE 值无效".into()));}col.options.push(parse_option("ON UPDATE CURRENT_TIMESTAMP")?);}}
+  if let Some(value)=&change.on_update {col.options.retain(|o|!matches!(o.option,ColumnOption::OnUpdate(_)));if !value.is_empty(){if value!="CURRENT_TIMESTAMP"{return Err(fail("ON UPDATE 值无效".into()));}col.options.push(parse_option(&format!("ON UPDATE {}",super::column_edit::current_timestamp(Engine::Mysql,&col.data_type.to_string())?))?);}}
   if let Some(enabled)=change.auto_increment {col.options.retain(|o|!matches!(&o.option,ColumnOption::DialectSpecific(tokens) if tokens.iter().any(|t|t.to_string().eq_ignore_ascii_case("AUTO_INCREMENT"))));if enabled{col.options.push(parse_option("AUTO_INCREMENT")?);}}
-  if let Some(unsigned)=change.unsigned {
+  if let Some(unsigned)=change.unsigned.filter(|enabled| *enabled || {
+   let ty=col.data_type.to_string();let first=ty.split(|c:char|!c.is_ascii_alphabetic()).next().unwrap_or("").to_ascii_uppercase();
+   ["TINYINT","SMALLINT","MEDIUMINT","INT","INTEGER","BIGINT","DECIMAL","NUMERIC","FLOAT","DOUBLE","REAL"].contains(&first.as_str())
+  }) {
    let ty=col.data_type.to_string();let first=ty.split(|c:char|!c.is_ascii_alphabetic()).next().unwrap_or("").to_ascii_uppercase();
    if !["TINYINT","SMALLINT","MEDIUMINT","INT","INTEGER","BIGINT","DECIMAL","NUMERIC","FLOAT","DOUBLE","REAL"].contains(&first.as_str()){return Err(fail("只有 MySQL 数值列支持 UNSIGNED".into()));}
    if ty.to_ascii_uppercase().contains("ZEROFILL")&&!unsigned{return Err(fail("ZEROFILL 列需先在列编辑中移除 ZEROFILL".into()));}
@@ -1051,9 +1075,15 @@ fn mysql_column_flags(raw:&str,changes:&[ColumnFlags])->AppResult<Vec<String>> {
   col.options.retain(|o|!matches!(o.option,ColumnOption::Null|ColumnOption::NotNull));
   col.options.push(sqlparser::ast::ColumnOptionDef{name:None,option:if change.nullable{ColumnOption::Null}else{ColumnOption::NotNull}});
   if change.auto_increment==Some(true)&&change.nullable{return Err(fail("自增列不能可空".into()));}
-  let rendered=col.to_string();let check=Parser::parse_sql(&MySqlDialect{},&format!("CREATE TABLE x ({rendered})")).map_err(|e|fail(e.to_string()))?;
-  if let Statement::CreateTable(t)=&check[0]{if t.columns.len()!=1||t.columns[0].to_string()!=rendered{return Err(fail("列定义含无法安全往返保留的转义内容，请通过 SQL 修改".into()));}}
-  result.push(if change.new_name.as_ref().is_some_and(|n|n!=&change.name){format!("CHANGE COLUMN `{}` {col}",change.name.replace('`',"``"))}else{format!("MODIFY COLUMN {col}")});
+  // sqlparser 的 COMMENT Display 不转义引号/反斜杠；单独序列化并验证语义往返。
+  let comments=col.options.iter().filter_map(|o|if let ColumnOption::Comment(text)=&o.option{Some((o.clone(),text.clone()))}else{None}).collect::<Vec<_>>();
+  col.options.retain(|o|!matches!(o.option,ColumnOption::Comment(_)));
+  let mut rendered=col.to_string();
+  for (option,text) in comments {rendered.push_str(&format!(" COMMENT '{}'",escape(Engine::Mysql,&text)));col.options.push(option);}
+  let check=Parser::parse_sql(&MySqlDialect{},&format!("CREATE TABLE x ({rendered})")).map_err(|e|fail(e.to_string()))?;
+  if check.len()!=1{return Err(fail("列定义包含额外语句".into()));}
+  if let Statement::CreateTable(t)=&check[0]{if t.columns.len()!=1||t.columns[0]!=*col{return Err(fail("列定义含无法安全往返保留的转义内容，请通过 SQL 修改".into()));}}
+  result.push(if change.new_name.as_ref().is_some_and(|n|n!=&change.name){format!("CHANGE COLUMN `{}` {rendered}",change.name.replace('`',"``"))}else{format!("MODIFY COLUMN {rendered}")});
  }
  Ok(result)
 }
@@ -1070,14 +1100,26 @@ pub async fn preview(
 
     match spec {
         DdlSpec::CreateTableDraft {draft} => super::create_table::render(adapter.engine(),database,draft),
+        DdlSpec::AddColumnDraft {schema,table,column,key,position} => {
+            let meta=adapter.introspect_table(database,schema.as_deref(),table).await?;
+            super::add_column::render(adapter.engine(),&table_ref(adapter,database,schema.as_deref(),table),&meta,column,*key,position.as_ref())
+        },
         DdlSpec::ColumnFlags {schema,table,changes} => {
             if changes.is_empty(){return Err(AppError::InvalidInput("没有列属性修改".into()));}
             let meta=adapter.introspect_table(database,schema.as_deref(),table).await?;
             if meta.kind!=TableKind::Table{return Err(AppError::InvalidInput("视图不支持列属性修改".into()));}
+            super::column_edit::validate_changes(&meta, changes)?;
             for c in changes {let column=meta.columns.iter().find(|v|v.name==c.name).ok_or_else(||AppError::InvalidInput("列不存在".into()))?;if c.nullable&&!column.nullable&&(column.auto_increment||meta.primary_key.contains(&c.name)){return Err(AppError::InvalidInput("主键或自增列不能设为可空".into()));}}
             let target=table_ref(adapter,database,schema.as_deref(),table);
             match adapter.engine(){
-                Engine::Mysql=>Ok(vec![format!("ALTER TABLE {} {}",target,mysql_column_flags(meta.raw_ddl.as_deref().ok_or_else(||AppError::InvalidInput("缺少原始建表定义".into()))?,changes)?.join(", "))]),
+                Engine::Mysql=>{
+                    // SHOW CREATE 与 SQL 解析器对反斜杠的解释可能不同，注释以元数据原文为准。
+                    let changes=changes.iter().cloned().map(|mut change|{
+                        if change.comment.is_none(){change.comment=meta.columns.iter().find(|c|c.name==change.name).and_then(|c|c.comment.clone());}
+                        change
+                    }).collect::<Vec<_>>();
+                    Ok(vec![format!("ALTER TABLE {} {}",target,mysql_column_flags(meta.raw_ddl.as_deref().ok_or_else(||AppError::InvalidInput("缺少原始建表定义".into()))?,&changes)?.join(", "))])
+                },
                 Engine::Postgres=>super::column_edit::postgres_columns(adapter,&target,&meta,changes),
                 _=>Err(AppError::InvalidInput("该引擎暂不支持直接勾选修改列属性".into()))
             }
@@ -1105,6 +1147,10 @@ pub async fn preview(
             column,
             position,
         } => {
+            super::column_edit::validate_column_name(adapter.engine(), &column.name)?;
+            if adapter.engine() == Engine::Sqlite && column.comment.as_ref().is_some_and(|v| !v.is_empty()) {
+                return Err(AppError::InvalidInput("SQLite 不支持列注释元数据".into()));
+            }
             if adapter.engine() == Engine::Sqlite
                 && !column.nullable
                 && column
@@ -1129,7 +1175,13 @@ pub async fn preview(
                     statement.push_str(&position_clause(adapter, position));
                 }
             }
-            Ok(vec![statement])
+            let mut statements = vec![statement];
+            if adapter.engine() == Engine::Postgres {
+                if let Some(comment) = column.comment.as_ref().filter(|v| !v.is_empty()) {
+                    statements.push(postgres_column_comment(&target, &column.name, comment));
+                }
+            }
+            Ok(statements)
         }
         DdlSpec::ModifyColumn {
             schema,
@@ -1426,7 +1478,7 @@ pub async fn apply(
     let adapter=state.connected(session_id).await?.adapter.clone();
     if adapter.engine()==Engine::Sqlite && matches!(spec,DdlSpec::ColumnFlags{..}|DdlSpec::MoveColumn{..}|DdlSpec::DropColumn{..}) { return adapter.sqlite_schema_edit(database,spec,true).await; }
     let statements = preview(state, session_id, database, spec).await?;
-    if (adapter.engine()==Engine::Postgres && matches!(spec,DdlSpec::ColumnFlags{..})) || (adapter.engine()!=Engine::Mysql && matches!(spec,DdlSpec::CreateTableDraft{..})) {
+    if (adapter.engine()==Engine::Postgres && matches!(spec,DdlSpec::ColumnFlags{..}|DdlSpec::AddColumn{..})) || (adapter.engine()!=Engine::Mysql && matches!(spec,DdlSpec::CreateTableDraft{..}|DdlSpec::AddColumnDraft{..})) {
         let items=statements.iter().map(|sql|crate::adapters::SqlParams{sql:sql.clone(),params:vec![]}).collect::<Vec<_>>();
         adapter.execute_transaction(database,&items).await?;return Ok(statements);
     }
@@ -1612,6 +1664,88 @@ mod type_tests {
 
 #[cfg(test)] mod inline_column_tests {
  use super::*;
+ async fn check_added_comment(engine:Engine) {
+  let state=AppState::initialize().await.unwrap();
+  let sessions=state.local.list_sessions().await.unwrap();
+  let session=sessions.iter().find(|s|s.engine==engine&&s.host.as_deref()==Some("127.0.0.1")&&!s.read_only).expect("需要可写的本机测试会话");
+  crate::services::session::connect(&state,&session.id).await.unwrap();
+  let adapter=state.connected(&session.id).await.unwrap().adapter.clone();
+  let namespace=format!("dw_column_qa_{}",Uuid::new_v4().simple());
+  let database=if engine==Engine::Mysql {namespace.clone()} else {session.database.clone().filter(|s|!s.is_empty()).unwrap_or_else(||"postgres".into())};
+  let schema=if engine==Engine::Postgres {Some(namespace.clone())}else{None};
+  let create=if engine==Engine::Mysql {format!("CREATE DATABASE `{namespace}` CHARACTER SET utf8mb4")}else{format!("CREATE SCHEMA \"{namespace}\"")};
+  adapter.execute_affected(if engine==Engine::Mysql {"mysql"}else{&database},&create).await.unwrap();
+  println!("临时测试命名空间：{namespace}");
+  let outcome:AppResult<()>=async {
+   let target=table_ref(adapter.as_ref(),&database,schema.as_deref(),"items");
+   adapter.execute_affected(&database,&format!("CREATE TABLE {target} (id INTEGER)")).await?;
+   let column:ColumnSpec=serde_json::from_value(serde_json::json!({"name":"indexProgress","dataType":"varchar","length":64,"nullable":true,"primaryKey":false,"autoIncrement":false,"defaultValue":"0","comment":"进度 C:\\it's"}))?;
+   let spec=DdlSpec::AddColumn{schema:schema.clone(),table:"items".into(),column,position:None};
+   let sql=preview(&state,&session.id,&database,&spec).await?;
+   assert_eq!(sql.len(),if engine==Engine::Postgres{2}else{1});
+   apply(&state,&session.id,&database,&spec,true).await?;
+   let before=adapter.introspect_table(&database,schema.as_deref(),"items").await?;
+   if before.columns.iter().find(|c|c.name=="indexProgress").and_then(|c|c.comment.as_deref())!=Some("进度 C:\\it's"){return Err(AppError::Internal("添加列后注释未完整保留".into()));}
+   let rename=DdlSpec::ColumnFlags{schema:schema.clone(),table:"items".into(),changes:vec![ColumnFlags{name:"indexProgress".into(),new_name:Some("index_progress".into()),nullable:true,..Default::default()}]};
+   apply(&state,&session.id,&database,&rename,true).await?;
+   let meta=adapter.introspect_table(&database,schema.as_deref(),"items").await?;
+   let renamed=meta.columns.iter().find(|c|c.name=="index_progress").ok_or_else(||AppError::Internal("列名未更新".into()))?;
+   if renamed.comment.as_deref()!=Some("进度 C:\\it's")||renamed.default_value.is_none(){return Err(AppError::Internal("改名后注释或默认值未完整保留".into()));}
+   for (name,ty,mode,value,unsigned,on_update,key) in if engine==Engine::Mysql {
+    vec![("amount","decimal(18,6)","literal","12.345678",true,"",crate::services::add_column::ColumnKey::Index),
+         ("changed","datetime(3)","timestamp","",false,"CURRENT_TIMESTAMP",crate::services::add_column::ColumnKey::None),
+         ("state","enum('Active','Paused')","literal","Active",false,"",crate::services::add_column::ColumnKey::None),
+         ("empty_text","varchar(30)","literal","",false,"",crate::services::add_column::ColumnKey::None),
+         ("auto_id","bigint","none","",true,"",crate::services::add_column::ColumnKey::Primary)]
+   } else {vec![("amount","numeric(18,6)","literal","12.345678",false,"",crate::services::add_column::ColumnKey::Index),
+               ("empty_text","varchar(30)","literal","",false,"",crate::services::add_column::ColumnKey::None),
+               ("auto_id","bigint","none","",false,"",crate::services::add_column::ColumnKey::Primary)]} {
+    let column=crate::services::create_table::DraftColumn{name:name.into(),data_type:ty.into(),nullable:name!="auto_id",primary_key:key==crate::services::add_column::ColumnKey::Primary,auto_increment:name=="auto_id",unsigned,default_mode:mode.into(),default_value:value.into(),comment:"全属性 C:\\it's".into(),on_update:on_update.into()};
+    let spec=DdlSpec::AddColumnDraft{schema:schema.clone(),table:"items".into(),column,key,position:None};
+    let previewed=preview(&state,&session.id,&database,&spec).await?;
+    let applied=apply(&state,&session.id,&database,&spec,true).await?;
+    if previewed!=applied{return Err(AppError::Internal("新增列预览与执行不一致".into()));}
+    let meta=adapter.introspect_table(&database,schema.as_deref(),"items").await?;
+    let c=meta.columns.iter().find(|c|c.name==name).ok_or_else(||AppError::Internal("新增列丢失".into()))?;
+    if c.comment.as_deref()!=Some("全属性 C:\\it's"){return Err(AppError::Internal("新增属性注释未保留".into()));}
+    if name=="amount"&&(!c.raw_type.contains("18,6")||c.unsigned!=unsigned){return Err(AppError::Internal("精度或无符号未保存".into()));}
+    if name=="empty_text"&&c.default_value.as_deref()!=Some(""){return Err(AppError::Internal(format!("空字符串默认值未保存：{:?}",c.default_value)));}
+    if name=="auto_id"&&!c.auto_increment{return Err(AppError::Internal("自动增长未保存".into()));}
+   }
+   Ok(())
+  }.await;
+  let drop=if engine==Engine::Mysql{format!("DROP DATABASE `{namespace}`")}else{format!("DROP SCHEMA \"{namespace}\" CASCADE")};
+  adapter.execute_affected(if engine==Engine::Mysql{"mysql"}else{&database},&drop).await.unwrap();
+  state.disconnect(&session.id).await;
+  outcome.unwrap();
+ }
+ #[tokio::test] #[ignore="需要本机 MySQL；仅操作随机测试库并清理"]
+ async fn local_mysql_added_comment_and_rename(){check_added_comment(Engine::Mysql).await;}
+ #[tokio::test] #[ignore="需要本机 PostgreSQL；仅操作随机测试 schema 并清理"]
+ async fn local_postgres_added_comment_and_rename(){check_added_comment(Engine::Postgres).await;}
+ #[test] fn rename_rejects_trailing_space_and_preserves_definition(){
+  let raw="CREATE TABLE t (`indexProgress` tinyint NULL DEFAULT 0 COMMENT '索引进度')";
+  let mut c=ColumnFlags{name:"indexProgress".into(),new_name:Some("index_progress ".into()),nullable:true,..Default::default()};
+  assert!(mysql_column_flags(raw,&[c.clone()]).unwrap_err().to_string().contains("末尾空格"));
+  c.new_name=Some("index_progress".into());
+  let sql=mysql_column_flags(raw,&[c.clone()]).unwrap().join(",");
+  assert!(sql.contains("CHANGE COLUMN `indexProgress` `index_progress` TINYINT"));
+  assert!(sql.contains("DEFAULT 0"));assert!(sql.contains("COMMENT '索引进度'"));
+  c.new_name=Some("列".repeat(65));assert!(mysql_column_flags(raw,&[c.clone()]).unwrap_err().to_string().contains("64"));
+  c.new_name=Some("列".repeat(64));assert!(mysql_column_flags(raw,&[c]).is_ok());
+ }
+ #[test] fn postgres_added_comment_quotes_identifier_and_literal(){
+  let sql=postgres_column_comment("\"public\".\"items\"", "note\"field", "说明 C:\\it's\n第二行");
+  assert_eq!(sql,"COMMENT ON COLUMN \"public\".\"items\".\"note\"\"field\" IS E'说明 C:\\\\it''s\n第二行'");
+  assert_eq!(sqlparser::parser::Parser::parse_sql(&sqlparser::dialect::PostgreSqlDialect{},&sql).unwrap().len(),1);
+ }
+ #[test] fn edit_precision_and_clearing_unsigned(){
+  let raw="CREATE TABLE t(n int unsigned NULL, ts datetime(3) NULL)";
+  let changes=vec![ColumnFlags{name:"n".into(),data_type:Some("enum('Active','Paused')".into()),unsigned:Some(false),nullable:true,..Default::default()},ColumnFlags{name:"ts".into(),nullable:true,data_type:Some("datetime(3)".into()),default_mode:Some("timestamp".into()),on_update:Some("CURRENT_TIMESTAMP".into()),..Default::default()}];
+  let precision=mysql_column_flags("CREATE TABLE t(ts datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3))",&[ColumnFlags{name:"ts".into(),data_type:Some("datetime(6)".into()),nullable:true,..Default::default()}]).unwrap().join(",");
+  assert!(precision.contains("DEFAULT CURRENT_TIMESTAMP(6)"));assert!(precision.contains("ON UPDATE CURRENT_TIMESTAMP(6)"));
+  let sql=mysql_column_flags(raw,&changes).unwrap().join(",");assert!(sql.contains("'Active'"));assert!(!sql.contains("UNSIGNED"));assert!(sql.contains("DEFAULT CURRENT_TIMESTAMP(3)"));assert!(sql.contains("ON UPDATE CURRENT_TIMESTAMP(3)"));
+ }
  #[test] fn inline_edits(){
  let raw="CREATE TABLE t (`n` int NULL DEFAULT 1 COMMENT 'old', `ts` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)";
  let c=ColumnFlags{name:"n".into(),new_name:Some("count_new".into()),data_type:Some("bigint".into()),nullable:false,unsigned:Some(true),comment:Some("new".into()),default_mode:Some("literal".into()),default_value:Some("12".into()),..Default::default()};

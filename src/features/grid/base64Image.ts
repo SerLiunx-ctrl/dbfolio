@@ -17,7 +17,7 @@ function mimeOf(bytes: string): string | null {
 }
 function payload(text: string) {
   const trimmed = text.trimStart();
-  if (!trimmed.toLowerCase().startsWith('data:')) return trimmed;
+  if (!trimmed.slice(0,5).toLowerCase().startsWith('data:')) return trimmed;
   const header = /^data:image\/[a-z0-9.+-]+(?:;[a-z0-9_-]+=[^;,]*)*;base64,/i.exec(trimmed);
   return header ? trimmed.slice(header[0].length) : null;
 }
@@ -25,7 +25,10 @@ export function isImageCandidate(value: DbValue | undefined): boolean {
   if (!value || !['text','trunc'].includes(value[0]) || typeof value[1] !== 'string') return false;
   const head = payload(value[1].slice(0,256));
   if (!head) return false;
-  try { return !!mimeOf(atob(head.replace(/\s/g,'').replace(/-/g,'+').replace(/_/g,'/').slice(0,32))); }
+  const prefix = head.replace(/\s/g,'').replace(/-/g,'+').replace(/_/g,'/').slice(0,32);
+  // 先比对文件签名的 Base64 前缀，避免为 UUID、日期、JSON 和日志反复解码/抛异常。
+  if (!/^(iVBORw0KGgo|\/9j\/|R0lGOD|UklGR|Qk)/.test(prefix)) return false;
+  try { return !!mimeOf(atob(prefix)); }
   catch { return false; }
 }
 export function base64Image(text: string): Base64Image | null {

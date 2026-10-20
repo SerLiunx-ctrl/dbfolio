@@ -54,15 +54,20 @@ pub struct QueryOutcome {
     pub columns: Vec<ColumnInfo>,
     pub rows: Vec<Vec<DbValue>>,
     pub affected: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_statements: Option<usize>,
 }
 
 /// 查询取消上下文：适配器执行查询时把数据库连接 id 写入，供取消命令使用。
 #[derive(Debug, Default, Clone)]
 pub struct QueryContext {
     pub conn_id: std::sync::Arc<Mutex<Option<u64>>>,
+    cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl QueryContext {
+    pub fn cancel(&self) { self.cancelled.store(true, std::sync::atomic::Ordering::Relaxed); }
+    pub fn is_cancelled(&self) -> bool { self.cancelled.load(std::sync::atomic::Ordering::Relaxed) }
     pub fn new() -> Self {
         Self::default()
     }

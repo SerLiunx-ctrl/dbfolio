@@ -1,10 +1,12 @@
 pub mod ddl;
 pub mod create_table;
+pub mod add_column;
 pub mod column_edit;
 #[cfg(test)] mod column_edit_tests;
 pub mod explain;
 pub mod grid;
 pub mod query;
+pub mod query_script;
 pub mod session;
 pub mod sync;
 pub mod transfer;

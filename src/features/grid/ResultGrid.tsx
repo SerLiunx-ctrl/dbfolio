@@ -12,6 +12,8 @@ import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, 
 import { CopyRegular, ZoomInRegular } from "@fluentui/react-icons";
 import { ValueEditor } from "./ValueEditor";
 import { ImageCell } from './ImageCell';
+import { isImageCandidate } from './base64Image';
+import { cellPreview } from './cellPreview';
 import type { ColDef, GridApi } from "ag-grid-community";
 import { api } from "../../ipc";
 import { ContextMenuPortal, ContextMenuSurface } from "../../app/ContextMenuPortal";
@@ -104,8 +106,12 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
         // 服务端排序时禁用前端排序（返回 0 保持数据原顺序）
         comparator: onSortChange ? () => 0 : undefined,
         valueGetter: (params) => params.data?.cells[index],
-        valueFormatter: (params) => formatDbValue(params.value as DbValue),
-        cellRenderer: (params: {value?:DbValue}) => <ImageCell value={params.value} text={formatDbValue(params.value as DbValue)} onOpen={()=>{if(params.value)setDetail({name:column.name,value:params.value});}}/>,
+        valueFormatter: (params) => cellPreview(formatDbValue(params.value as DbValue)),
+        cellRendererSelector: (params) => {
+          const value = params.value as DbValue | undefined;
+          if (!isImageCandidate(value)) return undefined;
+          return { component: ImageCell, params: { value, text: formatDbValue(value), onOpen: () => { if (value) setDetail({ name: column.name, value }); } } };
+        },
         cellStyle: (params) => valueCellStyle(column.rawType, params.value as DbValue),
       })),
     [columns, onSortChange],

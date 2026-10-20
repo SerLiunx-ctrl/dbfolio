@@ -156,7 +156,7 @@ fn tokens(sql: &str) -> AppResult<Vec<Token>> {
         out.pop();
     }
     if out.iter().any(|t| t.is(";")) {
-        return Err(denied("请逐条执行 SQL，不能通过多语句切换数据库"));
+        return Err(denied("此入口只接受一条 SQL；多语句请在查询页选中完整脚本执行，数据库范围仍会逐条检查"));
     }
     Ok(out)
 }

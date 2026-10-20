@@ -73,6 +73,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::config_transfer::config_export,
+            commands::config_transfer::config_read,
+            commands::config_transfer::config_preview,
+            commands::config_transfer::config_import,
             sqlite_drop::sqlite_file_inspect,
             commands::mysql_tools::sql_import_preview,
             commands::mysql_tools::sql_import_execute,

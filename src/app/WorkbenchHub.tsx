@@ -9,8 +9,9 @@ import { useSessionStore } from "../stores/useSessionStore";
 import { useTabStore } from "../stores/useTabStore";
 import { useNotify } from "./toast";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { version } from "../../package.json";
 
-export const APP_RELEASE = "1.0.0-alpha.9";
+export const APP_RELEASE = version;
 export function WorkbenchHub() {
   const notify = useNotify(), focus = useFocusMode(s => s.active), entries = useLocalUndo(s => s.entries), undoBusy = useLocalUndo(s => s.busy);
   const presets = useLayoutPresets(s => s.presets), closed = useTabStore(s => s.recentlyClosed);

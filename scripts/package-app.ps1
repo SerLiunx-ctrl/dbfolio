@@ -66,6 +66,7 @@ DBFolio $version ($Profile) - Windows x64 便携版
 需要 Microsoft Edge WebView2 Runtime；便携包不附带该运行时。
 便携版免安装，但会话、首选项和历史仍位于 %APPDATA%\data-workbench；
 密码仍由 Windows 凭据管理器保存，不能通过复制程序目录迁移。
+会话及支持的本地配置可通过「首选项 → 配置迁移」导出/导入，密码需重新填写。
 更新时先退出 DBFolio，再解压到新目录并整体替换程序文件，勿混用不同版本的 web 目录。
 当前尚未提供自动在线更新。此包未做代码签名。
 "@ | Set-Content -LiteralPath (Join-Path $staging '使用说明.txt') -Encoding UTF8

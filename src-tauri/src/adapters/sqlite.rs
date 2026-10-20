@@ -129,6 +129,7 @@ fn rows_to_outcome(rows: Vec<SqliteRow>, fallback: Vec<ColumnInfo>) -> QueryOutc
         columns,
         rows: data,
         affected: None,
+        ..Default::default()
     }
 }
 

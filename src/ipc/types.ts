@@ -294,6 +294,7 @@ export interface QueryOutcome {
   columns: ColumnInfo[];
   rows: DbValue[][];
   affected: number | null;
+  scriptStatements?: number;
 }
 
 export interface SortSpec {
@@ -558,6 +559,7 @@ export type DdlSpec =
   | {type:"tableOptions";schema?:string|null;table:string;options:{name?:string;comment?:string;engine?:string;charset?:string;collation?:string;autoIncrement?:string;rowFormat?:string}}
   | { type: "createTable"; schema?: string | null; table: string; columns: ColumnSpec[] }
   | { type: "dropTable"; schema?: string | null; table: string }
+  | {type:"addColumnDraft";schema?:string|null;table:string;column:DraftColumn;key:"none"|"primary"|"index"|"unique";position?:ColumnPosition|null}
   | {
       type: "addColumn";
       schema?: string | null;

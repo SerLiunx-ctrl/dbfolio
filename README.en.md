@@ -92,11 +92,14 @@ Choose **New Table** from a database's context menu to open a dedicated **New Ta
 
 - The SQL editor has highlighting, formatting, table/column completion, current-statement or selection execution, results, history, and execution plans.
 - Open and save SQL files and keep local drafts. MySQL, PostgreSQL, and SQLite query tabs support manual transactions for supported single statements and DML.
+- Select multiple MySQL statements to execute them sequentially on an isolated connection. Fixed SQL strings and current-database metadata `IF(EXISTS(...), SQL, SQL)` migration patterns are supported with all branches checked before execution. Errors stop remaining statements; completed writes/DDL are not automatically rolled back. Script results show only the bounded final result and cannot be paged or re-executed for export. Arbitrary expressions, server settings and transaction control are unsupported.
 - Database overviews list tables and views with estimated rows, sizes, engines, and comments. Table data supports pagination, sorting, and combined filters. The maximum page size is configurable from 1 to 5,000 rows (default 200); suggested filter values come only from **currently loaded rows**.
 - Add, change, or delete grid rows, review the before/after values and SQL, then submit selected staged rows. Results that cannot be located reliably, such as those without a suitable primary key, remain read-only.
 - Inspect table information, columns, indexes, foreign keys, and DDL. MySQL, PostgreSQL, and SQLite share double-click inline editing and Save/Discard behavior for column names, types, length/set, nullability, and defaults. Comments, auto-increment, unsigned values, and `ON UPDATE` follow engine capabilities. SQLite uses transactional table rebuilding when needed, preserving dependencies and rolling back on failure. MySQL table properties offer server-supported engine, charset, and collation choices.
 - Recognizable Base64 bitmap strings may show a thumbnail; open the full image or source text, switch to native size, or export the original bytes. Truncated values are fetched again only within a bounded primary-key-based table-data flow. Unrecognized, unreadable, or oversized values remain text. See [image-preview limits](docs/verification/base64-images-alpha5.md).
 - Save a snapshot of the current result for comparison with a later result. Configure business relationships between fields to jump to related records.
+
+- Adding a column uses the same inline draft and Save/Discard flow, including length/precision/set values, defaults, comments, engine-supported unsigned/identity/ON UPDATE attributes, and an optional regular or unique index. SQLite ADD COLUMN excludes primary keys, auto-increment, and dynamic timestamp defaults.
 
 ### Data and schema synchronization
 
@@ -235,7 +238,7 @@ For a manual portable update, exit DBFolio and replace the application directory
 | Reversal SQL material from data sync | `%APPDATA%\data-workbench\sync-backups\<task-id>` |
 | Database/SSH passwords and private-key passphrases | Windows Credential Manager |
 
-- No client account or cloud sync is required. Moving to another computer requires handling both the local database and system credentials.
+- No client account or cloud sync is required. Use Preferences → Configuration migration to move supported sessions and settings. Passwords are excluded and must be entered again.
 - The `data-workbench` directory and credential service names remain for compatibility after the DBFolio rename.
 - Client-side read-only mode and allowlists do not replace server-side least-privilege access.
 - AI prompts may send selected SQL, relevant schemas, errors, or business text to the service you configure. Choose that service and the submitted content accordingly.
@@ -258,6 +261,14 @@ docs/                 Design, roadmap, screenshots, and verification records
 ```
 
 The [design document](docs/design.md) records architecture, decisions, and implementation status. Historical plans may appear there, so use its implementation-status section and current code to judge available behavior. The [roadmap](docs/roadmap.md) lists priorities, acceptance criteria, and completion markers; unchecked items are plans, not current features.
+
+### Configuration migration
+
+Open **File → Preferences → Configuration migration** (currently labeled “配置迁移” in the Chinese UI). Select sessions/groups and export preferences, favorite SQL, filter/analysis plans, and business relations to a versioned JSON file. The same workflow covers all five database engines.
+
+Import previews support creating copies, merging missing items while keeping existing local settings, or skipping duplicate sessions and their related plans. Selected preferences overwrite the corresponding local preferences. Close workspace tabs, finish tasks, and disconnect sessions before applying; the interface reloads after a successful import.
+
+Passwords, SSH passphrases, AI keys, certificate contents, database files, and business rows are excluded. SQLite and certificate/key paths must be checked on the destination computer. SQL text, filter values, and analysis parameters remain plain text; review them before sharing. Files are limited to 16 MiB and format version 1. See [R05 verification](docs/verification/r05.md) for the supported scope.
 
 <a id="contributing"></a>
 ## Issues and contributions

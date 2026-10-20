@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DbValue } from '../../ipc/types';
 import { base64Image, isImageCandidate, THUMBNAIL_TEXT_LIMIT } from './base64Image';
 import './image-preview.css';
+import { cellPreview } from './cellPreview';
 import { useImageSource } from './useImageSource';
 
 // 可见单元格才读取，所有网格共用最多两个读取槽；离开视口可撤销尚未开始的任务。
@@ -31,11 +32,11 @@ export function ImageCell({value,text,loadValue,onOpen}:{value?:DbValue;text:str
     return()=>{alive=false;cancel();observer.disconnect();};
   },[value,candidate,truncated,canLoad]);
   const source=truncated?(loaded?.source===value?loaded.value:null):value;
-  const image=useMemo(()=>source?.[0]==='text'?base64Image(String(source[1])):null,[source]);
+  const image=useMemo(()=>candidate&&source?.[0]==='text'?base64Image(String(source[1])):null,[source,candidate]);
   const preview=useImageSource(image,96);
   const showImage=image&&preview?.src&&!preview.failed&&failed!==image.src;
   const canOpen=image&&failed!==image.src&&!preview?.failed||(candidate&&truncated&&canLoad);
   return <span ref={ref}>{canOpen?<button type="button" className="dw-image-cell" title="查看图片；原始文本可在详情中查看" aria-label="查看图片" onDoubleClick={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onOpen();}}>
     {showImage?<img src={preview.src} alt="图片缩略图" onError={()=>setFailed(image.src)}/>:null}<span>{showImage?'查看图片':'图片 · 点击查看'}</span>
-  </button>:text}</span>;
+  </button>:cellPreview(text)}</span>;
 }

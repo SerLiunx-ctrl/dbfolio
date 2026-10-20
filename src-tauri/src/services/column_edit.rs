@@ -2,7 +2,7 @@ use super::ddl::ColumnFlags;
 use crate::{
     adapters::DbAdapter,
     error::{AppError, AppResult},
-    meta::TableMeta,
+    meta::{Engine, TableMeta},
 };
 use sqlparser::{
     ast::{ColumnOption, ColumnOptionDef, CreateTable, Statement},
@@ -12,6 +12,31 @@ use sqlparser::{
 
 pub fn invalid(message: impl Into<String>) -> AppError {
     AppError::InvalidInput(message.into())
+}
+pub fn validate_column_name(engine: Engine, name: &str) -> AppResult<()> {
+    if name.trim().is_empty() || name.contains('\0') {
+        return Err(invalid("字段名不能为空或包含空字符"));
+    }
+    if engine == Engine::Mysql {
+        if name.ends_with(' ') {
+            return Err(invalid("MySQL 字段名不能以空格结尾，请删除末尾空格"));
+        }
+        if name.chars().count() > 64 {
+            return Err(invalid("MySQL 字段名不能超过 64 个字符"));
+        }
+    }
+    Ok(())
+}
+pub fn current_timestamp(engine: Engine, data_type: &str) -> AppResult<String> {
+    if engine != Engine::Mysql { return Ok("CURRENT_TIMESTAMP".into()); }
+    let ty=data_type.trim().to_ascii_lowercase();
+    let (base,args)=ty.split_once('(').map(|(base,args)|(base,args.strip_suffix(')'))).unwrap_or((&ty,None));
+    if !matches!(base.trim(),"datetime"|"timestamp") {return Err(invalid("MySQL CURRENT_TIMESTAMP / ON UPDATE 仅支持 DATETIME 或 TIMESTAMP"));}
+    if let Some(args)=args {
+        let precision=args.trim().parse::<u8>().map_err(|_|invalid("时间精度须为 0～6"))?;
+        if precision>6{return Err(invalid("时间精度须为 0～6"));}
+        Ok(format!("CURRENT_TIMESTAMP({precision})"))
+    }else{Ok("CURRENT_TIMESTAMP".into())}
 }
 pub fn ident(name: &str) -> String {
     format!("\"{}\"", name.replace('"', "\"\""))

@@ -449,8 +449,8 @@ export function QueryWorkspace({ tab, active }: Props) {
   };
 
   const rowCount = result ? result.rows.length : 0;
-  const hasPrev = offset > 0;
-  const hasNext = result !== null && rowCount === pageSize;
+  const hasPrev = !result?.scriptStatements && offset > 0;
+  const hasNext = result !== null && !result.scriptStatements && rowCount === pageSize;
 
   return (
     <div className={styles.root}>
@@ -569,6 +569,7 @@ export function QueryWorkspace({ tab, active }: Props) {
 
       <div className={styles.resultWrap}>
         <div className={styles.resultToolbar}>
+          {result?.scriptStatements && <span title="独立连接顺序执行；显示最后一条 SQL 的结果，已完成写入和 DDL 不会自动回滚">脚本已完成 {result.scriptStatements} 条 · 末条结果最多 {pageSize} 行</span>}
           {result && result.columns.length > 0 && (
             <>
               <span>
@@ -582,7 +583,7 @@ export function QueryWorkspace({ tab, active }: Props) {
           )}
           <div className={styles.spacer} />
           <ResultCompareActions result={result} source={(targetSession?.name??tab.sessionId)+" / "+resultDatabase} scope={`已加载第 ${offset+1}–${offset+rowCount} 行${resultTransaction?" · 事务内快照（不代表已提交）":""}`} disabled={running}/>
-          <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={running||!!resultTransaction||!result?.columns.length} onClick={()=>{if(!result)return;const data=fromSql(result,queryResultScope(result.rows.length,offset,pageSize));const plan=newPlan(tab.sessionId,resultDatabase);plan.query=lastSql;plan.name="查询分析";plan.chart=autoChart(data);openAnalysis(plan,data);}} title="复制当前查询页作为绘图快照；在独立分析页可以另写查询，不影响本页">用此结果绘图</Button>
+          <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={running||!!resultTransaction||!result?.columns.length} onClick={()=>{if(!result)return;const data=fromSql(result,queryResultScope(result.rows.length,offset,pageSize));const plan=newPlan(tab.sessionId,resultDatabase);plan.query=result.scriptStatements?"":lastSql;plan.name="查询分析";plan.chart=autoChart(data);openAnalysis(plan,data);}} title="复制当前查询页作为绘图快照；在独立分析页可以另写查询，不影响本页">用此结果绘图</Button>
           <Button
             appearance="subtle"
             size="small"
@@ -598,7 +599,7 @@ export function QueryWorkspace({ tab, active }: Props) {
             appearance="subtle"
             size="small"
             icon={<ArrowDownloadRegular />}
-            disabled={!!resultTransaction || !!transaction.transaction || !lastSql || !result || result.columns.length === 0}
+            disabled={!!result?.scriptStatements || !!resultTransaction || !!transaction.transaction || !lastSql || !result || result.columns.length === 0}
             onClick={() => setExportOpen(true)}
           >
             导出
@@ -628,7 +629,7 @@ export function QueryWorkspace({ tab, active }: Props) {
               ref={resultGridRef}
               columns={result.columns}
               rows={result.rows}
-              onSortChange={transaction.lost || (!!resultTransaction && resultTransaction!==transaction.transaction?.id) ? undefined : applySort}
+              onSortChange={result.scriptStatements || transaction.lost || (!!resultTransaction && resultTransaction!==transaction.transaction?.id) ? undefined : applySort}
             />
           ) : (
             !running &&

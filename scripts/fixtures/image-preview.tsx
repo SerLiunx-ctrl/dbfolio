@@ -34,7 +34,7 @@ w.__TAURI_INTERNALS__={invoke:async(c:string,a:any)=>{
  if(c==='image_export'){if(w.exportError)throw Error('模拟磁盘写入失败');w.exported=a;return;}
  throw Error(c);
 }};
-const col=(name:string,rawType:string)=>({name,rawType,ordinal:1,nullable:true,autoIncrement:false,unsigned:false});
+const col=(name:string,rawType:string)=>({name,rawType,canonical:rawType==='bigint'?{kind:'int',bits:64}:{kind:'string'},ordinal:1,nullable:true,autoIncrement:false,unsigned:false});
 const columns=[col('id','bigint'),col('image_base64','LONGTEXT')];
 const initial:any[]=[
  [['int',1],['trunc',png.slice(0,1024)+'…']],

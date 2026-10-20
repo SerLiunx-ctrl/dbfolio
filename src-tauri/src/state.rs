@@ -110,7 +110,7 @@ impl AppState {
     pub async fn take_running_conn_id(&self, session_id: &str) -> Option<u64> {
         let mut running = self.running_queries.lock().await;
         match running.remove(session_id) {
-            Some(ctx) => *ctx.conn_id.lock().await,
+            Some(ctx) => { ctx.cancel(); *ctx.conn_id.lock().await },
             None => None,
         }
     }

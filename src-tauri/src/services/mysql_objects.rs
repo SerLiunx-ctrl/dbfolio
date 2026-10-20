@@ -484,6 +484,7 @@ pub async fn call(state: &AppState, req: Call) -> AppResult<CallResult> {
                 .map(|i| crate::adapters::mysql::decode_cell(&row, i))
                 .collect()],
             affected: None,
+            ..Default::default()
         });
     }
     conn.close().await?;

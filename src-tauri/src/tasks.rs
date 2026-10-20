@@ -71,6 +71,7 @@ pub async fn query<T>(adapter: &dyn crate::adapters::DbAdapter, ctx: &crate::ada
             },
             _ = timer.tick(), if !attempted => {
                 if cancelled() {
+                      ctx.cancel();
                     let conn_id = *ctx.conn_id.lock().await;
                     if conn_id.is_none() && adapter.engine() == crate::meta::Engine::Sqlite {
                         attempted = true;

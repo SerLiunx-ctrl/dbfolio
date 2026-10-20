@@ -249,10 +249,11 @@ pub async fn execute(state: &AppState, opts: ExecuteOptions) -> AppResult<QueryO
         return Err(AppError::InvalidInput("SQL 不能为空".into()));
     }
 
-    if matches!(first_keyword(&sql).as_str(), "BEGIN"|"START"|"COMMIT"|"ROLLBACK"|"SAVEPOINT"|"RELEASE"|"END") {
+    let script = super::query_script::plan(connected.adapter.engine(), &sql, &opts.database, record.allowed_databases.as_deref(), record.read_only, opts.force)?;
+    if script.is_none() && matches!(first_keyword(&sql).as_str(), "BEGIN"|"START"|"COMMIT"|"ROLLBACK"|"SAVEPOINT"|"RELEASE"|"END") {
         return Err(AppError::InvalidInput("请使用查询页的开启事务、提交事务、回滚事务按钮；普通查询使用连接池，不能用独立 SQL 管理事务".into()));
     }
-    if first_keyword(&sql)=="SET" {
+    if script.is_none() && first_keyword(&sql)=="SET" {
         if let Ok((_,words))=super::explain::scan_sql(connected.adapter.engine(),&sql) {
             if words.split_whitespace().any(|w|w.eq_ignore_ascii_case("autocommit")||w.eq_ignore_ascii_case("transaction")) {
                 return Err(AppError::InvalidInput("请使用手动事务按钮管理提交模式，普通查询连接不能修改事务设置".into()));
@@ -260,8 +261,8 @@ pub async fn execute(state: &AppState, opts: ExecuteOptions) -> AppResult<QueryO
         }
     }
     let kind = classify(&sql);
-    if record.read_only { super::readonly::sql(connected.adapter.engine(), &sql)?; }
-    if !opts.force {
+    if script.is_none() && record.read_only { super::readonly::sql(connected.adapter.engine(), &sql)?; }
+    if script.is_none() && !opts.force {
         if let Some(reason) = super::sql_risk::danger_reason(connected.adapter.engine(), &sql) {
             return Err(AppError::Dangerous(reason));
         }
@@ -275,6 +276,9 @@ pub async fn execute(state: &AppState, opts: ExecuteOptions) -> AppResult<QueryO
 
     let started = Instant::now();
     let execution = async {
+        if let Some(plan) = &script {
+            return crate::tasks::query(adapter.as_ref(), &ctx, super::query_script::execute(adapter.as_ref(), plan, &opts.database, record.allowed_databases.as_deref(), record.read_only, opts.limit.unwrap_or(DEFAULT_PAGE_SIZE).clamp(1,MAX_PAGE_SIZE), &ctx)).await;
+        }
         match kind {
             StatementKind::Rows => {
                 let limit = opts.limit.unwrap_or(DEFAULT_PAGE_SIZE).clamp(1, MAX_PAGE_SIZE);
@@ -287,10 +291,9 @@ pub async fn execute(state: &AppState, opts: ExecuteOptions) -> AppResult<QueryO
     };
     let result = match tokio::time::timeout(QUERY_TIMEOUT, execution).await {
         Ok(inner) => inner,
-        Err(_) => Err(AppError::Database(format!(
-            "查询超过 {} 秒未完成，已中断等待；请优化查询或缩小范围",
-            QUERY_TIMEOUT.as_secs()
-        ))),
+        Err(_) => Err(AppError::Database(if script.is_some() {
+            format!("脚本超过 {} 秒未完成，已中断等待；可能已部分执行，已完成写入/DDL 不会自动回滚，请核对服务器结果",QUERY_TIMEOUT.as_secs())
+        } else {format!("查询超过 {} 秒未完成，已中断等待；请优化查询或缩小范围",QUERY_TIMEOUT.as_secs())})),
     };
     state.clear_running(&opts.session_id).await;
     let duration_ms = started.elapsed().as_millis() as i64;

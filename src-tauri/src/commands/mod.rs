@@ -18,3 +18,5 @@ pub mod analysis;
 pub mod query_ai;
 
 pub mod manual_transaction;
+
+pub mod config_transfer;

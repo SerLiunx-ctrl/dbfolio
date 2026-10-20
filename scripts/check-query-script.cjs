@@ -1,0 +1,25 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+(async()=>{const b=await chromium.launch({channel:'msedge',headless:true});try{
+ const p=await b.newPage({viewport:{width:1500,height:1000}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
+ await p.goto('http://localhost:1425/scripts/fixtures/query-script.html');
+ await p.waitForFunction(()=>window.monaco?.editor.getEditors().length>0);
+ const select=async text=>p.evaluate(text=>{const e=window.monaco.editor.getEditors()[0],m=e.getModel();if(text)e.setValue(text);e.setSelection(m.getFullModelRange());e.focus();},text);
+ await select();await p.keyboard.press('Control+Enter');
+ await p.getByText('脚本已完成 5 条 · 末条结果最多 2 行',{exact:true}).waitFor();
+ assert.equal(await p.evaluate(()=>window.calls.filter(c=>c.command==='query_execute').length),1);
+ assert(await p.getByRole('button',{name:'下一页',exact:true}).isDisabled());
+ assert(await p.getByRole('button',{name:'上一页',exact:true}).isDisabled());
+ assert(await p.getByRole('button',{name:'导出',exact:true}).isDisabled());
+ await p.locator('.ag-header-cell[col-id="c0"]').click();
+ assert.equal(await p.evaluate(()=>window.calls.filter(c=>c.command==='query_execute').length),1,'排序不得重放脚本');
+ assert.equal(await p.evaluate(()=>window.calls.filter(c=>c.command==='query_fetch_page').length),0);
+ await p.screenshot({path:'.qa/query-script-result.png'});
+ await p.evaluate(()=>window.fail=true);await select();await p.keyboard.press('Control+Enter');
+ await p.getByText(/脚本第 3 条（第 3 行）失败/).waitFor();
+ await p.evaluate(()=>window.fail=false);await select('SELECT 1');await p.keyboard.press('Control+Enter');
+ await p.waitForFunction(()=>window.calls.filter(c=>c.command==='query_execute').length===3);
+ await p.waitForTimeout(100);assert(await p.getByRole('button',{name:'下一页',exact:true}).isEnabled(),'普通查询分页恢复');
+ assert.equal(await p.getByText(/脚本已完成/).count(),0);assert.deepEqual(errors,[]);
+ console.log('PASS 完整选区发送、脚本完成提示、阻止分页/排序/导出重放、错误显示及普通查询恢复');
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -5,13 +5,11 @@ import { columnCapabilities } from "./columnCapabilities";
 import {InlineColumnRow,type ColumnEdit} from "./InlineColumnRow";
 import {usePendingEdit} from "../../stores/useEditGuard";
 import {InfoHint} from '../../common/InfoHint';
-import { renderTypeOptions } from "./TypeOptions";
-import { defaultColumnType, hasPrecision, typeHint } from "./columnTypes";
+import { newColumn, updateColumnDraft } from "./createTableDraft";
+
 import {
   Button,
-  Checkbox,
-  Dropdown,
-  Input,
+  Select,
   Menu, MenuTrigger, MenuPopover,
   MenuDivider,
   MenuItem,
@@ -30,10 +28,8 @@ import {
   ArrowDownRegular,
   ArrowSortRegular,
   ArrowUpRegular,
-  CheckmarkRegular,
   CodeRegular,
   DeleteRegular,
-  DismissRegular,
   EditRegular,
   LinkRegular,
 } from "@fluentui/react-icons";
@@ -45,7 +41,7 @@ import type {
   DdlSpec,
   ColumnMeta,
   ColumnPosition,
-  ColumnSpec,
+  DraftColumn,
   Engine,
   ForeignKeyMeta,
   IndexMeta,
@@ -135,11 +131,8 @@ interface PanelProps {
 
 interface AddDraft {
   position: ColumnPosition;
-  name: string;
-  dataType: string;
-  length: string;
-  nullable: boolean;
-  defaultValue: string;
+  column: DraftColumn;
+  key: 'none'|'primary'|'index'|'unique';
 }
 
 export function ColumnsPanel({
@@ -166,14 +159,13 @@ export function ColumnsPanel({
   const [flagsOpen,setFlagsOpen]=useState(false),[flagsBusy,setFlagsBusy]=useState(false);
   const dirtyFlags=Object.keys(flags).length>0;
   const caps = columnCapabilities(engine);
-  const flagSpec:DdlSpec={type:'columnFlags',schema:tab.schema,table:tab.table,changes:Object.entries(flags).map(([name,v])=>({name,...v}))};
+  const flagSpec:DdlSpec={type:'columnFlags',schema:tab.schema,table:tab.table,changes:Object.entries(flags).map(([name,v])=>({name,...v,newName:v.newName?.trim()}))};
   const saveFlags=async()=>{if(readOnly)throw Error('当前会话为只读模式');setFlagsBusy(true);try{await api.ddlApply(tab.sessionId,tab.database,flagSpec,true);setFlags({});onChanged();}finally{setFlagsBusy(false);}};
   usePendingEdit({tabId:tab.id,sessionId:tab.sessionId,label:'列属性',save:saveFlags,discard:()=>setFlags({}),preview:()=>api.ddlPreview(tab.sessionId,tab.database,flagSpec),busy:()=>flagsBusy},dirtyFlags,tab.id+':column-flags');
 
   const [columnIndex,setColumnIndex]=useState<{initial?:IndexMeta;selectedColumns:string[]}|null>(null);
   const supportsMove = caps.reorder;
-  const engineLabel =
-    engine === "postgres" ? "PostgreSQL" : engine === "sqlite" ? "SQLite" : "MySQL";
+
 
   const addIndex = draft
     ? draft.position.first
@@ -183,51 +175,19 @@ export function ColumnsPanel({
         : detail.columns.length
     : -1;
 
-  const startAdd = (position: ColumnPosition) => {
-    setDraft({
-      position,
-      name: "",
-      dataType: defaultColumnType(engine),
-      length: "255",
-      nullable: true,
-      defaultValue: "",
-    });
+  const startAdd = (position: ColumnPosition) => setDraft({position,column:newColumn(engine),key:'none'});
+  const addSpec=():DdlSpec=>{
+    if(!draft)throw Error('没有待添加的列');
+    if(!draft.column.name.trim())throw Error('字段名不能为空');
+    return {type:'addColumnDraft',schema:tab.schema,table:tab.table,column:{...draft.column,name:draft.column.name.trim()},key:draft.key,position:caps.insertPosition?draft.position:null};
   };
-
-  const confirmAdd = async () => {
-    if (!draft || !draft.name.trim()) return;
-    const column: ColumnSpec = {
-      name: draft.name.trim(),
-      dataType: draft.dataType,
-      length:
-        draft.dataType === "varchar" || draft.dataType === "char"
-          ? draft.length
-            ? Number(draft.length)
-            : 255
-          : null,
-      precision: hasPrecision(engine, draft.dataType) ? 10 : null,
-      scale: hasPrecision(engine, draft.dataType) ? 0 : null,
-      nullable: draft.nullable,
-      primaryKey: false,
-      autoIncrement: false,
-      defaultValue: draft.defaultValue.trim() || null,
-      comment: null,
-    };
-    try {
-      await api.ddlApply(tab.sessionId, tab.database, {
-        type: "addColumn",
-        schema: tab.schema,
-        table: tab.table,
-        column,
-        position: draft.position,
-      });
-      notify.success("列已添加", column.name);
-      setDraft(null);
-      onChanged();
-    } catch (error) {
-      notify.error(error, "添加列失败");
-    }
+  const saveAdd=async()=>{
+    if(!canEdit)throw Error('当前表不可修改');
+    setFlagsBusy(true);
+    try{await api.ddlApply(tab.sessionId,tab.database,addSpec(),true);setDraft(null);onChanged();}
+    finally{setFlagsBusy(false);}
   };
+  usePendingEdit({tabId:tab.id,sessionId:tab.sessionId,label:'新增列',save:saveAdd,discard:()=>setDraft(null),preview:()=>api.ddlPreview(tab.sessionId,tab.database,addSpec()),busy:()=>flagsBusy},!!draft,tab.id+':add-column');
 
   const moveColumn = async (column: ColumnMeta, direction: -1 | 1) => {
     const names = detail.columns.map((item) => item.name);
@@ -254,97 +214,20 @@ export function ColumnsPanel({
     }
   };
 
-  const renderAddRow = () => (
-    <TableRow key="__add" className={styles.addRow}>
-      <TableCell className={styles.muted}>
-        <AddRegular fontSize={14} />
-      </TableCell>
-      <TableCell>
-        <Input
-          size="small"
-          autoFocus
-          value={draft?.name ?? ""}
-          placeholder="列名"
-          onChange={(_, data) => setDraft((current) => current ? { ...current, name: data.value } : current)}
-        />
-      </TableCell>
-      <TableCell colSpan={2}>
-        <div className={styles.addCell}>
-          <Dropdown
-            size="small"
-            title={typeHint(engine)}
-            style={{ minWidth: "110px" }}
-            selectedOptions={[draft?.dataType ?? defaultColumnType(engine)]}
-            value={draft?.dataType ?? defaultColumnType(engine)}
-            onOptionSelect={(_, data) => {
-              if (data.optionValue) {
-                setDraft((current) =>
-                  current ? { ...current, dataType: data.optionValue as string } : current,
-                );
-              }
-            }}
-          >
-            {renderTypeOptions(engine)}
-          </Dropdown>
-          {(draft?.dataType === "varchar" || draft?.dataType === "char") && (
-            <Input
-              size="small"
-              style={{ width: 64 }}
-              value={draft?.length ?? ""}
-              onChange={(_, data) =>
-                setDraft((current) => current ? { ...current, length: data.value } : current)
-              }
-            />
-          )}
-        </div>
-      </TableCell>
-      <TableCell>
-        <Checkbox
-          checked={draft?.nullable ?? true}
-          onChange={(_, data) =>
-            setDraft((current) =>
-              current ? { ...current, nullable: Boolean(data.checked) } : current,
-            )
-          }
-        />
-      </TableCell>
-      {caps.unsigned&&<TableCell/>}
-      <TableCell>
-        <Input
-          size="small"
-          value={draft?.defaultValue ?? ""}
-          placeholder="无"
-          onChange={(_, data) =>
-            setDraft((current) => current ? { ...current, defaultValue: data.value } : current)
-          }
-        />
-      </TableCell>
-      <TableCell/>{caps.onUpdate&&<TableCell/>}
-      <TableCell className={styles.muted}>
-        {engine !== "mysql" && (
-          <span className={styles.addHint}>{engineLabel} 只能追加到末尾</span>
-        )}
-      </TableCell>
-      <TableCell className={styles.muted} />
-      <TableCell className="dw-schema-actions"><span className="dw-schema-action-row">
-        <Button
-          appearance="primary"
-          size="small"
-          icon={<CheckmarkRegular />}
-          aria-label="确认添加"
-          disabled={!draft?.name.trim()}
-          onClick={() => void confirmAdd()}
-        />
-        <Button
-          appearance="subtle"
-          size="small"
-          icon={<DismissRegular />}
-          aria-label="取消"
-          onClick={() => setDraft(null)}
-        />
-      </span></TableCell>
-    </TableRow>
-  );
+  const renderAddRow = () => {
+    if(!draft)return null;
+    const c=draft.column;
+    const meta:ColumnMeta={name:c.name,ordinal:addIndex+1,rawType:c.dataType,canonical:{kind:'unknown',raw:c.dataType},nullable:c.nullable,autoIncrement:c.autoIncrement,unsigned:c.unsigned,comment:c.comment};
+    return <InlineColumnRow key={c.id} column={meta} engine={engine} creating adding initialActive="字段名" ariaPrefix="新增列"
+      primary={c.primaryKey} singlePrimary={c.primaryKey} disabled={!canEdit||flagsBusy} deleteDisabled={flagsBusy}
+      edit={{...c,newName:c.name}} onEdit={patch=>setDraft(old=>old?{...old,column:updateColumnDraft(old.column,patch)}:old)}
+      identityDisabledReason={engine==='sqlite'?'SQLite 追加列不能设置自动增长，需要重建表':engine==='mysql'&&detail.columns.some(c=>c.autoIncrement)?'此表已有自动增长字段':undefined}
+      keyText={{none:'无',primary:'主键',index:'索引',unique:'唯一'}[draft.key]} keyControl={<Select size="small" aria-label="新增列 键" value={draft.key} disabled={!canEdit||flagsBusy}
+        onChange={(_,d)=>setDraft(old=>old?{...old,key:d.value as AddDraft['key'],column:updateColumnDraft(old.column,{primaryKey:d.value==='primary'})}:old)}>
+        <option value="none">无</option><option value="primary" disabled={engine==='sqlite'||detail.primaryKey.length>0}>主键</option><option value="index">索引</option><option value="unique">唯一</option>
+      </Select>}
+      onDelete={()=>setDraft(null)} onContextMenu={e=>e.preventDefault()}/>;
+  };
 
   const rows: React.ReactNode[] = [];
   detail.columns.forEach((column, index) => {
@@ -370,11 +253,11 @@ export function ColumnsPanel({
           >
             添加列
           </Button>
-          <Button size="small" appearance="primary" disabled={!dirtyFlags||flagsBusy} onClick={()=>setFlagsOpen(true)}>保存</Button>
-          <Button size="small" disabled={!dirtyFlags||flagsBusy} onClick={()=>setFlags({})}>废弃</Button>
+          <Button size="small" appearance="primary" disabled={flagsBusy||(!dirtyFlags&&!draft)||!!draft&&!draft.column.name.trim()} onClick={()=>setFlagsOpen(true)}>保存</Button>
+          <Button size="small" disabled={(!dirtyFlags&&!draft)||flagsBusy} onClick={()=>{setFlags({});setDraft(null);}}>废弃</Button>
           <span className={styles.addHint}>双击单元格编辑，保存后生效</span>
           <div className={styles.spacer} />
-          <Button size="small" icon={<DeleteRegular />} disabled={dirtyFlags||flagsBusy} onClick={() => setDropTable(true)}>
+          <Button size="small" icon={<DeleteRegular />} disabled={dirtyFlags||flagsBusy||!!draft} onClick={() => setDropTable(true)}>
             删除表
           </Button>
         </div>
@@ -391,7 +274,7 @@ export function ColumnsPanel({
             {caps.unsigned&&<TableHeaderCell style={{width:76}}>无符号</TableHeaderCell>}
             <TableHeaderCell>默认值</TableHeaderCell>
             <TableHeaderCell style={{width:76}}>自动增长</TableHeaderCell>{caps.onUpdate&&<TableHeaderCell>ON UPDATE</TableHeaderCell>}
-            <TableHeaderCell style={{width:50}}>键</TableHeaderCell>
+            <TableHeaderCell style={{width:76}}>键</TableHeaderCell>
             <TableHeaderCell>注释</TableHeaderCell>
             <TableHeaderCell className="dw-schema-actions">操作</TableHeaderCell>
           </TableRow>
@@ -399,7 +282,7 @@ export function ColumnsPanel({
         <TableBody>{rows}</TableBody>
       </Table>
 
-      <ConfirmSqlDialog open={flagsOpen} title="保存列属性" sessionId={tab.sessionId} tabId={tab.id} warning={engine==="sqlite"?"SQLite 修改类型、默认值或可空性时会在事务内重建表；保留原约束、索引和触发器，数据不兼容时整批回滚。":"类型或可空性变更可能因现有数据不兼容而失败，并可能重建或锁定表。"} loadPreview={()=>api.ddlPreview(tab.sessionId,tab.database,flagSpec)} onApply={saveFlags} onClose={()=>setFlagsOpen(false)} onDone={()=>setFlagsOpen(false)}/>
+      <ConfirmSqlDialog open={flagsOpen} title={draft?"添加列":"保存列属性"} sessionId={tab.sessionId} tabId={tab.id} warning={engine==="sqlite"?"SQLite 修改类型、默认值或可空性时会在事务内重建表；保留原约束、索引和触发器，数据不兼容时整批回滚。":"类型或可空性变更可能因现有数据不兼容而失败，并可能重建或锁定表。"} loadPreview={()=>api.ddlPreview(tab.sessionId,tab.database,draft?addSpec():flagSpec)} onApply={draft?saveAdd:saveFlags} onClose={()=>setFlagsOpen(false)} onDone={()=>setFlagsOpen(false)}/>
       {rowMenu && (
         <ContextMenuPortal>
           <div

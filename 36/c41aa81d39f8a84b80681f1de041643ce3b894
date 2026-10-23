@@ -1,0 +1,119 @@
+docs/verification/r06.md
+  s_f823aea5f80980::t_2860590edec10e 9-26
+  s_f823aea5f80980::t_16edfed0bb2d6c 3
+  s_f823aea5f80980::t_63ee81c7c88d85 1-2,4-8,27-62
+docs/design.md
+  s_f823aea5f80980::t_fa38db887c8d2a 5-7
+  s_f823aea5f80980::t_c9b102329778e3 932-954,2696-2698
+docs/releases/1.0.0-alpha.16-summary.md
+  s_f823aea5f80980::t_748a0554ee85f8 1-26
+docs/roadmap.md
+  s_f823aea5f80980::t_76fcb8d33d1f55 11-12
+  s_f823aea5f80980::t_463d12998d0cc3 3,158-160,475-477
+README.en.md
+  s_f823aea5f80980::t_b3cfdfacd22673 229
+README.md
+  s_f823aea5f80980::t_0320ae6913e7c1 265
+docs/releases/1.0.0-alpha.15.md
+  s_f823aea5f80980::t_e5471b4d7010d5 1-26
+docs/releases/1.0.0-alpha.16.md
+  s_f823aea5f80980::t_e699cd3e9f46b9 1-14
+package-lock.json
+  s_f823aea5f80980::t_3ef521879b318c 3,9
+package.json
+  s_f823aea5f80980::t_803861134c7913 4
+scripts/build-app.ps1
+  s_f823aea5f80980::t_90fad1139841b9 1,3
+scripts/check-app-menu.cjs
+  s_109f5739e791f5::t_7b152029b7922a 2
+scripts/check-app-startup.ps1
+  s_f823aea5f80980::t_26da117bcfdf85 1-81
+scripts/check-update-helper.ps1
+  s_109f5739e791f5::t_80db82398c1bcd 1-22
+scripts/check-update-release.ps1
+  s_f823aea5f80980::t_d2f48e22de3ff3 1-49
+scripts/check-updates.cjs
+  s_f823aea5f80980::t_333e2977f6a678 1-43
+scripts/create-update-feed.ps1
+  s_f823aea5f80980::t_65d6c98fc1f996 1-37
+scripts/fixtures/app-menu.tsx
+  s_f823aea5f80980::t_9ce13c33c3e55f 7
+scripts/fixtures/update-probe.rs
+  s_f823aea5f80980::t_f3446a3b99565b 1-11
+scripts/fixtures/updates.html
+  s_f823aea5f80980::t_732fab5d0d5a75 1
+scripts/fixtures/updates.tsx
+  s_f823aea5f80980::t_1187eff493a912 1-38
+scripts/package-app.ps1
+  s_f823aea5f80980::t_ca53fa464de83d 3-4,8,28,36-46,48-54,57,59-74,108-109,116,123-139,157-159,161
+scripts/update-signing.ps1
+  s_f823aea5f80980::t_eda0a3e1dcd4d5 1-38
+src-tauri/Cargo.lock
+  s_f823aea5f80980::t_1906098dc55db7 965-974,998,1011,1296,1308,1316,1326,1339,1942-1951,2764,2768,3496-3501,3980-3991,4106-4119,5247,5350,5513,6417-6437,6465,6514-6524,6724-6756,8536-8545,8752-8763
+src-tauri/Cargo.toml
+  s_f823aea5f80980::t_7212dab737f2a7 3,71-73
+src-tauri/src/commands/mod.rs
+  s_f823aea5f80980::t_f7be381b1f26bf 2
+src-tauri/src/commands/updater.rs
+  s_f823aea5f80980::t_9bfe8d058b7faf 1-494
+src-tauri/src/lib.rs
+  s_f823aea5f80980::t_134249d6cbb4df 4-5,52,63-64,73,82-87
+src-tauri/src/main.rs
+  s_f823aea5f80980::t_306bc75848fa8a 10-23
+src-tauri/src/startup_check.rs
+  s_f823aea5f80980::t_6def8f4be82256 1-49
+src-tauri/src/store/local.rs
+  s_f823aea5f80980::t_bc597a11fc583e 84-86,127-130
+src-tauri/src/update_package.rs
+  s_f823aea5f80980::t_3faf32845e8213 1-765
+src-tauri/src/web_assets.rs
+  s_f823aea5f80980::t_9a9ab92f131a33 1,6,19-31,100-102
+src-tauri/tauri.conf.json
+  s_f823aea5f80980::t_1c0641d904de85 4,38-42
+src-tauri/update-config.json
+  s_f823aea5f80980::t_a80624e32139d4 1-4
+src-tauri/updater.pub
+  s_f823aea5f80980::t_0946dae6c6db42 1
+src/App.tsx
+  s_f823aea5f80980::t_55647fef14131b 2,308
+src/app/AppMenu.tsx
+  s_f823aea5f80980::t_084258bd42b436 53
+src/features/settings/SettingsWorkspace.tsx
+  s_f823aea5f80980::t_f28544b1aeb9d2 2,143,222
+src/features/updates/UpdateManager.tsx
+  s_f823aea5f80980::t_d567fdc767548c 1-27
+src/features/updates/UpdatePanel.tsx
+  s_f823aea5f80980::t_19199fb4c023a8 1-41
+src/features/updates/updateStore.ts
+  s_f823aea5f80980::t_82c45ef598f2fa 1-54
+src/ipc/taskInvoke.ts
+  s_f823aea5f80980::t_5df998254f287c 6
+src/stores/useTaskStore.ts
+  s_f823aea5f80980::t_49071d068a4b44 4
+updates/README.md
+  s_f823aea5f80980::t_006c94a681ae55 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "36c41aa81d39f8a84b80681f1de041643ce3b894",
+  "prompts": {},
+  "sessions": {
+    "s_109f5739e791f5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15c5a-f69e-7d72-8f75-20e0ea982620",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

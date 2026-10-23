@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
 mod browser_guards;
+mod startup_check;
+pub mod update_package;
 mod sqlite_drop;
 mod adapters;
 mod commands;
@@ -47,6 +49,7 @@ pub fn verify_resources() -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    startup_check::prepare().expect("无法创建隔离启动验收目录");
     init_tracing();
 
     #[cfg(feature = "custom-protocol")]
@@ -57,6 +60,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(commands::updater::UpdateState::default())
         .setup(|app| {
             #[cfg(feature = "custom-protocol")]
             if let Err(message) = verify_resources() {
@@ -65,6 +70,7 @@ pub fn run() {
                     .title("DBFolio 资源不完整").blocking_show();
                 return Err(std::io::Error::other(message).into());
             }
+            update_package::mark_data_opening().map_err(std::io::Error::other)?;
             let state = tauri::async_runtime::block_on(state::AppState::initialize())?;
             app.manage(state);
             #[cfg(windows)]
@@ -73,6 +79,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::updater::updater_status,
+            commands::updater::updater_ready,
+            commands::updater::updater_preferences,
+            commands::updater::updater_check,
+            commands::updater::updater_download,
+            commands::updater::updater_install,
             commands::config_transfer::config_export,
             commands::config_transfer::config_read,
             commands::config_transfer::config_preview,

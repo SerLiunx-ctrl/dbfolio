@@ -1,4 +1,5 @@
 import { CreateTableWorkspace } from './features/table/CreateTableWorkspace';
+import {UpdateManager} from './features/updates/UpdateManager';
 import {useExplorerStore} from "./stores/useExplorerStore";
 import {DatabaseOverview} from "./features/explorer/DatabaseOverview";
 import {TabIndicator} from "./app/TabIndicator";
@@ -304,6 +305,7 @@ export default function App() {
         <AppShell />
       </ErrorBoundary>
       <AppToaster />
+      <UpdateManager/>
       <UnsavedChangesDialog />
       <div id="dw-overlay-root" />
     </FluentProvider>

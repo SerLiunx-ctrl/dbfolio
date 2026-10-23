@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{borrow::Cow, collections::BTreeMap, path::{Component, Path, PathBuf}};
 use tauri::utils::assets::{AssetKey, AssetsIter, CspHash};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct Manifest {
     version: String,
     files: BTreeMap<String, String>,
@@ -16,6 +16,19 @@ pub struct DiskAssets {
 }
 
 impl DiskAssets {
+    /// 只备份 EXE 内登记并通过摘要验证的资源，不复制程序目录内的用户文件。
+    pub fn backup_to(&self, destination: &Path) -> Result<(), String> {
+        self.validate()?;
+        std::fs::create_dir_all(destination).map_err(|e|e.to_string())?;
+        for name in self.manifest.files.keys() {
+            let bytes=self.read(name)?;
+            let path=destination.join(name);
+            if let Some(parent)=path.parent(){std::fs::create_dir_all(parent).map_err(|e|e.to_string())?;}
+            std::fs::OpenOptions::new().write(true).create_new(true).open(path)
+                .and_then(|mut f|{use std::io::Write;f.write_all(&bytes)?;f.sync_all()}).map_err(|e|e.to_string())?;
+        }
+        std::fs::write(destination.join("web-manifest.json"),serde_json::to_vec_pretty(&self.manifest).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
+    }
     #[cfg(feature = "custom-protocol")]
     pub fn packaged() -> Self {
         let executable = std::env::current_exe().expect("无法确定 DBFolio 安装目录");
@@ -84,6 +97,9 @@ mod tests {
             files: BTreeMap::from([("index.html".into(), format!("{:x}", Sha256::digest(b"page")))])
         }};
         provider.validate().unwrap();
+        let backup=temp.path().join("verified-backup");provider.backup_to(&backup).unwrap();
+        assert_eq!(std::fs::read(backup.join("index.html")).unwrap(),b"page");
+        assert!(!backup.join("secret").exists());
         assert_eq!(<DiskAssets as Assets<tauri::Wry>>::get(&provider, &AssetKey::from("/index.html")).unwrap().as_ref(), b"page");
         assert!(provider.read("../secret").is_err());
         provider.manifest.files.insert("../secret".into(), format!("{:x}", Sha256::digest(b"secret")));

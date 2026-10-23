@@ -1,6 +1,6 @@
 [package]
 name = "dbfolio"
-version = "1.0.0-alpha.14"
+version = "1.0.0-alpha.16"
 description = "DBFolio - multi-database desktop client with cross-session sync"
 authors = ["SerLiunx"]
 license = "MIT"
@@ -68,6 +68,9 @@ russh = { version = "=0.63.1", default-features = false, features = ["ring", "rs
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 rustls-pemfile = "2"
 webpki-roots = "1"
+tauri-plugin-updater = "2"
+semver = "1"
+minisign-verify = "0.2"
 
 [dev-dependencies]
 rcgen = "0.14"

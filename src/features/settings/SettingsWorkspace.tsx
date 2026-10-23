@@ -1,4 +1,5 @@
 import { ConfigTransferSettings } from "./ConfigTransferSettings";
+import { UpdatePanel } from '../updates/UpdatePanel';
 import {QueryPageSettings} from "./QueryPageSettings";
 import {InfoHint} from '../../common/InfoHint';
 import { LocalDataSettings } from "./LocalDataSettings";
@@ -139,6 +140,7 @@ const CATEGORIES = [
   { id: "ai", label: "AI 服务" },
   { id: "localData", label: "本机数据" },
   { id: "configTransfer", label: "配置迁移" },
+  { id: "updates", label: "软件更新" },
   { id: "advanced", label: "高级" },
 ];
 
@@ -217,6 +219,7 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
         {category === "ai" && <AiSettings/>}
         {category === "localData" && <LocalDataSettings/>}
         {category === "configTransfer" && <ConfigTransferSettings/>}
+        {category === "updates" && <UpdatePanel/>}
         {category === "appearance" && <Field label="界面动效">
           <RadioGroup layout="horizontal" value={motionMode} onChange={(_,d)=>void setMotionMode(d.value as MotionMode).catch(e=>notify.error(e,"保存动效偏好失败"))}>
             <Radio value="system" label="跟随系统"/><Radio value="full" label="完整"/><Radio value="reduced" label="减弱"/><Radio value="off" label="关闭"/>

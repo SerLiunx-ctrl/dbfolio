@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 
-export type TaskKind = "查询" | "修改" | "导入" | "导出" | "同步" | "生成" | "AI";
+export type TaskKind = "查询" | "修改" | "导入" | "导出" | "同步" | "生成" | "AI" | "更新";
 export type TaskStatus = "running" | "cancelling" | "success" | "error" | "cancelled";
 export interface TaskProgress { processed: number; total: number | null; message: string; cancelRequested: boolean }
 export interface WorkTask {

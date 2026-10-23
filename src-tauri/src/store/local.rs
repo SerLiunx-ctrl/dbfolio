@@ -81,6 +81,9 @@ pub struct LocalStore {
 }
 
 pub fn app_data_dir() -> PathBuf {
+    if let Some(path) = crate::startup_check::profile() {
+        return path.to_path_buf();
+    }
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("data-workbench")
@@ -121,6 +124,10 @@ pub(super) fn row_to_session(row: &SqliteRow) -> AppResult<SessionRecord> {
 }
 
 impl LocalStore {
+    pub async fn backup_for_update(&self, path: &std::path::Path) -> AppResult<()> {
+        sqlx::query("VACUUM INTO ?").bind(path.to_string_lossy().as_ref()).execute(&self.pool).await?;
+        Ok(())
+    }
     pub async fn initialize() -> AppResult<Self> {
         Self::initialize_in(app_data_dir()).await
     }

@@ -226,7 +226,7 @@ Public versions start at `1.0.0-alpha`, followed by `1.0.0-alpha.1`, `1.0.0-alph
 
 **DBFolio is not distributed as a single-file EXE.** Frontend resources live in `web/` beside `DBFolio.exe`; keep the whole portable directory together. Startup verifies resource integrity and version consistency. The installer uses NSIS for the current user; the portable ZIP does not bundle WebView2.
 
-For a manual portable update, exit DBFolio and replace the application directory with a complete new version. User sessions and credentials live outside that directory. **Online updates are not implemented yet**; neither Windows code signing nor update signing is configured.
+For a manual portable update, exit DBFolio and replace the application directory with a complete new version. User sessions and credentials live outside that directory. Signed online updates are available through Help → Check for updates and Preferences → Software updates, with stable/preview channels, optional automatic checks, proxy settings, skipped versions, and download progress in Task Center. Installed builds use NSIS; portable builds replace the complete EXE/web directory after exit and retain the old version and a local configuration snapshot. The first updater-enabled release needs a manual installation. Public feed and isolated installer upgrade verification are pending, so R06 is not marked complete. See the [release procedure](updates/README.md). Windows code signing is separate and is not configured.
 
 <a id="local-data"></a>
 ## Local data and privacy

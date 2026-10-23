@@ -50,6 +50,7 @@ export function AppMenu({ onNewSession, onSync, onSettings }: { onNewSession: ()
     <Menu><MenuTrigger disableButtonEnhancement><Button appearance="subtle" className={styles.trigger}>帮助</Button></MenuTrigger>
       <MenuPopover><MenuList>
         <MenuItem icon={<InfoRegular />} onClick={() => emit("dw:about")}>关于 DBFolio</MenuItem>
+        <MenuItem icon={<ArrowSyncRegular />} onClick={() => emit("dw:updates")}>检查更新…</MenuItem>
       </MenuList></MenuPopover>
     </Menu>
   </nav>;

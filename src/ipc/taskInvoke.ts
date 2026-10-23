@@ -3,6 +3,7 @@ import { connectionBridge } from "./connectionBridge";
 import { errorText, updateTask, useTaskStore, isTaskActive, isBackgroundTask, type TaskKind, type TaskProgress } from "../stores/useTaskStore";
 
 const commands: Record<string, [TaskKind, string]> = {
+  updater_download:['更新','下载软件更新'],
   sql_import_preview: ['导入','预检 SQL 文件'],sql_import_execute:['导入','导入 SQL 文件'],mysql_procedure_call:['修改','调用存储过程'],
   export_sql: ["导出", "导出 SQL 文件"],
   transaction_execute: ["查询", "事务内执行 SQL"],

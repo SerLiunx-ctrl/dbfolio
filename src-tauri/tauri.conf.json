@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "DBFolio",
-  "version": "1.0.0-alpha.14",
+  "version": "1.0.0-alpha.16",
   "identifier": "com.dbfolio.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -33,6 +33,11 @@
     ],
     "security": {
       "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERERDVFNjVERjUyOTNDMUUKUldRZVBDbjFYZWJWM1dYTGtOYlBnclR1ZE1HanVhdFVoVWtSclRQbUhORFpuL0ZHYVZvZHdVMXEK"
     }
   },
   "bundle": {

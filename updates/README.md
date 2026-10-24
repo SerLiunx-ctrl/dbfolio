@@ -1,5 +1,7 @@
 # 更新索引发布
 
+2026-10-24：alpha.16 [预发布](https://github.com/SerLiunx-ctrl/dbfolio/releases/tag/v1.0.0-alpha.16) 与 `preview.json` 已公开，实际客户端检查通过。使用 alpha.16 时选择「预览版」通道；当前同版本会显示「当前没有可用的新版本」。稳定通道等待首个正式版索引，完整跨版本升级仍待验收。
+
 此目录保存实际已发布版本的 `stable.json` / `preview.json`。没有可下载的签名发布包时不放占位索引，以免把“未发布”误报成“已是最新版”。
 
 1. 执行 `npm run app:build`，生成正式安装包、完整 portable 和 ZIP、独立校验清单；构建必须通过隔离的真实启动检查（可见窗口与前端 IPC 就绪）。再执行 `scripts/check-update-release.ps1`，核对签名、安装器资源及安装/便携两个入口的真实启动，资源自检不能替代启动验收。

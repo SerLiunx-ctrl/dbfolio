@@ -1,0 +1,23 @@
+docs/verification/r06.md
+  s_f823aea5f80980::t_54e2456df1fd92 3,7-17,76-77
+docs/roadmap.md
+  s_f823aea5f80980::t_1fd5d6e11afb1a 11,481
+docs/design.md
+  s_f823aea5f80980::t_d2444893346ee2 932,935-936,2729
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f5d210b3f49a64389d606412c956c1376b4dff42",
+  "prompts": {},
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

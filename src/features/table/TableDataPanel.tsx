@@ -127,6 +127,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sort, setSort] = useState<SortSpec[]>([]);
   const [filters, setFilters] = useState<FilterCondition[]>([]);
+  const enabledFilterCount = filters.filter(filter => filter.enabled !== false).length;
   const [conjunction, setConjunction] = useState<"and" | "or">("and");
   const [whereClause, setWhereClause] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -397,10 +398,11 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
             <Button
               size="small"
               icon={<FilterRegular />}
-              appearance={filters.length > 0 ? "primary" : "secondary"}
+              appearance={enabledFilterCount > 0 ? "primary" : "secondary"}
+              title={filters.length > 0 ? `已启用 ${enabledFilterCount} / 共 ${filters.length} 条条件` : "设置筛选条件"}
             >
               筛选
-              {filters.length > 0 ? ` ${filters.length}` : ""}
+              {filters.length > 0 ? ` ${enabledFilterCount}/${filters.length}` : ""}
             </Button>
           </PopoverTrigger>
           <PopoverSurface style={{ maxWidth: "92vw", padding: "14px" }}>

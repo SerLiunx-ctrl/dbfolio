@@ -318,6 +318,8 @@ export type FilterOperator =
   | "between";
 
 export interface FilterCondition {
+  /** 旧条件未设置此项时默认启用。 */
+  enabled?: boolean;
   literal?: DbValue;
   column: string;
   operator: FilterOperator;

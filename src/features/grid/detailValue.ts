@@ -1,7 +1,11 @@
-import type { DbValue } from "../../ipc/types";
+import type { ColumnMeta, DbValue } from "../../ipc/types";
+import { numericValue } from "./numericValue";
 
-export function detailValue(original: DbValue | null, text: string, nullValue: boolean): DbValue {
+export function detailValue(original: DbValue | null, text: string, nullValue: boolean, column?: ColumnMeta): DbValue {
   if(nullValue) return ["null",null];
+  // 原值为 NULL 时也根据列元数据恢复类型，不能以旧值推断成字符串。
+  const numeric = column && numericValue(column.canonical, text);
+  if (numeric) return numeric;
   switch(original?.[0]) {
     case "json": JSON.parse(text); return ["json",text];
     case "bytes": if(!/^0x(?:[\da-f]{2})*$/i.test(text))throw Error("二进制值须为 0x 开头的完整十六进制字节"); return ["bytes",text];

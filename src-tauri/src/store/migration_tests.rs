@@ -54,7 +54,7 @@ fn sample() -> ConfigBundle {
             json!({"id":1,"sessionId":"source-0","database":"demo","sql":"SELECT '中文', 9007199254740993","success":true,"rowsAffected":1,"durationMs":1,"errorCode":null,"executedAt":"2026-10-18"}),
         ],
         filters: vec![
-            json!({"id":"filter-old","name":"设备","scope":"[\"source-0\",\"demo\",null,\"devices\"]","conjunction":"and","filters":[{"column":"id","operator":"eq","value":"9007199254740993"}]}),
+            json!({"id":"filter-old","name":"设备","scope":"[\"source-0\",\"demo\",null,\"devices\"]","conjunction":"and","filters":[{"column":"id","operator":"eq","value":"9007199254740993"},{"column":"status","operator":"eq","value":"draft","enabled":false}]}),
         ],
         analyses: vec![plan],
         relations: vec![
@@ -125,6 +125,8 @@ async fn roundtrip_all_engines_remaps_dependencies_and_excludes_unselected_secre
     let exported = s.config_export(&options).await.unwrap();
     assert_eq!(exported.sessions.len(), 1);
     assert_eq!(exported.filters.len(), 1);
+    assert_eq!(exported.filters[0]["filters"][1]["enabled"], false);
+    assert_eq!(exported.filters[0]["filters"][1]["value"], "draft");
     assert!(exported.folders.contains(&"空分组".into()));
     let raw = serde_json::to_string(&exported).unwrap();
     assert!(!raw.contains("SECRET_MUST_NOT_EXPORT"));
@@ -133,6 +135,9 @@ async fn roundtrip_all_engines_remaps_dependencies_and_excludes_unselected_secre
     let (_d, target) = store().await;
     apply(&target, &exported, ImportMode::Copy).await;
     assert_eq!(target.list_sessions().await.unwrap().len(), 1);
+    let restored = value(&target, LIBRARY).await;
+    assert_eq!(restored["filters"][0]["filters"][1]["enabled"], false);
+    assert_eq!(restored["filters"][0]["filters"][1]["value"], "draft");
 }
 
 #[tokio::test]

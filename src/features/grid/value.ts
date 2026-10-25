@@ -1,4 +1,5 @@
 import type { CanonicalType, ColumnMeta, DbValue } from "../../ipc/types";
+import { numericValue } from "./numericValue";
 
 export function quoteIdent(engine: string, name: string): string {
   if (engine === "mysql") return `\`${name.replace(/`/g, "``")}\``;
@@ -72,25 +73,9 @@ export function buildTableSelect(
 export function parseCell(column: ColumnMeta, text: string): DbValue {
   if (text === "") return ["null", null];
   const canonical: CanonicalType = column.canonical;
+  const numeric = numericValue(canonical, text);
+  if (numeric) return numeric;
   switch (canonical.kind) {
-    case "int": {
-      if (/^-?\d+$/.test(text)) {
-        const number = Number(text);
-        return ["int", Number.isSafeInteger(number) ? number : text];
-      }
-      return ["text", text];
-    }
-    case "float": {
-      const value = Number(text);
-      return Number.isFinite(value) ? ["float", value] : ["text", text];
-    }
-    case "decimal":
-      return ["decimal", text];
-    case "bool": {
-      if (/^(1|true|yes)$/i.test(text)) return ["bool", true];
-      if (/^(0|false|no)$/i.test(text)) return ["bool", false];
-      return ["text", text];
-    }
     case "date":
       return ["date", text];
     case "time":

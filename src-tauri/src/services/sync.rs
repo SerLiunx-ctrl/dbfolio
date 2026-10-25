@@ -1675,7 +1675,7 @@ fn validate_filters(request: &DataSyncRequest) -> AppResult<()> {
 fn apply_source_filter(adapter:&dyn DbAdapter, plan:&mut TablePlan, filter:Option<&SourceFilter>)->AppResult<()> {
  let Some(filter)=filter else{return Ok(())};
  if filter.conditions.len()>50 || !["","and","or"].contains(&filter.conjunction.as_str()) {return Err(AppError::InvalidInput("筛选条件最多 50 条，组合方式仅支持 AND/OR".into()));}
- for c in &filter.conditions {
+ for c in filter.conditions.iter().filter(|condition| condition.enabled) {
   if !plan.meta.columns.iter().any(|v|v.name==c.column) || !["eq","ne","gt","ge","lt","le","contains","startsWith","endsWith","isNull","isNotNull","between"].contains(&c.operator.as_str()) {
    return Err(AppError::InvalidInput(format!("无效的筛选字段或操作符：{}",c.column)));
   }

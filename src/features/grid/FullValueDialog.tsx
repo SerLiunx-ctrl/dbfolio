@@ -15,7 +15,7 @@ import { CopyRegular, SaveRegular } from "@fluentui/react-icons";
 import { useEffect, useState } from "react";
 import { useNotify } from "../../app/toast";
 import { api } from "../../ipc";
-import type { CellValue, DbValue } from "../../ipc/types";
+import type { CellValue, ColumnMeta, DbValue } from "../../ipc/types";
 import { ValueEditor } from "./ValueEditor";
 import { detailValue } from "./detailValue";
 import { confirmEdits, usePendingEdit } from "../../stores/useEditGuard";
@@ -43,6 +43,7 @@ interface Props {
   schema?: string | null;
   table: string;
   column: string;
+  columnMeta: ColumnMeta;
   keys: CellValue[];
   editable: boolean;
   onClose: () => void;
@@ -62,6 +63,7 @@ export function FullValueDialog({
   schema,
   table,
   column,
+  columnMeta,
   keys,
   editable,
   onClose,
@@ -112,7 +114,7 @@ export function FullValueDialog({
         column,
         keys,
         original ?? ["null", null],
-        detailValue(original, text, nullValue),
+        detailValue(original, text, nullValue, columnMeta),
       );
       if (affected === 0) {
         throw new Error("目标行已被其他会话修改，未更新任何数据，请刷新后重试");

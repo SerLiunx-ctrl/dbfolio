@@ -21,12 +21,16 @@ pub struct SortSpec {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FilterCondition {
+    #[serde(default = "filter_enabled_by_default")]
+    pub enabled: bool,
     pub literal: Option<crate::meta::value::DbValue>,
     pub column: String,
     pub operator: String,
     pub value: Option<String>,
     pub value2: Option<String>,
 }
+
+fn filter_enabled_by_default() -> bool { true }
 
 pub fn value_literal(engine: crate::meta::Engine, value: &crate::meta::value::DbValue) -> AppResult<String> {
     use crate::meta::value::DbValue;
@@ -93,7 +97,7 @@ pub fn build_where_clause(
     };
 
     let mut parts: Vec<String> = Vec::new();
-    for filter in filters {
+    for filter in filters.iter().filter(|filter| filter.enabled) {
         let column = filter.column.trim();
         if column.is_empty() {
             continue;
@@ -384,6 +388,45 @@ pub async fn cancel(state: &AppState, session_id: &str) -> AppResult<()> {
 mod productivity_tests {
     use super::*;
     use crate::meta::{Engine, value::DbValue};
+
+    #[tokio::test]
+    async fn filter_enabled_state_controls_queries_and_roundtrips() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("filters.sqlite");
+        std::fs::File::create(&path).unwrap();
+        let params = serde_json::from_value(serde_json::json!({"engine":"sqlite","filePath":path.to_str().unwrap()})).unwrap();
+        let adapter = crate::adapters::connect(&params).await.unwrap();
+        adapter.execute_affected("main", "CREATE TABLE items(id INTEGER PRIMARY KEY)").await.unwrap();
+        adapter.execute_affected("main", "INSERT INTO items VALUES (1),(2),(3),(4)").await.unwrap();
+        let mut filters: Vec<FilterCondition> = serde_json::from_value(serde_json::json!([
+            {"column":"id","operator":"ge","value":"2"},
+            {"column":"id","operator":"le","value":"3","enabled":true},
+            {"column":"missing_column","operator":"invalid","literal":["trunc","unfinished"],"enabled":false}
+        ])).unwrap();
+        assert!(filters[0].enabled, "旧条件默认启用");
+        let roundtrip: Vec<FilterCondition> = serde_json::from_str(&serde_json::to_string(&filters).unwrap()).unwrap();
+        assert!(!roundtrip[2].enabled);
+        assert_eq!(roundtrip[2].column, "missing_column");
+        let sql = format!("SELECT id FROM items{} ORDER BY id", build_where_clause(adapter.as_ref(), &filters, "and").unwrap());
+        let result = adapter.query_page("main", &sql, 0, 10, &QueryContext::new()).await.unwrap();
+        assert_eq!(result.rows, vec![vec![DbValue::Int(2)], vec![DbValue::Int(3)]]);
+
+        filters[0].operator = "eq".into(); filters[0].value = Some("1".into());
+        filters[1].operator = "eq".into(); filters[1].value = Some("4".into());
+        let sql = format!("SELECT id FROM items{} ORDER BY id", build_where_clause(adapter.as_ref(), &filters, "or").unwrap());
+        let result = adapter.query_page("main", &sql, 0, 10, &QueryContext::new()).await.unwrap();
+        assert_eq!(result.rows, vec![vec![DbValue::Int(1)], vec![DbValue::Int(4)]]);
+
+        filters[0].enabled = false; filters[1].enabled = false;
+        let clause = build_where_clause(adapter.as_ref(), &filters, "or").unwrap();
+        assert_eq!(clause, "");
+        let result = adapter.query_page("main", &format!("SELECT id FROM items{clause}"), 0, 10, &QueryContext::new()).await.unwrap();
+        assert_eq!(result.rows.len(), 4);
+        filters[1].enabled = true;
+        assert_eq!(build_where_clause(adapter.as_ref(), &filters, "and").unwrap(), " WHERE \"id\" = 4");
+        filters[2].enabled = true;
+        assert!(build_where_clause(adapter.as_ref(), &filters, "and").is_err());
+    }
     #[test]
     fn literal_types_and_injection() {
         assert_eq!(value_literal(Engine::Sqlite, &DbValue::Text("001".into())).unwrap(), "'001'");

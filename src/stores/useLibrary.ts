@@ -13,7 +13,7 @@ export function loadLibrary() {
       const data=JSON.parse(raw);if(!data || typeof data!=="object")throw Error("收藏与筛选方案格式无效");
       useLibrary.setState({
         history:(Array.isArray(data.history)?data.history:[]).filter((e:HistoryEntry)=>e&&Number.isSafeInteger(e.id)&&typeof e.sql==="string"&&typeof e.sessionId==="string"&&typeof e.executedAt==="string"),
-        filters:(Array.isArray(data.filters)?data.filters:[]).filter((p:FilterPreset)=>p&&typeof p.id==="string"&&typeof p.name==="string"&&typeof p.scope==="string"&&["and","or"].includes(p.conjunction)&&Array.isArray(p.filters)&&p.filters.every(f=>f&&typeof f.column==="string"&&typeof f.operator==="string")),
+        filters:(Array.isArray(data.filters)?data.filters:[]).filter((p:FilterPreset)=>p&&typeof p.id==="string"&&typeof p.name==="string"&&typeof p.scope==="string"&&["and","or"].includes(p.conjunction)&&Array.isArray(p.filters)&&p.filters.every(f=>f&&typeof f.column==="string"&&typeof f.operator==="string"&&(f.enabled===undefined||typeof f.enabled==="boolean"))),
         files:(Array.isArray(data.files)?data.files:[]).filter((f:SqlFile)=>f&&typeof f.path==="string"&&typeof f.database==="string"&&typeof f.sessionId==="string"),
       });
     }

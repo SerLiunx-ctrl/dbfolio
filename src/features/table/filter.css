@@ -2,7 +2,10 @@
 .dw-filter-panel .fui-Combobox { font-size: 12px; }
 .dw-filter-panel .fui-Dropdown__button { font-size: 11px; }
 .dw-filter-panel .dw-filter-column input { font-size: 11px; }
-.dw-filter-labels { display: grid; grid-template-columns: 190px 150px minmax(0,1fr) 28px; gap: 6px; font-size: 11px; color: var(--colorNeutralForeground3); }
+.dw-filter-labels { display: grid; grid-template-columns: 32px 190px 150px minmax(0,1fr) 28px; gap: 6px; font-size: 11px; color: var(--colorNeutralForeground3); }
+.dw-filter-row[data-enabled="false"] { background-color: var(--colorNeutralBackground3); }
+.dw-filter-row > .fui-Checkbox { justify-self: center; height: 26px; min-height: 26px; }
+.dw-filter-row > .fui-Checkbox .fui-Checkbox__indicator { margin: 4px; }
 .dw-filter-presets { border-bottom: 1px solid var(--colorNeutralStroke2); padding-bottom: 8px; }
 .dw-filter-presets summary { cursor: pointer; font-size: 12px; padding: 2px 0; }
 .dw-filter-presets[open] > div { margin-top: 8px; }

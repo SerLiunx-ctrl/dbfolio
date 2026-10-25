@@ -88,6 +88,41 @@ mod tests {
     use serde_json::json;
 
     #[tokio::test]
+    async fn sqlite_numeric_cell_edits_preserve_storage_types_and_large_integer() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("numeric.sqlite");
+        std::fs::File::create(&path).unwrap();
+        let state = AppState::with_local(
+            crate::store::LocalStore::initialize_in(dir.path().join("config")).await.unwrap(),
+        );
+        let input = serde_json::from_value(json!({
+            "name": "数值编辑回归", "engine": "sqlite", "filePath": path.to_str().unwrap(), "readOnly": false
+        })).unwrap();
+        let session = state.local.create_session(&input).await.unwrap();
+        crate::services::session::connect(&state, &session.id).await.unwrap();
+        let adapter = state.connected(&session.id).await.unwrap().adapter.clone();
+        adapter.execute_affected("main", "CREATE TABLE numbers(id INTEGER PRIMARY KEY, count INTEGER, ratio REAL, large INTEGER, code TEXT)").await.unwrap();
+        adapter.execute_affected("main", "INSERT INTO numbers VALUES (1, NULL, 1.5, 2, 'old')").await.unwrap();
+        // 与前端 getChanges 相同的 IPC 载荷；大整数通过十进制文本承载，但标签仍为 int。
+        let request: GridRequest = serde_json::from_value(json!({
+            "sessionId": session.id, "database": "main", "table": "numbers",
+            "changes": [{"kind": "update", "keys": [{"column": "id", "value": ["int", 1]}], "changes": [
+                {"column": "count", "oldValue": ["null", null], "newValue": ["int", 42]},
+                {"column": "ratio", "oldValue": ["float", 1.5], "newValue": ["float", 125.0]},
+                {"column": "large", "oldValue": ["int", 2], "newValue": ["int", "9007199254740993"]},
+                {"column": "code", "oldValue": ["text", "old"], "newValue": ["text", "0012"]}
+            ]}]
+        })).unwrap();
+        assert_eq!(commit(&state, &request).await.unwrap(), 1);
+        let result = adapter.query_page("main", "SELECT count, ratio, large, code, typeof(count), typeof(ratio), typeof(large), typeof(code) FROM numbers", 0, 10, &Default::default()).await.unwrap();
+        use crate::meta::value::DbValue;
+        assert_eq!(result.rows, vec![vec![
+            DbValue::Int(42), DbValue::Float(125.0), DbValue::Int(9_007_199_254_740_993), DbValue::Text("0012".into()),
+            DbValue::Text("integer".into()), DbValue::Text("real".into()), DbValue::Text("integer".into()), DbValue::Text("text".into()),
+        ]]);
+    }
+
+    #[tokio::test]
     async fn sqlite_large_primary_key_delete_is_exact_and_stale_delete_rolls_back() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("rows.sqlite");

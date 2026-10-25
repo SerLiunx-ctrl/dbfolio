@@ -7,6 +7,7 @@ import { loadLibrary, useLibrary, saveFilterPreset, deleteFilterPreset } from ".
 import { useNotify } from "../../app/toast";
 import {
   Button,
+  Checkbox,
   Combobox,
   Dropdown,
   Input,
@@ -31,7 +32,7 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     gap: "8px",
-    width: "640px",
+    width: "680px",
     maxWidth: "86vw",
     fontSize: "12px",
   },
@@ -51,7 +52,7 @@ const useStyles = makeStyles({
   },
   row: {
     display: "grid",
-    gridTemplateColumns: "190px 150px minmax(0, 1fr) 28px",
+    gridTemplateColumns: "32px 190px 150px minmax(0, 1fr) 28px",
     gap: "6px",
     alignItems: "center",
     overflow: "hidden",
@@ -217,6 +218,7 @@ export function FilterPanel({
   const [saving,setSaving]=useState(false);
   useEffect(()=>{void loadLibrary().catch(e=>notify.error(e));},[notify]);
   const [conjunction, setConjunction] = useState<"and" | "or">(initialConjunction);
+  const enabledCount = filters.filter(filter => filter.enabled !== false).length;
 
   const update = (index: number, patch: Partial<FilterCondition>) => {
     setFilters((current) =>
@@ -231,7 +233,7 @@ export function FilterPanel({
         <Input aria-label="筛选方案名称" placeholder="筛选方案名称" value={presetName} onChange={(_,d)=>setPresetName(d.value)} />
         <Button disabled={saving||!presetName.trim()||!filters.length} onClick={()=>{setSaving(true);void saveFilterPreset({id:crypto.randomUUID(),scope,name:presetName.trim(),filters,conjunction}).then(()=>notify.success("筛选方案已保存")).catch(e=>notify.error(e)).finally(()=>setSaving(false));}}>保存方案</Button>
       </div>
-      {presets.filter(p=>p.scope===scope).map(p=><div key={p.id} style={{display:"flex",gap:8}}><Button size="small" onClick={()=>{if(p.filters.some(f=>!columns.some(c=>c.name===f.column))){notify.error(Error("方案中的字段已不存在，请重新设置"));return;}setFilters(p.filters);setConjunction(p.conjunction);setPresetName(p.name);}}>载入：{p.name}</Button><Button size="small" icon={<DeleteRegular/>} aria-label={"删除方案 "+p.name} onClick={()=>void deleteFilterPreset(p.id).catch(e=>notify.error(e))}/></div>)}
+      {presets.filter(p=>p.scope===scope).map(p=><div key={p.id} style={{display:"flex",gap:8}}><Button size="small" onClick={()=>{if(p.filters.some(f=>f.enabled!==false&&!columns.some(c=>c.name===f.column))){notify.error(Error("方案中的字段已不存在，请重新设置"));return;}setFilters(p.filters);setConjunction(p.conjunction);setPresetName(p.name);}}>载入：{p.name}</Button><Button size="small" icon={<DeleteRegular/>} aria-label={"删除方案 "+p.name} onClick={()=>void deleteFilterPreset(p.id).catch(e=>notify.error(e))}/></div>)}
       <InfoHint label="筛选方案说明">方案按连接、库、schema 和表保存；载入后点击「应用筛选」。同名保存会覆盖原方案。</InfoHint>
       </details>
       <div className={styles.header}>
@@ -250,12 +252,20 @@ export function FilterPanel({
           <Option value="and">AND（全部条件）</Option>
           <Option value="or">OR（任一条件）</Option>
         </Dropdown>
+        <span style={{marginLeft:"auto"}}>已启用 {enabledCount}/{filters.length}</span>
       </div>
 
-      <div className="dw-filter-labels"><span>字段</span><span>关系</span><span>值</span><span/></div>
+      <div className="dw-filter-labels"><span>启用</span><span>字段</span><span>关系</span><span>值</span><span/></div>
       <div className={styles.rows}>
         {filters.map((filter, index) => (
-          <div key={index} className={styles.row}>
+          <div key={index} className={`${styles.row} dw-filter-row`} data-enabled={filter.enabled !== false}>
+            <Checkbox
+              size="medium"
+              aria-label={`启用筛选条件 ${index + 1}`}
+              title={filter.enabled === false ? "已停用，条件保留；勾选后参与筛选" : "已启用，取消勾选可暂时停用"}
+              checked={filter.enabled !== false}
+              onChange={(_, data) => update(index, { enabled: data.checked === true })}
+            />
             <ColumnCombobox
               columns={columns}
               value={filter.column}
@@ -332,7 +342,6 @@ export function FilterPanel({
         <Button
           appearance="primary"
           size="small"
-          disabled={filters.length === 0}
           onClick={() => onApply(filters, conjunction)}
         >
           应用筛选
@@ -355,7 +364,7 @@ export function FilterPanel({
           清空筛选
         </Button>
         <div className={styles.spacer} />
-        <InfoHint label="筛选值说明">候选值仅来自当前已加载的 {loadedRows.length} 行，去重显示，不额外查询数据库。长值仅缩略显示，选择时保留完整内容；截断预览不可直接选择。IN 使用逗号分隔；LIKE 支持 % 和 _ 通配符。</InfoHint>
+        <InfoHint label="筛选值说明">仅勾选的条件参与筛选；未勾选的条件保留且可继续编辑，全部停用后应用将显示全部数据。保存方案会保留启用状态。候选值仅来自当前已加载的 {loadedRows.length} 行，去重显示，不额外查询数据库。长值仅缩略显示，选择时保留完整内容；截断预览不可直接选择。IN 使用逗号分隔；LIKE 支持 % 和 _ 通配符。</InfoHint>
       </div>
     </div>
   );

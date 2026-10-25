@@ -282,27 +282,34 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
         const lines = text.replace(/\r/g, "").split("\n");
         while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
 
-        let pasted = 0;
-        lines.forEach((line, rowOffset) => {
-          const row = gridApi.getDisplayedRowAtIndex(rowIndex + rowOffset)?.data;
-          if (!row) return;
-          line.split("\t").forEach((raw, colOffset) => {
-            const index = colIndex + colOffset;
-            if (!editableAt(row, index)) return;
-            const column = columns[index];
-            row.cells[index] = { value: parseCell(column, raw), text: raw };
-            if (row.state === "clean") row.state = "dirty";
-            pasted += 1;
+        const pending: { row: GridRow; index: number; cell: CellState }[] = [];
+        try {
+          lines.forEach((line, rowOffset) => {
+            const row = gridApi.getDisplayedRowAtIndex(rowIndex + rowOffset)?.data;
+            if (!row) return;
+            line.split("\t").forEach((raw, colOffset) => {
+              const index = colIndex + colOffset;
+              if (!editableAt(row, index)) return;
+              const column = columns[index];
+              pending.push({ row, index, cell: { value: parseCell(column, raw), text: raw } });
+            });
           });
-        });
-
+        } catch (error) {
+          notify.error(error, "粘贴失败，未修改任何单元格");
+          return 0;
+        }
+        const pasted = pending.length;
+        for (const { row, index, cell } of pending) {
+          row.cells[index] = cell;
+          if (row.state === "clean") row.state = "dirty";
+        }
         if (pasted > 0) {
           gridApi.refreshCells({ force: true });
           setTimeout(() => onPendingChangeRef.current?.(computeChangesRef.current()), 0);
         }
         return pasted;
       },
-      [columns, editableAt, readOnly],
+      [columns, editableAt, readOnly, notify],
     );
 
     const setNullAt = useCallback(
@@ -399,15 +406,22 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       (index: number) => (params: ValueSetterParams<GridRow>) => {
         if (!params.data || !editableAt(params.data,index)) return false;
         const text = String(params.newValue ?? "");
+        let value: DbValue;
+        try {
+          value = parseCell(columns[index], text);
+        } catch (error) {
+          notify.error(error, `${columns[index].name}：输入无效`);
+          return false;
+        }
         params.data.cells[index] = {
-          value: parseCell(columns[index], text),
+          value,
           text,
         };
         if (params.data.state === "clean") params.data.state = "dirty";
         setTimeout(() => onPendingChangeRef.current?.(computeChangesRef.current()), 0);
         return true;
       },
-      [columns,editableAt],
+      [columns,editableAt,notify],
     );
 
     const primaryKeyIndexes = useMemo(
@@ -667,6 +681,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
                 schema={schema}
                 table={table}
                 column={column.name}
+                columnMeta={column}
                 keys={keys}
                 editable={Boolean(canEdit)}
                 onClose={() => setFullValue(null)}

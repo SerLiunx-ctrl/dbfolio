@@ -38,7 +38,7 @@ Double-click a cell to edit a field in place. Structure, indexes, foreign keys, 
 
 ### Table data
 
-The compact grid shows column types and supports pagination, filters, and row changes that can be reviewed before submission.
+The compact grid shows column types and supports pagination, filters, and row changes that can be reviewed before submission. Filter conditions can be enabled or disabled individually without deleting them, and presets retain their enabled states.
 
 ![DBFolio table data browser](docs/screenshots/table-data.png)
 

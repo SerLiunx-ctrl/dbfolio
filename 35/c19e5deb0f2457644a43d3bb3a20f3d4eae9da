@@ -1,0 +1,96 @@
+src/features/grid/value.ts
+  s_f823aea5f80980::t_9b656eebec5bd6 2,76-77
+src/features/grid/FullValueDialog.tsx
+  s_f823aea5f80980::t_9b656eebec5bd6 18,46,66,117
+scripts/fixtures/grid-numeric.html
+  s_f823aea5f80980::t_e5319f7863a5cf 1
+scripts/fixtures/filter-enabled.html
+  s_f823aea5f80980::t_0d62acf42c7346 1
+src/features/grid/detailValue.ts
+  s_f823aea5f80980::t_9b656eebec5bd6 1-2,4,6-8
+scripts/fixtures/filter-enabled.tsx
+  s_f823aea5f80980::t_0d62acf42c7346 1-23,25-41
+  s_f823aea5f80980::t_e8f42fce86cfc2 24
+src/features/grid/numericValue.ts
+  s_f823aea5f80980::t_9b656eebec5bd6 1-36
+src-tauri/src/services/query.rs
+  s_f823aea5f80980::t_0d62acf42c7346 24-25,33-34
+  s_ba3d8a7c023e81::t_9e423f3127d59f 100,391-429
+scripts/check-grid-numeric.cjs
+  s_f823aea5f80980::t_e5319f7863a5cf 1-10,13-78
+  s_f823aea5f80980::t_015f4aa5c79129 11-12
+src/features/table/FilterPanel.tsx
+  s_f823aea5f80980::t_a01506b0f2f41d 10
+  s_ba3d8a7c023e81::t_ec05df6ff8f688 35,55,221,236,255,258,261-268,367
+scripts/fixtures/grid-numeric.tsx
+  s_f823aea5f80980::t_e5319f7863a5cf 1-41
+src-tauri/Cargo.toml
+  s_f823aea5f80980::t_8471a49c2b7028 3
+docs/releases/1.0.0-alpha.18.md
+  s_f823aea5f80980::t_42c5df56c895da 1-30
+src/stores/useLibrary.ts
+  s_f823aea5f80980::t_a01506b0f2f41d 16
+src/features/table/filter.css
+  s_f823aea5f80980::t_a01506b0f2f41d 5-6
+  s_f823aea5f80980::t_0d62acf42c7346 7-8
+src-tauri/src/services/grid.rs
+  s_f823aea5f80980::t_3eaed410d52d88 91-124
+  s_f823aea5f80980::t_f818b9ead57a6a 90
+docs/design.md
+  s_f823aea5f80980::t_42c5df56c895da 5-7
+  s_f823aea5f80980::t_6d18412212cc45 932-951,2726-2728
+scripts/check-filter-enabled.cjs
+  s_f823aea5f80980::t_3e1ffee6a59745 27
+  s_f823aea5f80980::t_0d62acf42c7346 1-25,28-29,31-59
+  s_f823aea5f80980::t_385f74bec3ef33 26
+  s_f823aea5f80980::t_e8f42fce86cfc2 30
+docs/roadmap.md
+  s_f823aea5f80980::t_c937e93b9eb509 11
+  s_f823aea5f80980::t_81e1980300acb7 3,479-480
+README.en.md
+  s_f823aea5f80980::t_c9467c6e28b929 41
+README.md
+  s_f823aea5f80980::t_d8a93779422289 41
+package-lock.json
+  s_f823aea5f80980::t_201a2d8b8718ee 3,9
+package.json
+  s_f823aea5f80980::t_e77fea2f7e5433 4
+src-tauri/Cargo.lock
+  s_f823aea5f80980::t_39ca46b5855a1c 1296
+src-tauri/src/store/migration_tests.rs
+  s_f823aea5f80980::t_d134225ec7163b 57,128-129,138-140
+src-tauri/tauri.conf.json
+  s_f823aea5f80980::t_778e7218e5e7bc 4
+src/features/grid/EditableDataGrid.tsx
+  s_f823aea5f80980::t_29d4f66dd82f54 285-295,297-305,312,409-415,417,424,684
+src-tauri/src/services/sync.rs
+  s_ba3d8a7c023e81::t_9bfadd80d03528 1678
+src/features/table/TableDataPanel.tsx
+  s_ba3d8a7c023e81::t_46f7bc7d31c731 130,401-402,405
+src/ipc/types.ts
+  s_ba3d8a7c023e81::t_79bcf1b9d6ec6e 321-322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "35c19e5deb0f2457644a43d3bb3a20f3d4eae9da",
+  "prompts": {},
+  "sessions": {
+    "s_ba3d8a7c023e81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b005-90d9-7b72-b699-9b9dacc9a3ee",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

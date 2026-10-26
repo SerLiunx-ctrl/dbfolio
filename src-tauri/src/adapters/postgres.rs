@@ -784,7 +784,7 @@ impl DbAdapter for PostgresAdapter {
                 auto_increment_value = seq_row
                     .and_then(|row| i64_opt(&row, "v"))
                     .filter(|v| *v >= 0)
-                    .map(|v| v as u64);
+                    .map(|v| v.to_string());
             }
         }
 

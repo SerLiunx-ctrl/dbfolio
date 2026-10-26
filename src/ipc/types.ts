@@ -217,7 +217,7 @@ export interface TableExtraInfo {
   engine?: string | null;
   charset?: string | null;
   collation?: string | null;
-  autoIncrementValue?: number | null;
+  autoIncrementValue?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   dataSize?: number | null;

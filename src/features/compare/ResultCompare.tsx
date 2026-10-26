@@ -1,16 +1,29 @@
 import {useMemo,useState} from 'react';
 import {create} from 'zustand';
-import {Button,Checkbox,Dialog,DialogSurface,DialogBody,DialogTitle,DialogContent,DialogActions,Select,tokens} from '@fluentui/react-components';
+import {Button,Checkbox,Dialog,DialogSurface,DialogBody,DialogTitle,DialogContent,DialogActions,Select,Menu,MenuTrigger,MenuPopover,MenuList,MenuItem,tokens} from '@fluentui/react-components';
 import {formatDbValue,type QueryOutcome} from '../../ipc/types';
 import {useNotify} from '../../app/toast';
 import {compareResults,snapshotResult,type ResultSnapshot} from './model';
 export const useResultBaseline=create<{baseline:ResultSnapshot|null}>(()=>({baseline:null}));
 export function ResultCompareActions({result,source,scope,disabled}:{result:QueryOutcome|null;source:string;scope:string;disabled?:boolean}){
-  const baseline=useResultBaseline(s=>s.baseline),[current,setCurrent]=useState<ResultSnapshot|null>(null),notify=useNotify();
-  return <><Button size="small" appearance="subtle" disabled={disabled||!result?.columns.length} title="固定当前已加载结果，之后可与其他查询页或数据库的结果比较；本次应用关闭后清除" onClick={()=>{try{if(result)useResultBaseline.setState({baseline:snapshotResult(result,source,scope)});}catch(e){notify.error(e);}}}>{baseline?'替换对比基准':'固定为对比基准'}</Button>
-  {baseline&&<Button size="small" appearance="subtle" disabled={disabled||!result?.columns.length} title={baseline.source+' · '+baseline.scope} onClick={()=>{try{if(result)setCurrent(snapshotResult(result,source,scope));}catch(e){notify.error(e);}}}>对比结果</Button>}
-  {current&&baseline&&<ResultCompareDialog baseline={baseline} current={current} onClose={()=>setCurrent(null)}/>}</>;
+  const baseline=useResultBaseline(s=>s.baseline),[current,setCurrent]=useState<ResultSnapshot|null>(null),[help,setHelp]=useState(false),notify=useNotify();
+  const unavailable=disabled||!result?.columns.length;
+  return <><Menu><MenuTrigger disableButtonEnhancement><Button size="small" appearance="subtle"
+    title="暂存当前页，再与其他结果比较新增、删除和修改；不会修改数据库">结果对比{baseline?' · 已有基准':''}</Button></MenuTrigger>
+    <MenuPopover><MenuList>
+      <MenuItem disabled={unavailable} onClick={()=>{try{if(result){useResultBaseline.setState({baseline:snapshotResult(result,source,scope)});notify.success("已保存对比基准","仅保存当前已加载页；可在其他结果中打开“结果对比”继续比较");}}catch(e){notify.error(e);}}}>{baseline?'将当前页替换为基准':'将当前页保存为基准'}</MenuItem>
+      <MenuItem disabled={unavailable||!baseline} title={baseline?baseline.source+' · '+baseline.scope:'请先保存一份对比基准'} onClick={()=>{try{if(result)setCurrent(snapshotResult(result,source,scope));}catch(e){notify.error(e);}}}>与基准对比</MenuItem>
+      <MenuItem disabled={!baseline} onClick={()=>{useResultBaseline.setState({baseline:null});notify.success("已清除对比基准");}}>清除对比基准</MenuItem>
+      <MenuItem onClick={()=>setHelp(true)}>对比说明</MenuItem>
+    </MenuList></MenuPopover></Menu>
+    {help&&<Dialog open onOpenChange={(_,d)=>{if(!d.open)setHelp(false);}}><DialogSurface style={{width:480,maxWidth:'94vw'}}><DialogBody><DialogTitle>结果对比说明</DialogTitle><DialogContent>
+      <ol style={{paddingLeft:20,lineHeight:1.7}}><li>将当前已加载页保存为基准。</li><li>刷新数据，或打开其他查询/数据库的结果，再选择“与基准对比”。</li><li>选择双方共有且唯一的字段作为对比键，查看新增、删除和修改。</li></ol>
+      <p>只比较两份已加载快照，不代表整张表；双方需有相同字段名。不会修改数据库，退出程序后基准清除。</p>
+      {baseline&&<p>当前基准：{baseline.source} · {baseline.scope} · {baseline.capturedAt}</p>}
+    </DialogContent><DialogActions><Button appearance="primary" onClick={()=>setHelp(false)}>知道了</Button></DialogActions></DialogBody></DialogSurface></Dialog>}
+    {current&&baseline&&<ResultCompareDialog baseline={baseline} current={current} onClose={()=>setCurrent(null)}/>}</>;
 }
+
 export function ResultCompareDialog({baseline,current,onClose}:{baseline:ResultSnapshot;current:ResultSnapshot;onClose:()=>void}){
   const [keys,setKeys]=useState<string[]>([]),[filter,setFilter]=useState('all'),[page,setPage]=useState(0);
   const comparison=useMemo(()=>{try{return {data:compareResults(baseline.result,current.result,keys),error:''};}catch(e){return {data:null,error:(e as Error).message};}},[baseline,current,keys]);

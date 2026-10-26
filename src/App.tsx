@@ -203,14 +203,18 @@ const useStyles = makeStyles({
     boxShadow: `inset 0 -2px 0 0 ${tokens.colorBrandStroke1}`,
   },
   tabTitle: {
-    maxWidth: "160px",
+    maxWidth: "210px",
+    minWidth: 0,
+    flexShrink: 1,
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
   tabDb: {
     fontSize: "10px",
-    color: tokens.colorNeutralForeground4,
-    maxWidth: "90px",
+    color: tokens.colorNeutralForeground3,
+    maxWidth: "80px",
+    minWidth: 0,
+    flexShrink: 2,
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
@@ -594,7 +598,8 @@ function AppShell() {
               ref={tabStripRef}
               role="tablist" aria-label="工作区页签"
               className={`${styles.tabStrip} dw-tab-strip`}
-              style={{ flex:1,minWidth:0, flexWrap: wrapTabs ? "wrap" : "nowrap", overflowX: wrapTabs ? "hidden" : "auto" }}
+              data-wrap={wrapTabs}
+              style={{ flex:1,minWidth:0, flexWrap: wrapTabs ? "wrap" : "nowrap", overflowX: wrapTabs ? "hidden" : "auto", overflowY: wrapTabs ? "auto" : "hidden", maxHeight: wrapTabs ? 78 : undefined }}
             >
               {["sync","sqlExport"].includes(tabs.find(t=>t.id===activeId)?.kind??"")?<span className={styles.tabSessionLabel}>全局工具</span>:activeSession && (
                 <span className={styles.tabSessionLabel}>{activeSession.name}<EnvironmentBadge sessionId={activeSession.id} /></span>
@@ -604,7 +609,7 @@ function AppShell() {
                   key={tab.id}
                   data-sort-tab={tab.id}
                   onPointerDown={event=>tabSort.start(event,tab.id)}
-                  style={{flexShrink: 0, maxWidth: "100%", boxShadow: tabDrop?.id === tab.id ? `inset ${tabDrop.after ? "-2" : "2"}px 0 ${tokens.colorBrandStroke1}` : undefined}}
+                  style={{flexShrink: 0, maxWidth: "min(340px,100%)", minWidth:0, boxSizing:"border-box", boxShadow: tabDrop?.id === tab.id ? `inset ${tabDrop.after ? "-2" : "2"}px 0 ${tokens.colorBrandStroke1}` : undefined}}
                   data-active-tab={tab.id === activeId}
                   title={(tab.kind==="sync"||tab.kind==="sqlExport")?"全局 · "+tab.title:tab.database+" / "+tab.title}
                   role="tab" aria-selected={tab.id===activeId} tabIndex={0}

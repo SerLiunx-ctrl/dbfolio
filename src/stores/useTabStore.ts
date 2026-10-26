@@ -96,7 +96,7 @@ interface TabState {
   updateAnalysis: (id:string,plan:AnalysisPlan)=>void;
   openGeneration: (target:Target)=>void;
   openMongo: (sessionId:string,database:string,collection:string)=>void;
-  openQuery: (sessionId: string, database: string) => void;
+  openQuery: (sessionId: string, database: string, prepare?: (tabId:string)=>void) => void;
   openTable: (selection: TableSelection, view?: TableView) => void;
   openRedis: (sessionId: string, database: string, title: string) => void;
   close: (id: string) => void;
@@ -148,7 +148,7 @@ export const useTabStore = create<TabState>((set, get) => ({
   pinned: {},
 
   openMongo: (sessionId,database,collection)=>{const old=get().tabs.find(t=>t.kind==="mongo"&&t.sessionId===sessionId&&t.database===database&&t.collection===collection);if(old){set({activeId:old.id});return;}const tab:MongoTab={id:nextId("mongo"),kind:"mongo",sessionId,database,collection,title:collection};set({tabs:[...get().tabs,tab],activeId:tab.id});},
-  openQuery: (sessionId, database) => {
+  openQuery: (sessionId, database, prepare) => {
     const tab: QueryTab = {
       id: nextId("query"),
       kind: "query",
@@ -156,6 +156,8 @@ export const useTabStore = create<TabState>((set, get) => ({
       database,
       title: "查询",
     };
+    // 在挂载查询页前准备草稿，避免同步订阅先读到空 SQL。
+    prepare?.(tab.id);
     set({ tabs: [...get().tabs, tab], activeId: tab.id });
   },
 

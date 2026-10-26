@@ -36,7 +36,7 @@ export async function checkUpdate(automatic=false){
 export async function downloadUpdate(){
   if(useUpdateStore.getState().busy)return;
   useUpdateStore.setState({busy:'download',error:'',message:''});
-  try{await trackedInvoke('updater_download');await loadUpdateStatus();useUpdateStore.setState({message:'下载完成，签名验证通过。可在方便时重启更新。'});}
+  try{await trackedInvoke('updater_download');await loadUpdateStatus();useUpdateStore.setState({message:'下载完成，重启即可更新。'});}
   catch(error){useUpdateStore.setState({error:errorText(error)});}
   finally{useUpdateStore.setState({busy:null});}
 }

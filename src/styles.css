@@ -393,6 +393,29 @@ pre,
 :root[data-oled="true"] .dw-data-footer,
 :root[data-oled="true"] .dw-data-surface { background:#000; }
 
+/* 内容保持纯黑，浮层使用独立不透明表面，避免与网格混为一体。 */
+:root[data-oled="true"][data-density] :is(.fui-DialogSurface,.fui-MenuPopover,.fui-PopoverSurface,.fui-Tooltip,.fui-Listbox,.dw-context-menu) {
+  background:#121212 !important;
+  border:1px solid #515151;
+  box-shadow:0 8px 28px #000b;
+}
+:root[data-oled="true"] .fui-Checkbox:has(input:not(:checked):not(:disabled)) .fui-Checkbox__indicator { border-color:#858585; }
+:root[data-oled="true"] .fui-Checkbox:has(input:disabled) .fui-Checkbox__indicator { border-color:#424242; }
+.dw-sidebar[data-session-collapsed="true"] > :not(:first-child) { display:none !important; }
+.dw-tab-strip { overscroll-behavior:contain; scrollbar-width:thin; }
+.dw-workspace-tab > svg,.dw-workspace-tab > .fui-Button { flex-shrink:0; }
+.dw-tab-overflow-item { display:flex;align-items:center;gap:16px;min-width:0;max-width:440px; }
+.dw-tab-overflow-item strong { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:500; }
+.dw-tab-overflow-item small { color:var(--colorNeutralForeground3);max-width:130px;overflow:hidden;text-overflow:ellipsis; }
+.dw-schema-list[aria-label="索引信息"] { min-width:640px; }
+.dw-schema-list[aria-label="外键信息"] { min-width:850px; }
+.dw-schema-list[aria-label="索引信息"] :is(th,td):nth-child(2) { width:90px; }
+.dw-schema-list[aria-label="索引信息"] :is(th,td):nth-child(4) { width:100px; }
+.dw-schema-list[aria-label="索引信息"] :is(th,td):nth-child(1) { width:28%; }
+.dw-schema-list[aria-label="外键信息"] :is(th,td):nth-child(4),
+.dw-schema-list[aria-label="外键信息"] :is(th,td):nth-child(5) { width:125px; }
+.dw-schema-list :is(th,td) { overflow-wrap:anywhere; }
+
 /* 单元格语义色独立于强调色，亮暗主题分别保证可读性。 */
 [data-color-mode] {
   --dw-value-number:#086f9b;

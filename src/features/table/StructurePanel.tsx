@@ -29,6 +29,7 @@ import {
   ArrowSortRegular,
   ArrowUpRegular,
   CodeRegular,
+  CopyRegular,
   DeleteRegular,
   EditRegular,
   LinkRegular,
@@ -722,15 +723,18 @@ export function ForeignKeysPanel({
   );
 }
 
-export function DdlPanel({ detail, engine }: { detail: TableMeta; engine: Engine }) {
+export function DdlPanel({ detail, engine, onOpenQuery }: { detail: TableMeta; engine: Engine; onOpenQuery?: (sql:string)=>void }) {
   const styles = useStyles();
+  const notify = useNotify();
   const theme = useEditorTheme();
   const ddl = detail.rawDdl ?? (detail.kind === "table" ? generateDdl(engine, detail) : null);
   return (
     <div className={`${styles.wrap} dw-ddl-panel`}>
-      <div className={styles.sectionTitle}>
-        <CodeRegular fontSize={16} />
-        DDL
+      <div className={styles.toolbar}>
+        <span className={styles.sectionTitle} style={{marginBottom:0}}><CodeRegular fontSize={16} />DDL</span>
+        <span className={styles.spacer}/>
+        <Button size="small" icon={<CopyRegular/>} disabled={!ddl} onClick={()=>{if(ddl)void api.clipboardWriteText(ddl).then(()=>notify.success("DDL 已复制")).catch(e=>notify.error(e,"复制失败"));}}>复制 DDL</Button>
+        {onOpenQuery && <Button size="small" icon={<CodeRegular/>} disabled={!ddl} onClick={()=>{if(ddl)onOpenQuery(ddl);}}>在查询页打开</Button>}
       </div>
       {ddl ? (
         <div className="dw-ddl-editor"><Editor language="sql" theme={theme.name} beforeMount={theme.beforeMount}

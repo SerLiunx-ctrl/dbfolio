@@ -1,3 +1,4 @@
+import {ResultPagination, resultRowRange} from "../grid/ResultPagination";
 import {useSettingsStore} from "../../stores/useSettingsStore";
 import {useSessionStore} from "../../stores/useSessionStore";
 import {ResultCompareActions} from "../compare/ResultCompare";
@@ -20,8 +21,6 @@ import {
   AddRegular,
   ArrowClockwiseRegular,
   ArrowDownloadRegular,
-  ArrowLeftRegular,
-  ArrowRightRegular,
   ArrowUploadRegular,
   CheckmarkRegular,
   ClipboardPasteRegular,
@@ -155,8 +154,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   );
 
   const load = useCallback(
-    async (nextOffset = 0, refreshSize = nextOffset === 0) => {
-      const limit = refreshSize ? useSettingsStore.getState().queryPageSize : pageSizeRef.current;
+    async (nextOffset = 0, limit = pageSizeRef.current) => {
       const requestId = ++requestIdRef.current;
       setLoading(true);
       try {
@@ -241,8 +239,6 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
 
   const canEdit =
     !readOnly && detail.kind === "table" && detail.primaryKey.length > 0;
-  const hasPrev = offset > 0;
-  const hasNext = rows.length === pageSize;
 
   const [partialSaved,setPartialSaved]=useState(false);
   const discardChanges=()=>{gridRef.current?.discard();setChanges([]);if(partialSaved){setPartialSaved(false);void load(offset);}};
@@ -339,9 +335,9 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         <Button
           size="small"
           icon={<ArrowClockwiseRegular />}
-          onClick={async () => { if (await confirmEdits(e => e.tabId === tab.id)) await load(pageSizeRef.current === useSettingsStore.getState().queryPageSize ? offset : 0); }}
+          onClick={async () => { if (await confirmEdits(e => e.tabId === tab.id)) await load(offset); }}
         >
-          刷新
+          刷新数据
         </Button>
         <Button
           size="small"
@@ -518,33 +514,16 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
 
       {related&&<RelatedRecords key={related.column+JSON.stringify(related.row)} source={relationSource} meta={detail} engine={engine} selection={related} onClose={()=>setRelated(null)}/>}
       </div>
-      <div className={`${styles.status} dw-data-footer`}>
-        <span>
-          第 {offset + 1} - {offset + rows.length} 行
-        </span>
-        {elapsed !== null && <span title="从页面发起请求到收到结果，包含通信、后端处理和历史记录保存，不含最终页面绘制">请求总耗时 {elapsed} ms</span>}
-        <ResultCompareActions result={{columns:detail.columns.map(c=>({name:c.name,rawType:c.rawType})),rows,affected:null}} source={sourceName+" / "+tab.database+"."+(tab.schema?tab.schema+".":"")+tab.table} scope={`已加载第 ${offset+1}–${offset+rows.length} 行`} disabled={loading||changes.length>0}/>
-        {seekKey && <span title="单整数主键、默认顺序且无筛选时，下一页从主键游标继续；不支持的情况回退普通分页">主键分页</span>}
-        {loading && <Spinner size="tiny" label="加载中…" />}
-        <div className={styles.spacer} />
-        <Button
-          appearance="subtle"
-          size="small"
-          icon={<ArrowLeftRegular />}
-          disabled={!hasPrev || loading}
-          onClick={async () => { if (await confirmEdits(e => e.tabId === tab.id)) await load(Math.max(0, offset - pageSize), false); }}
-        >
-          上一页
-        </Button>
-        <Button
-          appearance="subtle"
-          size="small"
-          icon={<ArrowRightRegular />}
-          disabled={!hasNext || loading}
-          onClick={async () => { if (await confirmEdits(e => e.tabId === tab.id)) await load(offset + pageSize); }}
-        >
-          下一页
-        </Button>
+      <div className={`${styles.status} dw-data-footer dw-result-footer`}>
+        <div className="dw-result-summary" role="status">
+          <span>{resultRowRange(offset, rows.length)}</span>
+          {elapsed !== null && <span className="dw-result-time" title="从页面发起请求到收到结果，不含最终页面绘制">耗时 {elapsed} ms</span>}
+          {loading && <Spinner size="tiny" label="加载中…" />}
+        </div>
+        <ResultCompareActions result={{columns:detail.columns.map(c=>({name:c.name,rawType:c.rawType})),rows,affected:null}} source={sourceName+" / "+tab.database+"."+(tab.schema?tab.schema+".":"")+tab.table} scope={resultRowRange(offset, rows.length)} disabled={loading||changes.length>0}/>
+        <ResultPagination offset={offset} pageSize={pageSize} rowCount={rows.length} disabled={loading}
+          onPage={async nextOffset => { if (await confirmEdits(e => e.tabId === tab.id)) await load(nextOffset); }}
+          onPageSize={async size => { if (await confirmEdits(e => e.tabId === tab.id)) await load(0, size); }}/>
       </div>
 
       <DataChangePreview open={previewOpen} sessionId={tab.sessionId} database={tab.database} schema={tab.schema} table={tab.table} changes={changes} onApply={commit} onClose={()=>setPreviewOpen(false)}/>

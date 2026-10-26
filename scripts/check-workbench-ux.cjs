@@ -4,6 +4,10 @@ const api={settingsGet:async k=>data.get(k)??null,settingsSet:async(k,v)=>{if(fa
 function load(file){file=path.resolve(file);if(file.endsWith(path.join('src','ipc.ts')))return {api};if(cache.has(file))return cache.get(file).exports;const m={exports:{}};cache.set(file,m);new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(name=>name.startsWith('.')?load(path.resolve(path.dirname(file),name)+'.ts'):require(name),m,m.exports);return m.exports;}
 (async()=>{
  const {useTabStore:t}=load('src/stores/useTabStore.ts'),{useEditGuard:guard}=load('src/stores/useEditGuard.ts');
+ let prepared;
+ const unsubscribe=t.subscribe(state=>{assert.equal(state.activeId,prepared,'新页签对订阅者可见前必须准备好 SQL 草稿');});
+ t.getState().openQuery('s','db',id=>{prepared=id;});
+ assert.equal(t.getState().activeId,prepared);unsubscribe();
  const query=(id,sessionId='s')=>({id,kind:'query',title:id,sessionId,database:'db'});
  const pinned={id:'p',kind:'table',title:'p',table:'p',database:'db',view:'data',sessionId:'s',pinned:true};
  t.setState({tabs:[query('a'),query('b'),query('c'),query('other','s2'),pinned],activeId:'c',recentlyClosed:[]});

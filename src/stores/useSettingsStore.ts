@@ -29,7 +29,7 @@ const REDIS_TREE_WIDTH_KEY = "ui_redis_tree_width";
 const REDIS_PREVIEW_WIDTH_KEY = "ui_redis_preview_width";
 
 export const DEFAULT_SIDEBAR_WIDTH = 300;
-export const DEFAULT_SIDEBAR_SPLIT = 0.38;
+export const DEFAULT_SIDEBAR_SPLIT = 0.32;
 export const DEFAULT_MAX_TABS = 20;
 export const DEFAULT_ZOOM = 1;
 export const DEFAULT_ACCENT = "#0f6cbd";

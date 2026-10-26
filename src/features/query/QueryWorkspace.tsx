@@ -1,3 +1,4 @@
+import {ResultPagination, resultRowRange} from "../grid/ResultPagination";
 import {useObjectPreferences} from '../../stores/useObjectPreferences';
 import {AiSqlEdit,type SqlEditRequest} from "./AiSqlEdit";
 import {invoke} from "@tauri-apps/api/core";
@@ -49,8 +50,6 @@ import {
 import {
   DataBarVerticalRegular,
   ArrowDownloadRegular,
-  ArrowLeftRegular,
-  ArrowRightRegular,
   CopyRegular,
   HistoryRegular,
   FolderOpenRegular,
@@ -249,7 +248,7 @@ export function QueryWorkspace({ tab, active }: Props) {
       setError(null);
       const started = performance.now();
       try {
-        const limit = useSettingsStore.getState().queryPageSize;
+        const limit = pageSize;
         const outcome = transaction.transaction ? await transaction.execute(text,force,0,sortSpecs,limit) : await api.queryExecute(tab.sessionId, database, text, {
           force,
           limit,
@@ -281,7 +280,7 @@ export function QueryWorkspace({ tab, active }: Props) {
         executionLock.current=false;setRunning(false);
       }
     },
-    [database, tab.sessionId, transaction.transaction, transaction.busy, transaction.lost],
+    [database, tab.id, tab.sessionId, pageSize, transaction.transaction, transaction.busy, transaction.lost],
   );
 
   const run = useCallback(
@@ -418,24 +417,30 @@ export function QueryWorkspace({ tab, active }: Props) {
     }
   };
 
-  const fetchPage = async (nextOffset: number) => {
-    if (!lastSql || transaction.busy || transaction.lost || (resultTransaction!==null && resultTransaction!==transaction.transaction?.id)) return;
+  const fetchPage = async (nextOffset: number, limit = pageSize) => {
+    if (executionLock.current || result?.scriptStatements || !result?.columns.length || !lastSql || transaction.busy || transaction.lost || (transaction.transaction && transaction.transaction.database !== resultDatabase) || (resultTransaction!==null && resultTransaction!==transaction.transaction?.id)) return;
+    executionLock.current = true;
     setRunning(true);
+    const started = performance.now();
     try {
-      const outcome = transaction.transaction ? await transaction.execute(lastSql,true,nextOffset,sort,pageSize) : await api.queryFetchPage(
+      const outcome = transaction.transaction ? await transaction.execute(lastSql,true,nextOffset,sort,limit) : await api.queryFetchPage(
         tab.sessionId,
         resultDatabase,
         lastSql,
         nextOffset,
-        pageSize,
+        limit,
         sort,
         tab.id,
       );
       setResult(outcome);
+      setResultTransaction(transaction.transaction?.id ?? null);
       setOffset(nextOffset);
+      setPageSize(limit);
+      setElapsed(Math.round(performance.now() - started));
     } catch (err) {
       notify.error(err, "加载失败");
     } finally {
+      executionLock.current = false;
       setRunning(false);
     }
   };
@@ -449,8 +454,7 @@ export function QueryWorkspace({ tab, active }: Props) {
   };
 
   const rowCount = result ? result.rows.length : 0;
-  const hasPrev = !result?.scriptStatements && offset > 0;
-  const hasNext = result !== null && !result.scriptStatements && rowCount === pageSize;
+  const paginationDisabled = running || transaction.busy || transaction.lost || (!!transaction.transaction && transaction.transaction.database !== resultDatabase) || (!!resultTransaction && resultTransaction !== transaction.transaction?.id);
 
   return (
     <div className={styles.root}>
@@ -570,19 +574,11 @@ export function QueryWorkspace({ tab, active }: Props) {
       <div className={styles.resultWrap}>
         <div className={styles.resultToolbar}>
           {result?.scriptStatements && <span title="独立连接顺序执行；显示最后一条 SQL 的结果，已完成写入和 DDL 不会自动回滚">脚本已完成 {result.scriptStatements} 条 · 末条结果最多 {pageSize} 行</span>}
-          {result && result.columns.length > 0 && (
-            <>
-              <span>
-                第 {offset + 1} - {offset + rowCount} 行
-              </span>
-              {elapsed !== null && <span title="从页面发起请求到收到结果，包含通信、后端处理和历史记录保存，不含最终页面绘制">请求总耗时 {elapsed} ms</span>}
-            </>
-          )}
           {result && result.columns.length === 0 && result.affected !== null && (
             <span>受影响行数 {result.affected}</span>
           )}
           <div className={styles.spacer} />
-          <ResultCompareActions result={result} source={(targetSession?.name??tab.sessionId)+" / "+resultDatabase} scope={`已加载第 ${offset+1}–${offset+rowCount} 行${resultTransaction?" · 事务内快照（不代表已提交）":""}`} disabled={running}/>
+          <ResultCompareActions result={result} source={(targetSession?.name??tab.sessionId)+" / "+resultDatabase} scope={`${resultRowRange(offset,rowCount)}${resultTransaction?" · 事务内快照（不代表已提交）":""}`} disabled={running}/>
           <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={running||!!resultTransaction||!result?.columns.length} onClick={()=>{if(!result)return;const data=fromSql(result,queryResultScope(result.rows.length,offset,pageSize));const plan=newPlan(tab.sessionId,resultDatabase);plan.query=result.scriptStatements?"":lastSql;plan.name="查询分析";plan.chart=autoChart(data);openAnalysis(plan,data);}} title="复制当前查询页作为绘图快照；在独立分析页可以另写查询，不影响本页">用此结果绘图</Button>
           <Button
             appearance="subtle"
@@ -604,24 +600,7 @@ export function QueryWorkspace({ tab, active }: Props) {
           >
             导出
           </Button>
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<ArrowLeftRegular />}
-            disabled={!hasPrev || running || transaction.lost || (!!resultTransaction && resultTransaction!==transaction.transaction?.id)}
-            onClick={() => void fetchPage(Math.max(0, offset - pageSize))}
-          >
-            上一页
-          </Button>
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<ArrowRightRegular />}
-            disabled={!hasNext || running || transaction.lost || (!!resultTransaction && resultTransaction!==transaction.transaction?.id)}
-            onClick={() => void fetchPage(offset + pageSize)}
-          >
-            下一页
-          </Button>
+
         </div>
         <div className={styles.grid}>
           {active && result && result.columns.length > 0 ? (
@@ -649,6 +628,16 @@ export function QueryWorkspace({ tab, active }: Props) {
             )
           )}
         </div>
+        {result && result.columns.length > 0 && <div className={`${styles.resultToolbar} dw-data-footer dw-result-footer`} style={{borderTop:`1px solid ${tokens.colorNeutralStroke2}`}}>
+          <div className="dw-result-summary" role="status">
+            <span>{resultRowRange(offset, rowCount)}</span>
+            {elapsed !== null && <span className="dw-result-time" title="从页面发起请求到收到结果，不含最终页面绘制">耗时 {elapsed} ms</span>}
+            {running && <Spinner size="tiny" label="加载中…"/>}
+          </div>
+          {!result.scriptStatements && <ResultPagination offset={offset} pageSize={pageSize} rowCount={rowCount} disabled={paginationDisabled}
+            onPage={nextOffset => fetchPage(nextOffset)} onPageSize={size => void fetchPage(0, size)}/>}
+        </div>}
+
       </div>
 
       <Dialog

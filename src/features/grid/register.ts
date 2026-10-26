@@ -41,6 +41,7 @@ export function useGridTheme() {
         rowHoverColor: withAlpha(accent, 0.12),
         selectedRowBackgroundColor: withAlpha(accent, 0.19),
         borderColor: style === "oled" ? "#292929" : withAlpha(accent, dark ? 0.28 : 0.2),
+        ...(style === "oled" ? {checkboxUncheckedBorderColor:"#858585",checkboxUncheckedBackgroundColor:"#000000"} : {}),
         columnBorder: style === "studio",
         wrapperBorderRadius: style === "aurora" ? 10 : style === "studio" ? 2 : surfaceColors(style,dark).radius,
         // 紧凑模式：小字号 + 紧行高，尽量多显示内容

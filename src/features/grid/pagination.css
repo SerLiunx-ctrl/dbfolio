@@ -1,0 +1,8 @@
+.dw-result-footer { display:flex; align-items:center; flex-wrap:wrap; gap:4px 12px; min-width:0; flex-shrink:0; }
+.dw-result-footer .dw-result-summary { display:flex; align-items:center; flex-wrap:wrap; gap:4px 12px; }
+.dw-result-pagination { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-left:auto; font-variant-numeric:tabular-nums; }
+.dw-result-pagination .dw-page-number { width:62px; min-width:0; }
+.dw-result-pagination .dw-page-number input { width:100%; text-align:center; }
+.dw-result-pagination .fui-Select { min-width:108px; }
+.dw-result-pagination .fui-Button { min-width:28px; }
+.dw-result-footer .dw-result-time { color:var(--colorNeutralForeground3); white-space:nowrap; }

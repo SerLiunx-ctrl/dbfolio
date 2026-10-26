@@ -17,6 +17,12 @@ for (const [name,left,right,scale,width,expected] of [
   ['超宽标签',-50,650,1,500,150],
 ]) { const {strip,tab}=fixture(left,right,scale,width);revealActiveTab(strip,tab);assert.equal(strip.scrollLeft,expected,name); }
 const {strip}=fixture(600,800);
+for (const scale of [1, 1.5, .8]) {
+  const wrapped = {clientWidth:500,offsetWidth:500,clientHeight:72,offsetHeight:72,clientLeft:0,clientTop:0,scrollLeft:0,scrollTop:0,
+    getBoundingClientRect:()=>({left:0,top:0,width:500*scale,height:72*scale})};
+  revealActiveTab(wrapped,{getBoundingClientRect:()=>({left:0,right:200*scale,top:140*scale,bottom:174*scale})});
+  assert.equal(wrapped.scrollTop,102,'换行栏必须展开当前页签所在行');
+}
 useActiveTabScroll({current:strip}, '恢复的末尾标签', false);cleanup=effect();assert.equal(strip.scrollLeft,500);
 strip.scrollLeft=200;callback();assert.equal(strip.scrollLeft,500,'尺寸变化后校正');
 cleanup();assert.equal(disconnected,true,'取消尺寸监听');

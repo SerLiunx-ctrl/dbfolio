@@ -161,7 +161,9 @@ export function buildTheme(dark: boolean, accent: string, style = "aurora", dens
     colorNeutralBackground1Pressed:'#202020',colorNeutralBackground2Pressed:'#202020',colorNeutralBackground3Pressed:'#202020',
     colorNeutralBackground1Selected:'#181818',colorNeutralBackground2Selected:'#181818',colorNeutralBackground3Selected:'#181818',
     colorSubtleBackgroundHover:'#101010',colorSubtleBackgroundPressed:'#202020',colorSubtleBackgroundSelected:'#181818',
-    colorNeutralStroke1:'#383838',colorNeutralStroke2:'#292929',colorNeutralStroke3:'#202020',
+    colorNeutralStroke1:'#515151',colorNeutralStroke2:'#353535',colorNeutralStroke3:'#292929',
+    colorNeutralStrokeAccessible:'#858585',colorNeutralStrokeAccessibleHover:'#b0b0b0',
+    colorNeutralForegroundDisabled:'#7d7d7d',colorNeutralBackgroundDisabled:'#101010',colorNeutralStrokeDisabled:'#424242',
   };
   if (!SURFACE_PALETTES[style]) return { ...base, ...(dark ? darkOverrides : lightOverrides) };
   const p=surfaceColors(style,dark), hover=mixColor(p.surface,accent,dark?.18:.09), selected=mixColor(p.surface,accent,dark?.27:.16);

@@ -1,6 +1,6 @@
 import {InfoHint} from '../common/InfoHint';
 import { useEffect, useRef, useState } from "react";
-import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Input, Link, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, tokens } from "@fluentui/react-components";
+import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Input, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, tokens } from "@fluentui/react-components";
 import { DataBarVerticalRegular, AddRegular, AppFolderRegular, ArrowUndoRegular, ArrowResetRegular, FullScreenMaximizeRegular, InfoRegular, DeleteRegular, SaveRegular, DismissRegular, SettingsRegular, TabDesktopRegular, ChevronDownRegular } from "@fluentui/react-icons";
 import { useFocusMode, toggleFocusMode } from "../stores/useFocusMode";
 import { useLocalUndo, undoLocal } from "../stores/useLocalUndo";
@@ -8,14 +8,14 @@ import { applyLayout, BUILTIN_LAYOUTS, deleteLayoutPreset, loadLayoutPresets, sa
 import { useSessionStore } from "../stores/useSessionStore";
 import { useTabStore } from "../stores/useTabStore";
 import { useNotify } from "./toast";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { version } from "../../package.json";
+import { AboutDialog } from "../features/settings/AboutContent";
 
-export const APP_RELEASE = version;
+export { APP_RELEASE } from "./releaseInfo";
 export function WorkbenchHub() {
   const notify = useNotify(), focus = useFocusMode(s => s.active), entries = useLocalUndo(s => s.entries), undoBusy = useLocalUndo(s => s.busy);
   const presets = useLayoutPresets(s => s.presets), closed = useTabStore(s => s.recentlyClosed);
-  const [dialog, setDialog] = useState<"layout" | "about" | null>(null), [name, setName] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [dialog, setDialog] = useState<"layout" | null>(null), [name, setName] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
   const reopening = useRef(false);
   const actionLock = useRef(false);
   const run = async (action: () => Promise<void>) => { if(actionLock.current)return;actionLock.current=true;setBusy(true); setError(""); try { await action(); } catch (e) { setError(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e)); } finally { actionLock.current=false;setBusy(false); } };
@@ -34,7 +34,7 @@ export function WorkbenchHub() {
       } catch (e) { notify.error(e, "恢复页签失败"); } finally { reopening.current = false; }
     };
     const layout = () => { setError(""); setDialog("layout"); void loadLayoutPresets().catch(e => setError(String(e))); };
-    const about = () => { setError(""); setDialog("about"); };
+    const about = () => { setAboutOpen(true); };
     const key = (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") { e.preventDefault(); toggleFocusMode(); }
@@ -59,23 +59,18 @@ export function WorkbenchHub() {
       <MenuItem icon={<SettingsRegular />} onClick={() => emit("dw:settings")}>首选项 · Ctrl+,</MenuItem>
       <MenuItem icon={<InfoRegular />} onClick={() => emit("dw:about")}>关于 DBFolio</MenuItem>
     </MenuList></MenuPopover></Menu>
-    <Dialog open={dialog !== null} onOpenChange={(_, d) => { if (!d.open && !busy) setDialog(null); }}><DialogSurface style={{ width: dialog === "about" ? "min(420px,92vw)" : "min(640px,92vw)" }}><DialogBody>
-      <DialogTitle>{dialog === "layout" ? "工作区布局" : "关于 DBFolio"}</DialogTitle>
+    <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+    <Dialog open={dialog !== null} onOpenChange={(_, d) => { if (!d.open && !busy) setDialog(null); }}><DialogSurface style={{ width: "min(640px,92vw)" }}><DialogBody>
+      <DialogTitle>工作区布局</DialogTitle>
       <DialogContent style={{ maxHeight: "65vh", overflowY: "auto" }}>
-        {dialog === "layout" ? <>
+        <>
           <InfoHint label="布局说明">保存面板位置、两侧宽度、上下比例与折叠状态。专注模式临时隐藏面板，不改写这些设置。</InfoHint>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{BUILTIN_LAYOUTS.map(p => <Button key={p.name} disabled={busy} icon={<AppFolderRegular />} onClick={() => void run(() => applyLayout(p.layout))}>{p.name}</Button>)}</div>
           <h3>我的布局 <small>（{presets.length}/12）</small></h3>
           {!presets.length && <p style={{ color: tokens.colorNeutralForeground3 }}>调整面板后，在下方保存当前布局。</p>}
           {presets.map(p => <div key={p.name} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}><Button disabled={busy} appearance="subtle" style={{ flex: 1, justifyContent: "start", minWidth: 0, overflowWrap: "anywhere" }} icon={<AppFolderRegular />} onClick={() => void run(() => applyLayout(p.layout))}>{p.name}</Button><Button disabled={busy} icon={<DeleteRegular />} aria-label={"删除布局 " + p.name} title="删除布局（可撤销）" onClick={() => void run(() => deleteLayoutPreset(p.name))} /></div>)}
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}><Input style={{ flex: 1, minWidth: 0 }} aria-label="布局名称" placeholder="当前布局名称" maxLength={40} value={name} onChange={(_, d) => setName(d.value)} /><Button disabled={busy || !name.trim()} icon={<SaveRegular />} onClick={() => void run(async () => { await saveLayoutPreset(name); setName(""); })}>{busy ? "处理中…" : "保存当前布局"}</Button></div>
-        </> : <>
-          <dl style={{ display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", columnGap: 16, rowGap: 16, marginBlock: 16 }}>
-            <dt style={{ color: tokens.colorNeutralForeground2 }}>作者</dt><dd style={{ margin: 0 }}>SerLiunx</dd>
-            <dt style={{ color: tokens.colorNeutralForeground2 }}>邮箱</dt><dd style={{ margin: 0, overflowWrap: "anywhere" }}>root@serliunx.com</dd>
-            <dt style={{ color: tokens.colorNeutralForeground2 }}>主页</dt><dd style={{ margin: 0, overflowWrap: "anywhere" }}><Link href="https://www.serliunx.com" onClick={event => { event.preventDefault(); void openUrl("https://www.serliunx.com").catch(e => notify.error(e, "打开主页失败")); }}>https://www.serliunx.com</Link></dd>
-          </dl>
-        </>}
+        </>
         {error && <p role="alert" style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</p>}
       </DialogContent><DialogActions><Button appearance="primary" disabled={busy} icon={<DismissRegular />} onClick={() => setDialog(null)}>关闭</Button></DialogActions>
     </DialogBody></DialogSurface></Dialog>
@@ -84,5 +79,5 @@ export function WorkbenchHub() {
 
 export function TabOverflow({ tabs, activeId }: { tabs: ReturnType<typeof useTabStore.getState>["tabs"]; activeId: string | null }) {
   if (!tabs.length) return null;
-  return <Menu><MenuTrigger disableButtonEnhancement><Button appearance="subtle" size="small" icon={<ChevronDownRegular />} title={"本会话页签（" + tabs.length + "）"} aria-label="本会话全部页签" /></MenuTrigger><MenuPopover><MenuList>{tabs.map(t => <MenuItem key={t.id} icon={<TabDesktopRegular />} onClick={() => useTabStore.getState().setActive(t.id)} title={t.database + " / " + t.title}>{t.id === activeId ? "✓ " : ""}{t.title} · {t.database}</MenuItem>)}</MenuList></MenuPopover></Menu>;
+  return <Menu><MenuTrigger disableButtonEnhancement><Button appearance="subtle" size="small" icon={<ChevronDownRegular />} title={"本会话页签（" + tabs.length + "）"} aria-label="本会话全部页签" /></MenuTrigger><MenuPopover><MenuList>{tabs.map(t => <MenuItem key={t.id} icon={<TabDesktopRegular />} onClick={() => useTabStore.getState().setActive(t.id)} title={t.database + " / " + t.title}><span className="dw-tab-overflow-item"><strong>{t.id === activeId ? "✓ " : ""}{t.title}</strong><small>{t.database || "全局工具"}</small></span></MenuItem>)}</MenuList></MenuPopover></Menu>;
 }

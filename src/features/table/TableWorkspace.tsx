@@ -4,12 +4,14 @@ import { newPlan } from "../analysis/model";
 import { qualifiedTableSql } from "../grid/value";
 import {
   Button,
+  Menu, MenuTrigger, MenuPopover, MenuList, MenuItem,
   Spinner,
   Tag,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { DataBarVerticalRegular, AddRegular, ArrowClockwiseRegular, CodeRegular } from "@fluentui/react-icons";
+import { DataBarVerticalRegular, AddRegular, ArrowClockwiseRegular, CodeRegular, MoreHorizontalRegular } from "@fluentui/react-icons";
+import { updateDraft } from "../../stores/useWorkspace";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../ipc";
 import type { TableMeta } from "../../ipc/types";
@@ -155,7 +157,6 @@ export function TableWorkspace({ tab, active }: Props) {
           </Tag>
         )}
         <div className={styles.spacer} />
-        {session?.engine==='mysql'&&<Button size="small" appearance="subtle" onClick={()=>useTabStore.getState().openMysqlTool(tab.sessionId,tab.database,'objects',tab.table)}>触发器</Button>}
 
         <Button
           appearance="subtle"
@@ -165,17 +166,20 @@ export function TableWorkspace({ tab, active }: Props) {
         >
           新建查询
         </Button>
-        <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={!session} title="新建独立分析，预填当前表的 SQL，不使用当前数据页或筛选" onClick={()=>{if(!session)return;const plan=newPlan(tab.sessionId,tab.database);plan.metadataSource={table:tab.table,schema:tab.schema??""};plan.name=(tab.table+" 分析").slice(0,120);plan.query="SELECT * FROM "+qualifiedTableSql(session.engine,tab.database,tab.schema,tab.table)+";";openAnalysis(plan);}}>新建分析</Button>
-        <Button size="small" appearance="subtle" icon={<AddRegular/>} disabled={detail?.kind!=="table"} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</Button>
-        <Button
+        <Menu><MenuTrigger disableButtonEnhancement><Button size="small" appearance="subtle" icon={<MoreHorizontalRegular/>} aria-label="更多表操作">更多</Button></MenuTrigger><MenuPopover><MenuList>
+          {session?.engine==='mysql'&&<MenuItem onClick={()=>useTabStore.getState().openMysqlTool(tab.sessionId,tab.database,'objects',tab.table)}>触发器</MenuItem>}
+        <MenuItem icon={<DataBarVerticalRegular/>} disabled={!session} title="新建独立分析，预填当前表的 SQL，不使用当前数据页或筛选" onClick={()=>{if(!session)return;const plan=newPlan(tab.sessionId,tab.database);plan.metadataSource={table:tab.table,schema:tab.schema??""};plan.name=(tab.table+" 分析").slice(0,120);plan.query="SELECT * FROM "+qualifiedTableSql(session.engine,tab.database,tab.schema,tab.table)+";";openAnalysis(plan);}}>新建分析</MenuItem>
+        <MenuItem icon={<AddRegular/>} disabled={detail?.kind!=="table"} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</MenuItem>
+        </MenuList></MenuPopover></Menu>
+        {view!=="info"&&<Button
           appearance="subtle"
           size="small"
           icon={loading ? <Spinner size="tiny" /> : <ArrowClockwiseRegular />}
           disabled={loading}
           onClick={async () => { if (await confirmEdits(e => e.tabId === tab.id)) await load(); }}
         >
-          刷新
-        </Button>
+          刷新元数据
+        </Button>}
       </div>
       <TableViewTabs view={view} onSelect={selectView} counts={detail?{columns:detail.columns.length,indexes:detail.indexes.length,foreignKeys:detail.foreignKeys.length}:undefined}/>
       <div className={styles.content}>
@@ -253,7 +257,9 @@ export function TableWorkspace({ tab, active }: Props) {
                 className={`${styles.panel} dw-enter`}
                 style={{ display: view === "ddl" ? "flex" : "none" }}
               >
-                <DdlPanel detail={detail} engine={session.engine} />
+                <DdlPanel detail={detail} engine={session.engine} onOpenQuery={sql=>{
+                  openQuery(tab.sessionId,tab.database,id=>updateDraft(id,{sql,database:tab.database,sessionId:tab.sessionId,updatedAt:new Date().toISOString(),name:tab.table+" DDL"}));
+                }}/>
               </div>
             )}
             {visited.has("info") && (

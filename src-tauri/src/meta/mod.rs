@@ -140,7 +140,8 @@ pub struct TableExtraInfo {
     pub engine: Option<String>,
     pub charset: Option<String>,
     pub collation: Option<String>,
-    pub auto_increment_value: Option<u64>,
+    /// 十进制字符串，避免 WebView 的 JSON 数字丢失 64 位整数精度。
+    pub auto_increment_value: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
     pub data_size: Option<u64>,
@@ -551,6 +552,19 @@ impl CanonicalType {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn auto_increment_metadata_preserves_exact_decimal_string() {
+        for value in ["9007199254740993", "1919654707669256368", "18446744073709551615"] {
+            let info = super::TableExtraInfo {
+                auto_increment_value: Some(value.into()),
+                ..Default::default()
+            };
+            let json = serde_json::to_value(&info).unwrap();
+            assert_eq!(json["autoIncrementValue"].as_str(), Some(value));
+            let roundtrip: super::TableExtraInfo = serde_json::from_value(json).unwrap();
+            assert_eq!(roundtrip.auto_increment_value.as_deref(), Some(value));
+        }
+    }
     use super::CanonicalType;
 
     #[test]

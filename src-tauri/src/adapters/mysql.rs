@@ -719,7 +719,7 @@ impl DbAdapter for MySqlAdapter {
             engine: text_opt(&row, "ENGINE").filter(|v| !v.is_empty()),
             charset,
             collation,
-            auto_increment_value: u64_opt(&row, "AUTO_INCREMENT"),
+            auto_increment_value: u64_opt(&row, "AUTO_INCREMENT").map(|value| value.to_string()),
             created_at: text_opt(&row, "CREATE_TIME").filter(|v| !v.is_empty()),
             updated_at: text_opt(&row, "UPDATE_TIME").filter(|v| !v.is_empty()),
             data_size: u64_opt(&row, "DATA_LENGTH"),

@@ -12,6 +12,13 @@ export function revealActiveTab(strip: HTMLElement, tab: HTMLElement) {
   const delta = right - left > strip.clientWidth ? left
     : left < 0 ? left : right > strip.clientWidth ? right - strip.clientWidth : 0;
   if (Math.abs(delta) > 0.5) strip.scrollLeft += delta;
+  const verticalScale = viewport.height / strip.offsetHeight;
+  if (verticalScale > 0) {
+    const top = (bounds.top - viewport.top) / verticalScale - strip.clientTop;
+    const bottom = (bounds.bottom - viewport.top) / verticalScale - strip.clientTop;
+    if (top < 0) strip.scrollTop += top;
+    else if (bottom > strip.clientHeight) strip.scrollTop += bottom - strip.clientHeight;
+  }
 }
 
 export function useActiveTabScroll(ref: RefObject<HTMLDivElement | null>, layoutKey: string, hidden: boolean) {

@@ -456,7 +456,7 @@ impl DbAdapter for SqliteAdapter {
             .flatten()
             .and_then(|row| int_opt(&row, "seq"))
             .filter(|v| *v >= 0)
-            .map(|v| v as u64);
+            .map(|v| v.to_string());
 
         Ok(TableExtraInfo {
             engine: Some("SQLite".into()),
@@ -591,4 +591,21 @@ impl crate::services::manual_transaction::ManualTransaction for ManualTx {
         }
     }
     async fn finish(self:Box<Self>,commit:bool)->AppResult<()> {if commit {self.tx.commit().await?;} else {self.tx.rollback().await?;} Ok(())}
+}
+
+#[cfg(test)]
+mod metadata_precision_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn sqlite_sequence_preserves_large_integer() {
+        let pool = SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::query("CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT)").execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO items(id) VALUES (1919654707669256368)").execute(&pool).await.unwrap();
+        let adapter = SqliteAdapter { pool, path: String::new(), read_only: false, query_timeout_secs: 30 };
+        let info = adapter.table_extra_info("main", None, "items").await.unwrap();
+        assert_eq!(info.auto_increment_value.as_deref(), Some("1919654707669256368"));
+        let json = serde_json::to_value(info).unwrap();
+        assert_eq!(json["autoIncrementValue"], "1919654707669256368");
+    }
 }

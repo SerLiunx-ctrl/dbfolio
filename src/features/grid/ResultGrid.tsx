@@ -27,6 +27,7 @@ import {
 } from "../../ipc/types";
 import { useGridTheme } from "./register";
 import { TypeHeader } from "./TypeHeader";
+import { initialColumnSizing } from "./columnSizing";
 
 const useStyles = makeStyles({
   menuOverlay: {
@@ -99,10 +100,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
         headerComponent: TypeHeader,
         headerComponentParams: { columnType: column.rawType },
         sortable: Boolean(onSortChange),
-        // 初始弹性布局填满容器，后续列定义更新不覆盖用户手动设置的宽度。
-        initialFlex: 1,
-        initialWidth: 110,
-        minWidth: 110,
+        ...initialColumnSizing(column, rows, index),
         // 服务端排序时禁用前端排序（返回 0 保持数据原顺序）
         comparator: onSortChange ? () => 0 : undefined,
         valueGetter: (params) => params.data?.cells[index],

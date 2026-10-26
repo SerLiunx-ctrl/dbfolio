@@ -6,9 +6,11 @@ import { useSettingsStore } from "../stores/useSettingsStore";
 import { useNotify } from "./toast";
 import { ResizeHandle } from "./ResizeHandle";
 import { useFocusMode } from "../stores/useFocusMode";
+const SessionCollapseContext = createContext<{collapsed:boolean;toggle:()=>void}|null>(null);
 const DragContext = createContext<(panel:DockPanel,event:PointerEvent)=>void>(()=>{});
 export function DockTitle({panel,children}:{panel:DockPanel;children:ReactNode}) {
   const start = useContext(DragContext), notify=useNotify();
+  const sessions = useContext(SessionCollapseContext);
   const layout=useDockStore(s=>s.layout);
   const move=(side:DockSide,top:boolean)=>void useDockStore.getState().move(panel,side,top).catch(e=>notify.error(e,"保存布局失败"));
   return <span style={{display:"inline-flex",alignItems:"center",minWidth:0}}>
@@ -22,6 +24,9 @@ export function DockTitle({panel,children}:{panel:DockPanel;children:ReactNode})
         <MenuItem icon={<ArrowResetRegular/>} onClick={()=>void useDockStore.getState().reset().catch(e=>notify.error(e,"恢复布局失败"))}>恢复默认停靠</MenuItem>
       </MenuList></MenuPopover>
     </Menu>
+    {panel === "sessions" && sessions && <Button appearance="subtle" size="small" style={{minWidth:22,width:22,padding:0}}
+      icon={sessions.collapsed ? <ArrowDownRegular/> : <ArrowUpRegular/>}
+      aria-label={sessions.collapsed ? "展开会话区" : "收起会话区"} title={sessions.collapsed ? "展开会话区，恢复原比例" : "收起会话区，为对象浏览器腾出空间"} onClick={sessions.toggle}/>}
   </span>;
 }
 export function DockLayout({sessions,explorer,children}:{sessions:ReactNode;explorer:ReactNode;children:ReactNode}) {
@@ -40,6 +45,8 @@ export function DockLayout({sessions,explorer,children}:{sessions:ReactNode;expl
   const widthCap=Math.max(0,(size.width-240-sides*4)/Math.max(1,sides));
   const leftWidth=Math.min(width,widthCap), actualRightWidth=Math.min(rightWidth,widthCap);
   const both=layout.sessions===layout.explorer;
+  const [sessionsCollapsed,setSessionsCollapsed]=useState(false);
+  const compactSessions=both&&sessionsCollapsed;
   const start=(panel:DockPanel,event:PointerEvent)=>{
     event.preventDefault();stopRef.current?.();
     const handle=event.currentTarget as HTMLElement;handle.setPointerCapture(event.pointerId);
@@ -51,16 +58,16 @@ export function DockLayout({sessions,explorer,children}:{sessions:ReactNode;expl
     window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",cancel);window.addEventListener("keydown",key);window.addEventListener("blur",cancel);handle.addEventListener("lostpointercapture",cancel);stopRef.current=cleanup;
   };
   const panelStyle=(panel:DockPanel)=>({gridColumn:layout[panel]==="left"?1:5,gridRow:both?(layout.first===panel?"1":"3"):"1 / 4",display:collapsed?"none":"flex",flexDirection:"column" as const,minWidth:0,minHeight:0,overflow:"hidden",borderInlineEnd:layout[panel]==="left"?`1px solid ${tokens.colorNeutralStroke2}`:undefined,borderInlineStart:layout[panel]==="right"?`1px solid ${tokens.colorNeutralStroke2}`:undefined});
-  return <DragContext.Provider value={start}><div ref={frame} style={{flex:1,minHeight:0,minWidth:0,display:"grid",position:"relative",gridTemplateColumns:collapsed?"22px 0 minmax(0,1fr) 0 0":`${left?leftWidth:0}px ${left?4:0}px minmax(0,1fr) ${right?4:0}px ${right?actualRightWidth:0}px`,gridTemplateRows:both?`minmax(0,${split}fr) 4px minmax(0,${1-split}fr)`:"minmax(0,1fr) 0 0"}}>
-    <div className="dw-sidebar" style={panelStyle("sessions")}>{sessions}</div>
+  return <SessionCollapseContext.Provider value={both?{collapsed:sessionsCollapsed,toggle:()=>setSessionsCollapsed(value=>!value)}:null}><DragContext.Provider value={start}><div ref={frame} style={{flex:1,minHeight:0,minWidth:0,display:"grid",position:"relative",gridTemplateColumns:collapsed?"22px 0 minmax(0,1fr) 0 0":`${left?leftWidth:0}px ${left?4:0}px minmax(0,1fr) ${right?4:0}px ${right?actualRightWidth:0}px`,gridTemplateRows:both?(compactSessions?(layout.first==="sessions"?"40px 4px minmax(0,1fr)":"minmax(0,1fr) 4px 40px"):`minmax(0,${split}fr) 4px minmax(0,${1-split}fr)`):"minmax(0,1fr) 0 0"}}>
+    <div className="dw-sidebar" data-session-collapsed={compactSessions} style={panelStyle("sessions")}>{sessions}</div>
     <div className="dw-sidebar" style={panelStyle("explorer")}>{explorer}</div>
     <div style={{gridColumn:3,gridRow:"1 / 4",minWidth:0,minHeight:0,display:"flex"}}>{children}</div>
     {collapsed&&<Button appearance="subtle" size="small" style={{gridColumn:1,gridRow:"1 / 4",minWidth:22,padding:0}} title={focus?"退出专注模式 (Ctrl+Shift+J)":"展开面板 (Ctrl+B)"} aria-label="展开面板" onClick={()=>{if(focus)useFocusMode.setState({active:false});else void useSettingsStore.getState().setSidebarCollapsed(false);}} icon={<ArrowRightRegular/>}/>}
     {(["left","right"] as const).map(side=>(side==="left"?left:right)&&<div key={side} style={{gridColumn:side==="left"?2:4,gridRow:"1 / 4",display:"flex"}}><ResizeHandle invert={side==="right"} value={side==="left"?leftWidth:actualRightWidth} min={Math.min(200,widthCap)} max={Math.min(460,widthCap)} onChange={v=>(side==="left"?useSettingsStore.getState().setSidebarWidth:useSettingsStore.getState().setRightSidebarWidth)(v,false)} onCommit={v=>(side==="left"?useSettingsStore.getState().setSidebarWidth:useSettingsStore.getState().setRightSidebarWidth)(v,true)}/></div>)}
-    {!collapsed&&both&&<div style={{gridColumn:layout.sessions==="left"?1:5,gridRow:2,display:"flex",flexDirection:"column"}}><ResizeHandle direction="vertical" value={size.height*split} min={Math.min(100,size.height*.2)} max={Math.max(100,size.height-100)} onChange={v=>useSettingsStore.getState().setSidebarSplit(v/Math.max(1,size.height),false)} onCommit={v=>useSettingsStore.getState().setSidebarSplit(v/Math.max(1,size.height),true)}/></div>}
+    {!collapsed&&both&&!compactSessions&&<div style={{gridColumn:layout.sessions==="left"?1:5,gridRow:2,display:"flex",flexDirection:"column"}}><ResizeHandle direction="vertical" value={size.height*split} min={Math.min(100,size.height*.2)} max={Math.max(100,size.height-100)} onChange={v=>useSettingsStore.getState().setSidebarSplit(v/Math.max(1,size.height),false)} onCommit={v=>useSettingsStore.getState().setSidebarSplit(v/Math.max(1,size.height),true)}/></div>}
     {drag&&<div style={{position:"absolute",inset:0,zIndex:1000,pointerEvents:"none",border:`2px dashed ${tokens.colorBrandStroke1}`}}>
       <div style={{position:"absolute",top:8,left:"50%",transform:"translateX(-50%)",padding:"6px 12px",background:tokens.colorNeutralBackground1,borderRadius:6}}>拖到左/右边缘停靠 · 上下半区决定顺序 · Esc 取消</div>
       {drag.target&&<div style={{position:"absolute",[drag.target.side]:0,top:layout[drag.panel === "sessions" ? "explorer" : "sessions"] === drag.target.side && !drag.target.top ? "50%" : 0,height:layout[drag.panel === "sessions" ? "explorer" : "sessions"] === drag.target.side ? "50%" : "100%",width:drag.target.side==="left"?leftWidth:actualRightWidth,background:tokens.colorBrandBackground2,border:`2px solid ${tokens.colorBrandStroke1}`,display:"grid",placeItems:"center"}}>{drag.panel==="sessions"?"会话":"对象浏览器"} · {drag.target.side==="left"?"左侧":"右侧"}{drag.target.top?"上方":"下方"}</div>}
     </div>}
-  </div></DragContext.Provider>;
+  </div></DragContext.Provider></SessionCollapseContext.Provider>;
 }

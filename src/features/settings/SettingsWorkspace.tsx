@@ -1,15 +1,20 @@
 import { ConfigTransferSettings } from "./ConfigTransferSettings";
 import { UpdatePanel } from '../updates/UpdatePanel';
+import { AboutContent } from "./AboutContent";
+import "./settings.css";
 import {QueryPageSettings} from "./QueryPageSettings";
 import {InfoHint} from '../../common/InfoHint';
 import { LocalDataSettings } from "./LocalDataSettings";
 import { AiSettings } from "./AiSettings";
 import { useDockStore } from "../../stores/useDockStore";
+import { useIsDark } from "../../theme";
+import { surfaceColors } from "../../appearance";
 import { AccentPicker } from "./AccentPicker";
 import {
   Button,
   Dropdown,
   Field,
+  Input,
   Option,
   Radio,
   RadioGroup,
@@ -19,8 +24,8 @@ import {
   mergeClasses,
   tokens,
 } from "@fluentui/react-components";
-import { CheckmarkRegular } from "@fluentui/react-icons";
-import { useEffect, useState } from "react";
+import { CheckmarkRegular, SearchRegular } from "@fluentui/react-icons";
+import { useEffect, useMemo, useState } from "react";
 import { useNotify } from "../../app/toast";
 import {
   ACCENT_PRESETS,
@@ -37,10 +42,10 @@ const useStyles = makeStyles({
     display: "flex",
   },
   nav: {
-    width: "160px",
+    width: "164px",
     flexShrink: 0,
     borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
-    padding: "12px 8px",
+    padding: "10px 8px",
     display: "flex",
     flexDirection: "column",
     gap: "2px",
@@ -50,9 +55,10 @@ const useStyles = makeStyles({
     border: "none",
     background: "transparent",
     textAlign: "left",
-    padding: "7px 10px",
+    padding: "5px 8px",
     borderRadius: "6px",
-    fontSize: tokens.fontSizeBase300,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: "20px",
     color: tokens.colorNeutralForeground2,
     cursor: "pointer",
     transition: "background-color 140ms cubic-bezier(0.33, 0, 0.67, 1)",
@@ -72,9 +78,11 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     gap: "var(--dw-section-gap)",
+    maxWidth: "960px",
+    boxSizing: "border-box",
   },
   title: {
-    fontSize: tokens.fontSizeBase500,
+    fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground1,
   },
@@ -83,6 +91,8 @@ const useStyles = makeStyles({
     flexDirection: "column",
     gap: "10px",
     maxWidth: "520px",
+    paddingBottom: "10px",
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   note: {
     fontSize: tokens.fontSizeBase200,
@@ -123,29 +133,24 @@ const useStyles = makeStyles({
     background: "transparent",
     color: tokens.colorNeutralForeground2,
   },
-  placeholder: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
-    padding: "24px 0",
-  },
 });
 
 const CATEGORIES = [
-  { id: "appearance", label: "外观" },
-  { id: "layout", label: "布局与缩放" },
-  { id: "editor", label: "编辑器" },
-  { id: "grid", label: "数据网格" },
-  { id: "sync", label: "同步" },
-  { id: "shortcuts", label: "快捷键" },
-  { id: "ai", label: "AI 服务" },
-  { id: "localData", label: "本机数据" },
-  { id: "configTransfer", label: "配置迁移" },
-  { id: "updates", label: "软件更新" },
-  { id: "advanced", label: "高级" },
+  { id: "appearance", label: "外观", group: "界面与操作", keywords: "主题 配色 强调色 动效" },
+  { id: "layout", label: "布局与缩放", group: "界面与操作", keywords: "面板 停靠 密度 页签" },
+  { id: "shortcuts", label: "快捷键", group: "界面与操作", keywords: "键盘 快速打开" },
+  { id: "grid", label: "数据浏览", group: "数据与服务", keywords: "数据网格 查询 分页 每页 行数" },
+  { id: "ai", label: "AI 服务", group: "数据与服务", keywords: "模型 密钥 服务商" },
+  { id: "localData", label: "本机数据", group: "应用管理", keywords: "历史 清理 缓存" },
+  { id: "configTransfer", label: "配置迁移", group: "应用管理", keywords: "导入 导出 会话" },
+  { id: "updates", label: "软件更新", group: "应用管理", keywords: "版本 代理 通道 升级" },
+  { id: "about", label: "关于", group: "应用管理", keywords: "版本 更新内容 作者" },
 ];
+const CATEGORY_GROUPS = ["界面与操作", "数据与服务", "应用管理"];
 
 export function SettingsWorkspace({initialCategory="appearance"}:{initialCategory?:string}) {
   const styles = useStyles();
+  const dark = useIsDark();
   const notify = useNotify();
   const interfaceStyle = useSettingsStore((s) => s.interfaceStyle);
   const density = useSettingsStore(s=>s.density);
@@ -153,7 +158,12 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
   const setInterfaceStyle = useSettingsStore((s) => s.setInterfaceStyle);
   const [savingStyle, setSavingStyle] = useState(false);
   const [category, setCategory] = useState(initialCategory);
-  useEffect(()=>{setCategory(CATEGORIES.some(c=>c.id===initialCategory)?initialCategory:"appearance");},[initialCategory]);
+  const [search, setSearch] = useState("");
+  useEffect(()=>{setCategory(CATEGORIES.some(c=>c.id===initialCategory)?initialCategory:"appearance");setSearch("");},[initialCategory]);
+  const categories = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return CATEGORIES.filter(item => `${item.group} ${item.label} ${item.keywords}`.toLocaleLowerCase().includes(query));
+  }, [search]);
 
   const motionMode = useSettingsStore(s=>s.motionMode);
   const setMotionMode = useSettingsStore(s=>s.setMotionMode);
@@ -190,8 +200,14 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
 
   return (
     <div className={styles.root}>
-      <nav className={styles.nav}>
-        {CATEGORIES.map((item) => (
+      <nav className={styles.nav} aria-label="首选项分类">
+        <Input size="small" className="dw-settings-nav-search" contentBefore={<SearchRegular />} aria-label="搜索设置" placeholder="搜索设置" value={search} onChange={(_, data) => setSearch(data.value)} />
+        {CATEGORY_GROUPS.map(group => {
+          const items = categories.filter(item => item.group === group);
+          if (!items.length) return null;
+          return <section className="dw-settings-nav-group" aria-label={group} key={group}>
+          <h3 className="dw-settings-nav-heading">{group}</h3>
+          {items.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -200,13 +216,16 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
               item.id === category && styles.navItemActive,
             )}
             onClick={() => setCategory(item.id)}
+            aria-current={item.id === category ? "page" : undefined}
           >
             {item.label}
           </button>
-        ))}
+          ))}</section>;
+        })}
+        {!categories.length && <span className={styles.note} role="status">没有匹配的设置</span>}
       </nav>
-      <div className={styles.content}>
-        <div className={styles.title}>{current.label}</div>
+      <main className={mergeClasses(styles.content, "dw-settings-content")} aria-label={current.label}>
+        <header className="dw-settings-heading"><div className={styles.title}>{current.label}</div><span>{current.group}</span></header>
         {current.id === "layout" && <section className={styles.section}>
           <Field label="界面密度">
             <RadioGroup layout="horizontal" value={density} onChange={(_,d)=>void setDensity(d.value as "compact"|"comfortable").catch(e=>notify.error(e))}>
@@ -220,50 +239,12 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
         {category === "localData" && <LocalDataSettings/>}
         {category === "configTransfer" && <ConfigTransferSettings/>}
         {category === "updates" && <UpdatePanel/>}
-        {category === "appearance" && <Field label="界面动效">
-          <RadioGroup layout="horizontal" value={motionMode} onChange={(_,d)=>void setMotionMode(d.value as MotionMode).catch(e=>notify.error(e,"保存动效偏好失败"))}>
-            <Radio value="system" label="跟随系统"/><Radio value="full" label="完整"/><Radio value="reduced" label="减弱"/><Radio value="off" label="关闭"/>
-          </RadioGroup>
-          <InfoHint label="界面动效说明">跟随系统的减少动态效果偏好。减弱模式仅保留短暂淡入和颜色过渡；关闭模式立即切换，运行状态仍用文字和图标表示。</InfoHint>
-        </Field>}
+        {category === "about" && <AboutContent/>}
         {category === "appearance" && (
           <>
-            <section aria-label="界面风格">
-              <h3 className="dw-style-title">界面风格</h3>
-              <div className="dw-style-options">
-                {INTERFACE_STYLES.map((item) => (
-                  <button
-                    type="button"
-                    key={item.value}
-                    className="dw-style-option"
-                    data-preview={item.value}
-                    aria-pressed={interfaceStyle === item.value}
-                    disabled={savingStyle}
-                    onClick={async () => {
-                      setSavingStyle(true);
-                      try { await setInterfaceStyle(item.value); }
-                      catch (error) { notify.error(error); }
-                      finally { setSavingStyle(false); }
-                    }}
-                  >
-                    <span className="dw-style-preview" aria-hidden="true">
-                      <span className="dw-preview-sidebar"><i /><i /><i /></span>
-                      <span className="dw-preview-workspace">
-                        <span className="dw-preview-heading">数据工作区</span>
-                        <span className="dw-preview-columns"><b>id</b><b>title</b><b>created_at</b></span>
-                        {[1, 2, 3].map((row) => <span className="dw-preview-row" key={row}><i /><i /><i /></span>)}
-                      </span>
-                    </span>
-                    <span className="dw-style-name">{item.name}{interfaceStyle === item.value && <CheckmarkRegular />}</span>
-                    <span className="dw-style-description">{item.description}</span>
-                  </button>
-                ))}
-              </div>
-              <InfoHint label="主题说明">选择后立即生效并自动保存。所有风格均支持下方的亮暗配色与强调色设置。</InfoHint>
-            </section>
             <div className={styles.section}>
               <Field label="界面配色">
-                <RadioGroup
+                <RadioGroup layout="horizontal"
                   value={themeMode}
                   onChange={(_, data) => void setThemeMode(data.value as ThemeMode)}
                 >
@@ -323,6 +304,51 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
             </div>
           </>
         )}
+
+        {category === "appearance" && <Field label="界面动效">
+          <RadioGroup layout="horizontal" value={motionMode} onChange={(_,d)=>void setMotionMode(d.value as MotionMode).catch(e=>notify.error(e,"保存动效偏好失败"))}>
+            <Radio value="system" label="跟随系统"/><Radio value="full" label="完整"/><Radio value="reduced" label="减弱"/><Radio value="off" label="关闭"/>
+          </RadioGroup>
+          <InfoHint label="界面动效说明">跟随系统的减少动态效果偏好。减弱模式仅保留短暂淡入和颜色过渡；关闭模式立即切换，运行状态仍用文字和图标表示。</InfoHint>
+        </Field>}
+
+        {category === "appearance" && <>
+            <details className="dw-style-gallery" aria-label="界面风格">
+              <summary>界面风格 · {INTERFACE_STYLES.find(item => item.value === interfaceStyle)?.name}</summary>
+
+              <div className="dw-style-options">
+                {INTERFACE_STYLES.map((item) => (
+                  <button
+                    type="button"
+                    key={item.value}
+                    className="dw-style-option"
+                    data-preview={item.value}
+                    style={{"--preview-surface":surfaceColors(themeMode === "oled" ? "oled" : item.value,dark).surface,"--preview-ink":surfaceColors(themeMode === "oled" ? "oled" : item.value,dark).foreground} as React.CSSProperties}
+                    aria-pressed={interfaceStyle === item.value}
+                    disabled={savingStyle}
+                    onClick={async () => {
+                      setSavingStyle(true);
+                      try { await setInterfaceStyle(item.value); }
+                      catch (error) { notify.error(error); }
+                      finally { setSavingStyle(false); }
+                    }}
+                  >
+                    <span className="dw-style-preview" aria-hidden="true">
+                      <span className="dw-preview-sidebar"><i /><i /><i /></span>
+                      <span className="dw-preview-workspace">
+                        <span className="dw-preview-heading">数据工作区</span>
+                        <span className="dw-preview-columns"><b>id</b><b>title</b><b>created_at</b></span>
+                        {[1, 2, 3].map((row) => <span className="dw-preview-row" key={row}><i /><i /><i /></span>)}
+                      </span>
+                    </span>
+                    <span className="dw-style-name">{item.name}{interfaceStyle === item.value && <CheckmarkRegular />}</span>
+                    <span className="dw-style-description">{item.description}</span>
+                  </button>
+                ))}
+              </div>
+              <InfoHint label="主题说明">选择后立即生效并自动保存。预览跟随当前配色，风格与强调色均会保留。</InfoHint>
+            </details>
+        </>}
 
         {category === "layout" && (
           <>
@@ -412,14 +438,7 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
           {[ ["Ctrl+P","全局快速打开；输入 > 搜索应用命令"], ["Ctrl+Shift+J","临时专注模式"], ["Ctrl+Shift+T","重新打开关闭的页签"], ["Ctrl+Alt+Z","撤销本地收藏、分组、布局操作"], ["Ctrl+,","打开首选项"], ["Ctrl+Enter","执行选中 SQL；未选中时执行光标所在语句"], ["Ctrl+Shift+F","格式化选中 SQL 或整个编辑器（可撤销）"], ["Ctrl+S","保存 SQL 文件"], ["Ctrl+加号 / 减号 / 0","放大 / 缩小 / 恢复界面比例"], ["Ctrl+B","展开或收起侧栏"] ].map(([key,label])=><div key={key} style={{display:"flex",gap:16}}><strong style={{minWidth:160}}>{key}</strong><span>{label}</span></div>)}
         </div>}
         {category === "grid" && <QueryPageSettings/>}
-        {(category === "editor" ||
-          category === "sync" ||
-          category === "advanced") && (
-          <div className={styles.placeholder}>
-            该分类的设置将在后续版本提供（编辑器、数据网格、同步、快捷键、日志等）。
-          </div>
-        )}
-      </div>
+      </main>
     </div>
   );
 }

@@ -30,6 +30,7 @@ import { isNullValue, isReadOnlyValue } from "../../ipc/types";
 import { parseCell } from "./value";
 import { useGridTheme } from "./register";
 import { TypeHeader } from "./TypeHeader";
+import { initialColumnSizing } from "./columnSizing";
 import { useNotify } from "../../app/toast";
 
 const useStyles = makeStyles({
@@ -438,10 +439,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
             headerTooltip: `${column.rawType}${isPk ? " · 主键" : ""}`,
             headerComponent: TypeHeader,
             headerComponentParams: { columnType: column.rawType },
-            // 弹性列填满可用宽度；手动拖动后保留该列宽度，其余列继续分配空间。
-            initialFlex: 1,
-            initialWidth: 110,
-            minWidth: 110,
+            ...initialColumnSizing(column, rows, index),
             // 服务端排序时禁用前端排序（返回 0 保持数据原顺序），避免字符串比较覆盖服务端结果
             comparator: onSortChange ? () => 0 : undefined,
             editable: (params) => editableAt(params.data,index),

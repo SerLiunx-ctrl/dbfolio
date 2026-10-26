@@ -55,7 +55,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       }
       await page.getByRole('button', { name: '添加列', exact: true }).click();
       await horizontal();
-      await page.getByRole('button', { name: '取消', exact: true }).click();
+      await page.getByRole('button', { name: '废弃', exact: true }).click();
       if (engine === 'sqlite') await page.screenshot({ path: '.qa/metadata-sqlite-actions.png' });
     }
     await page.goto('http://localhost:1425/scripts/fixtures/metadata-ui.html?view=foreignKeys');

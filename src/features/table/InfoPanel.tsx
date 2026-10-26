@@ -19,6 +19,7 @@ import { useNotify } from "../../app/toast";
 import { api } from "../../ipc";
 import { formatBytes, type TableInfo } from "../../ipc/types";
 import { useSessionStore } from "../../stores/useSessionStore";
+import { confirmEdits } from "../../stores/useEditGuard";
 import type { TableTab } from "../../stores/useTabStore";
 
 const useStyles = makeStyles({
@@ -193,9 +194,9 @@ export function InfoPanel({ tab,onChanged }: Props) {
           appearance="subtle"
           size="small"
           icon={<ArrowClockwiseRegular />}
-          onClick={() => void load()}
+          onClick={async () => { if(await confirmEdits(entry=>entry.tabId===tab.id))await load(); }}
         >
-          刷新
+          刷新元数据
         </Button>
       </div>
       {info.kind==="table"&&<TableOptionsEditor key={JSON.stringify(info)} tab={tab} info={info} onSaved={()=>{void load();onChanged?.();}}/>}

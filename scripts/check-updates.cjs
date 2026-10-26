@@ -22,6 +22,7 @@ const assert=require('node:assert/strict');
   }
   await page.goto('http://127.0.0.1:1425/scripts/fixtures/updates.html');
   await page.getByRole('button',{name:'检查更新',exact:true}).click();
+  await page.getByText('更新设置',{exact:true}).click();
   await page.getByRole('button',{name:'跳过此版本提醒',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.calls.find(c=>c.command==='updater_preferences').args.value.skipped),'1.0.0-alpha.16');
   await page.getByRole('button',{name:'检查更新',exact:true}).click();await page.evaluate(()=>window.slow=true);

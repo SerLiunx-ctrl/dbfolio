@@ -1,0 +1,33 @@
+updates/README.md
+  s_f823aea5f80980::t_74b0d18701df6e 3
+docs/releases/1.0.0-alpha.28.md
+  s_f823aea5f80980::t_946671a68282ba 16-17
+docs/verification/r06.md
+  s_f823aea5f80980::t_74b0d18701df6e 3,7-12
+  s_f823aea5f80980::t_d237056e98c98d 13-15
+  s_f823aea5f80980::t_47d7f2f85b700c 16-17
+README.en.md
+  s_f823aea5f80980::t_0963238e4023b0 229
+README.md
+  s_f823aea5f80980::t_5466473c0c6e6e 265
+docs/design.md
+  s_f823aea5f80980::t_f44efa7c40f8e2 937,941-942,953,2858
+docs/roadmap.md
+  s_f823aea5f80980::t_0c2596e8188ad5 11,496
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3bc3c2f607a11afd7bb4c1c26fdec894d652b0e7",
+  "prompts": {},
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

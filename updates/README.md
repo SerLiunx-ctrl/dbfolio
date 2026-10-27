@@ -1,6 +1,6 @@
 # 更新索引发布
 
-2026-10-24：alpha.16 [预发布](https://github.com/SerLiunx-ctrl/dbfolio/releases/tag/v1.0.0-alpha.16) 与 `preview.json` 已公开，实际客户端检查通过。使用 alpha.16 时选择「预览版」通道；当前同版本会显示「当前没有可用的新版本」。稳定通道等待首个正式版索引，完整跨版本升级仍待验收。
+2026-10-27：alpha.28 [预发布](https://github.com/SerLiunx-ctrl/dbfolio/releases/tag/v1.0.0-alpha.28) 与 `preview.json` 已公开，公开文件下载、签名及资源预检通过。选择「预览版」通道检查更新；同版本会显示「当前没有可用的新版本」。此前实际客户端检查与下载记录保留，本轮未执行实际界面或完整安装升级，详见 [R06 验收记录](../docs/verification/r06.md)。稳定通道等待首个正式版索引，完整跨版本升级仍待验收。
 
 此目录保存实际已发布版本的 `stable.json` / `preview.json`。没有可下载的签名发布包时不放占位索引，以免把“未发布”误报成“已是最新版”。
 

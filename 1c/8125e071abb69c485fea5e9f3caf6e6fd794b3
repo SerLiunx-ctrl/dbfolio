@@ -1,0 +1,20 @@
+updates/preview.json
+  s_f823aea5f80980::t_807d6efab6961c 2-4,7-9
+  s_f823aea5f80980::t_ca7d86cb92a461 12-14,17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1c8125e071abb69c485fea5e9f3caf6e6fd794b3",
+  "prompts": {},
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

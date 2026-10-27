@@ -16,7 +16,7 @@ const assert=require('node:assert/strict');
       await p.getByRole('textbox',{name:'text 默认值',exact:true}).fill('hello');
       if(engine!=='sqlite') {await cell('注释').dblclick();await p.getByRole('textbox',{name:'text 注释',exact:true}).fill('备注');}
       else {await cell('注释').dblclick();assert.equal(await p.getByRole('textbox',{name:'text 注释',exact:true}).count(),0);}
-      assert.equal(await p.evaluate(()=>window.calls.length),0,'修改仅暂存');
+      assert.equal(await p.evaluate(()=>window.calls.filter(x=>x.c.startsWith('ddl_')||x.c==='query_execute').length),0,'修改仅暂存，允许读取类型目录');
       await p.getByRole('button',{name:'保存',exact:true}).click();
       await p.getByRole('checkbox',{name:'我已了解风险，确认执行'}).check();
       const change=await p.evaluate(()=>window.calls.find(x=>x.c==='ddl_preview').a.spec.changes[0]);

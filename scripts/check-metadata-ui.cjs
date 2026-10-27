@@ -20,7 +20,19 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       await page.goto(`http://localhost:1425/scripts/fixtures/metadata-ui.html?theme=${theme}`);
       await page.getByRole('table', { name: '索引信息' }).waitFor();
       const numeric = theme === 'light' ? 'rgb(8, 111, 155)' : 'rgb(123, 205, 241)';
-      assert.equal(await color(page.locator('.dw-metadata-column').first()), numeric);
+      assert.equal(await color(page.locator('.dw-metadata-type').first()), numeric);
+      assert.notEqual(await color(page.locator('.dw-metadata-name').first()),numeric,'列名与类型不再共用颜色');
+      const badge=page.locator('.dw-metadata-type').first();
+      assert.notEqual(await badge.evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)','类型标签应有独立底色');
+      assert.equal(await badge.evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
+      for(const zoom of [1,2]){
+        await page.evaluate(z=>{document.body.style.zoom=String(z);},zoom);
+        const nameBox=await page.locator('.dw-metadata-name').first().boundingBox(),typeBox=await badge.boundingBox();
+        assert(typeBox.x>=nameBox.x+nameBox.width+3*zoom,'列名与类型之间保留间距');
+        assert(typeBox.height>=15*zoom&&typeBox.height<=18*zoom,'类型标签不裁切且保持紧凑');
+        await page.screenshot({path:`.qa/alpha27-index-${theme}-${zoom}.png`});
+      }
+      await page.evaluate(()=>{document.body.style.zoom='1';});
       assert.notEqual(await color(page.getByText('主键', { exact: true })), await color(page.getByText('唯一', { exact: true })));
       assert.notEqual(await color(page.getByText('BTREE', { exact: true })), await color(page.getByText('HASH', { exact: true })));
       assert.equal(await page.locator('.dw-metadata-type').count(), 3);
@@ -28,7 +40,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       await page.getByRole('button', { name: 'foreignKeys', exact: true }).click();
       const ref = page.getByRole('row').filter({ hasText: 'fk_user' }).locator('td').nth(2);
       await ref.locator('.dw-metadata-type').waitFor();
-      assert.equal(await color(ref.locator('.dw-metadata-column')), numeric);
+      assert.equal(await color(ref.locator('.dw-metadata-type')), numeric);
       assert.equal(await page.evaluate(() => window.calls.filter(x => x.c === 'meta_table_detail' && x.a.table === 'users').length), 1, '引用表去重');
       assert.equal(await page.getByRole('row').filter({ hasText: 'fk_denied' }).locator('td').nth(2).locator('.dw-metadata-type').count(), 0, '无权限不猜测类型');
       assert.notEqual(await color(page.getByText('SET NULL', { exact: true })), await color(page.getByText('NO ACTION', { exact: true })));
@@ -64,6 +76,6 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.waitForTimeout(500);
     assert.equal(await page.getByRole('row').filter({ hasText: 'fk_user' }).locator('td').nth(2).locator('.dw-metadata-type').innerText(), 'datetime', '切换后忽略旧请求');
     assert.deepEqual(errors, []);
-    console.log('PASS 索引/外键三主题配色、引用类型去重/失败/竞态、DDL SQL 高亮与只读、SQLite/PostgreSQL 操作横排及缩放');
+    console.log('PASS 列名正文与类型标签区分、三主题/双缩放间距及紧凑高度、索引/外键配色、引用类型去重/失败/竞态、DDL SQL 高亮与只读、SQLite/PostgreSQL 操作横排');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

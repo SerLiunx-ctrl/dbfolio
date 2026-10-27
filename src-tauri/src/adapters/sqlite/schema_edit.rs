@@ -55,7 +55,7 @@ pub async fn run(
             let original = create.clone();
             match spec {
                 DdlSpec::ColumnFlags { changes, .. } => {
-                    validate_changes(meta, changes)?;
+                    validate_changes(crate::meta::Engine::Sqlite, meta, changes)?;
                     change_sqlite_columns(&mut create, changes)?;
                     for c in changes {
                         if let Some(new) = c.new_name.as_ref().filter(|new| *new != &c.name) {

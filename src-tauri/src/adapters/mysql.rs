@@ -496,6 +496,8 @@ impl DbAdapter for MySqlAdapter {
                 Some(entry) => entry,
                 None => {
                     indexes.push(IndexMeta {
+                        definition: None,
+                        edit_unsupported_reason: None,
                         name: index_name.clone(),
                         columns: Vec::new(),
                         unique,

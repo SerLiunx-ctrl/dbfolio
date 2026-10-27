@@ -1,23 +1,14 @@
 const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
-const mod={exports:{}};
-new Function('module','exports',ts.transpileModule(fs.readFileSync('src/features/table/columnTypes.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(mod,mod.exports);
-const t=mod.exports;
-assert.deepEqual(t.typeOptions('sqlite'),['integer','real','text','blob','numeric']);
-assert.equal(t.defaultColumnType('sqlite'),'text');
-for(const name of ['tinyint','datetime','blob','double'])assert.ok(!t.typeOptions('postgres').includes(name));
-for(const name of ['json','jsonb','timestamp','timestamptz','bytea','uuid'])assert.ok(t.typeOptions('postgres').includes(name));
-assert.ok(!t.typeOptions('mysql').includes('uuid'));
-assert.ok(t.typeOptions('postgres','CustomEnum[]').includes('CustomEnum[]'));
-assert.equal(t.hasPrecision('sqlite','numeric'),false);assert.equal(t.hasPrecision('postgres','numeric'),true);
-assert.equal(t.supportsIdentity('sqlite','bigint'),false);assert.equal(t.supportsIdentity('postgres','integer'),true);
-console.log('通过：三引擎类型选项、默认类型、原始类型保留、精度与自增限制。');
-
-for (const engine of ['mysql','postgres','sqlite']) {
-  const groups=t.groupedTypeOptions(engine), flat=groups.flatMap(group=>group.types);
-  assert.deepEqual([...flat].sort(), [...t.typeOptions(engine)].sort(), engine+' 分组不能遗漏或新增类型');
-  assert.equal(new Set(flat).size,flat.length);assert.ok(groups.every(group=>group.types.length));
+const mod={exports:{}};new Function('module','exports',ts.transpileModule(fs.readFileSync('src/features/table/columnTypes.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(mod,mod.exports);const t=mod.exports;
+for(const engine of ['mysql','postgres','sqlite']){
+ const basic=t.availableTypeOptions(engine);assert(basic.every(v=>v.description.includes('未核验')));assert(!basic.some(v=>['json','jsonb','vector'].includes(v.name)));
+ assert.equal(t.supportsIdentity(engine,'bigint'),engine!=='sqlite');assert.equal(t.defaultColumnType(engine),engine==='sqlite'?'text':'varchar');
 }
-const existing=t.groupedTypeOptions('postgres','"Custom"."Enum"[]');
-assert.equal(existing[0].label,'当前声明类型');assert.deepEqual(existing[0].types,['"Custom"."Enum"[]']);
-assert.ok(!t.groupedTypeOptions('sqlite').some(group=>group.label==='日期与时间'));
-console.log('通过：三引擎分组完整性、空分组隐藏、无重复与原始声明保留。');
+const vector={name:'"vectors.qa"."vector"',label:'vectors.qa.vector',description:'向量 · vector 扩展 0.8.0',category:'向量',arguments:'dimensions',defaultArguments:''};
+const catalog={serverVersion:'17',types:[vector,{name:'varchar',label:'varchar',description:'可变长度字符串',category:'文本',arguments:'length',defaultArguments:'255'}]};
+assert.deepEqual(t.availableTypeOptions('postgres',catalog),catalog.types);
+const existing=t.availableTypeOptions('postgres',catalog,'"vectors.qa".vector');assert.equal(existing[0].name,'"vectors.qa".vector');assert.equal(existing[0].arguments,'dimensions');
+const alias=t.availableTypeOptions('postgres',catalog,'character varying');assert(alias.some(v=>v.name==='character varying'&&v.arguments==='length'));
+const unknown=t.availableTypeOptions('postgres',catalog,'"Other"."Enum"[]');assert.equal(unknown[0].name,'"Other"."Enum"[]');assert.equal(unknown[0].unavailable,true);
+assert(t.typeOptionText(vector).includes('vector 扩展 0.8.0'));assert.equal(t.hasPrecision('sqlite','numeric'),false);
+console.log('PASS server catalog authority, explicit conservative fallback, quoted/schema type identity, aliases, unavailable current declarations and Chinese descriptions');

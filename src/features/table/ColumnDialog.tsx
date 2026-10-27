@@ -1,6 +1,8 @@
 import {useSessionReadOnly} from "../../stores/useSessionReadOnly";
 import { renderTypeOptions } from "./TypeOptions";
-import { defaultColumnType, hasLength, hasPrecision, hasTimePrecision, supportsIdentity, typeHint } from "./columnTypes";
+import { availableTypeOptions, defaultColumnType, hasLength, hasPrecision, hasTimePrecision, supportsIdentity, typeHint } from "./columnTypes";
+import {useColumnTypeCatalog} from './useColumnTypeCatalog';
+import {joinColumnType} from './columnCapabilities';
 import {
   Button,
   Checkbox,
@@ -173,6 +175,8 @@ export function ColumnDialog({
   onDone,
 }: Props) {
   const readOnly=useSessionReadOnly(sessionId);
+  const typeCatalog=useColumnTypeCatalog(open?sessionId:'',database,engine);
+  const [typeArguments,setTypeArguments]=useState('');
   const styles = useStyles();
   const notify = useNotify();
   const [spec, setSpec] = useState<ColumnSpec>({
@@ -215,10 +219,12 @@ export function ColumnDialog({
 
   const ddlSpec = useMemo(() => {
     const column: ColumnSpec = { ...spec, name: spec.name.trim() };
+    const choice=availableTypeOptions(engine,typeCatalog.catalog).find(t=>t.name===spec.dataType);
+    if(!spec.preserveType&&choice&&['dimensions','length','values'].includes(choice.arguments)){column.dataType=joinColumnType(spec.dataType,choice.arguments==='values'?typeArguments:spec.length?String(spec.length):'');column.preserveType=true;}
     return mode === "add"
       ? ({ type: "addColumn", schema: schema ?? null, table, column } as const)
       : ({ type: "modifyColumn", schema: schema ?? null, table, column } as const);
-  }, [mode, schema, spec, table]);
+  }, [mode, schema, spec, table,engine,typeCatalog.catalog,typeArguments]);
 
   const canNext = spec.name.trim().length > 0;
 
@@ -249,10 +255,11 @@ export function ColumnDialog({
     }
   };
 
-  const isLength = !spec.preserveType && hasLength(spec.dataType);
+  const selectedType=availableTypeOptions(engine,typeCatalog.catalog,spec.dataType).find(t=>t.name===spec.dataType);
+  const isLength = !spec.preserveType && (hasLength(spec.dataType)||selectedType?.arguments==='dimensions'||selectedType?.arguments==='length');
   const isDecimal = !spec.preserveType && hasPrecision(engine, spec.dataType);
   const isTemporal =
-    !spec.preserveType && hasTimePrecision(engine, spec.dataType);
+    !spec.preserveType && hasTimePrecision(engine, spec.dataType) && selectedType?.arguments==='temporal';
 
   return (
     <Dialog
@@ -277,16 +284,19 @@ export function ColumnDialog({
                 <Field label={`类型（${engine}）`} hint={<details><summary>类型说明</summary>{typeHint(engine)}</details>}>
                   <Dropdown
                     selectedOptions={[spec.dataType]}
-                    value={spec.dataType}
+                    value={selectedType?.label??spec.dataType}
                     onOptionSelect={(_, data) => {
                       if (data.optionValue) {
-                        setSpec({ ...spec, dataType: data.optionValue, preserveType: false, length: 255, precision: hasTimePrecision(engine, data.optionValue) ? 0 : 10, scale: 0, autoIncrement: spec.autoIncrement && supportsIdentity(engine, data.optionValue) });
+                        const choice=availableTypeOptions(engine,typeCatalog.catalog).find(t=>t.name===data.optionValue);
+                        setTypeArguments(choice?.defaultArguments??'');
+                        setSpec({ ...spec, dataType: data.optionValue, preserveType: false, length: ['dimensions','length'].includes(choice?.arguments??'')?Number(choice?.defaultArguments)||null:255, precision: hasTimePrecision(engine, data.optionValue) ? 0 : 10, scale: 0, autoIncrement: spec.autoIncrement && supportsIdentity(engine, data.optionValue) });
                       }
                     }}
                   >
-                    {renderTypeOptions(engine, spec.dataType)}
+                    {renderTypeOptions(engine, spec.dataType,typeCatalog.catalog)}
                   </Dropdown>
                 </Field>
+                {!spec.preserveType&&selectedType?.arguments==='values'&&<Field label="集合值"><Input value={typeArguments} onChange={(_,data)=>setTypeArguments(data.value)} placeholder="'值1','值2'"/></Field>}
                 {isDecimal ? (
                   <div className={styles.row}>
                     <Field label="精度">
@@ -307,7 +317,7 @@ export function ColumnDialog({
                     </Field>
                   </div>
                 ) : isLength ? (
-                  <Field label="长度">
+                  <Field label={selectedType?.arguments==='dimensions'?'向量维度':'长度'}>
                     <Input
                       value={String(spec.length ?? "")}
                       onChange={(_, data) =>

@@ -64,7 +64,7 @@ fn table_options(adapter:&dyn DbAdapter,database:&str,schema:Option<&str>,table:
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum DdlSpec {
     CreateTableDraft { draft:super::create_table::TableDraft },
     AddColumnDraft {schema:Option<String>,table:String,column:super::create_table::DraftColumn,key:super::add_column::ColumnKey,position:Option<ColumnPosition>},
@@ -112,6 +112,7 @@ pub enum DdlSpec {
         schema: Option<String>,
         table: String,
         name: String,
+        #[serde(alias = "old_name")]
         old_name: String,
         columns: Vec<IndexColumnSpec>,
         unique: bool,
@@ -126,20 +127,33 @@ pub enum DdlSpec {
         table: String,
         name: String,
         columns: Vec<String>,
+        #[serde(alias = "ref_table")]
         ref_table: String,
+        #[serde(alias = "ref_schema")]
+        ref_schema: Option<String>,
+        #[serde(alias = "ref_columns")]
         ref_columns: Vec<String>,
+        #[serde(alias = "on_delete")]
         on_delete: String,
+        #[serde(alias = "on_update")]
         on_update: String,
     },
     ReplaceForeignKey {
         schema: Option<String>,
         table: String,
         name: String,
+        #[serde(alias = "old_name")]
         old_name: String,
         columns: Vec<String>,
+        #[serde(alias = "ref_table")]
         ref_table: String,
+        #[serde(alias = "ref_schema")]
+        ref_schema: Option<String>,
+        #[serde(alias = "ref_columns")]
         ref_columns: Vec<String>,
+        #[serde(alias = "on_delete")]
         on_delete: String,
+        #[serde(alias = "on_update")]
         on_update: String,
     },
     DropForeignKey {
@@ -1096,6 +1110,17 @@ pub async fn preview(
 ) -> AppResult<Vec<String>> {
     let connected = state.connected(session_id).await?;
     let adapter = connected.adapter.as_ref();
+    if adapter.engine()==Engine::Mysql {
+        let types:Vec<String>=match spec {
+            DdlSpec::CreateTableDraft{draft}=>draft.columns.iter().map(|c|c.data_type.clone()).collect(),
+            DdlSpec::AddColumnDraft{column,..}=>vec![column.data_type.clone()],
+            DdlSpec::ColumnFlags{changes,..}=>changes.iter().filter_map(|c|c.data_type.clone()).collect(),
+            DdlSpec::CreateTable{columns,..}=>columns.iter().map(|c|sql_type(Engine::Mysql,c)).collect(),
+            DdlSpec::AddColumn{column,..}|DdlSpec::ModifyColumn{column,..}=>vec![sql_type(Engine::Mysql,column)],
+            _=>Vec::new(),
+        };
+        for ty in types {crate::meta::data_types::validate_mysql_type(&connected.server_version,&ty)?;}
+    }
     if adapter.engine()==Engine::Sqlite && matches!(spec,DdlSpec::ColumnFlags{..}|DdlSpec::MoveColumn{..}|DdlSpec::DropColumn{..}) { return adapter.sqlite_schema_edit(database,spec,false).await; }
 
     match spec {
@@ -1108,7 +1133,7 @@ pub async fn preview(
             if changes.is_empty(){return Err(AppError::InvalidInput("没有列属性修改".into()));}
             let meta=adapter.introspect_table(database,schema.as_deref(),table).await?;
             if meta.kind!=TableKind::Table{return Err(AppError::InvalidInput("视图不支持列属性修改".into()));}
-            super::column_edit::validate_changes(&meta, changes)?;
+            super::column_edit::validate_changes(adapter.engine(), &meta, changes)?;
             for c in changes {let column=meta.columns.iter().find(|v|v.name==c.name).ok_or_else(||AppError::InvalidInput("列不存在".into()))?;if c.nullable&&!column.nullable&&(column.auto_increment||meta.primary_key.contains(&c.name)){return Err(AppError::InvalidInput("主键或自增列不能设为可空".into()));}}
             let target=table_ref(adapter,database,schema.as_deref(),table);
             match adapter.engine(){
@@ -1248,6 +1273,14 @@ pub async fn preview(
             if columns.is_empty() {
                 return Err(AppError::InvalidInput("索引至少需要一列".into()));
             }
+            if adapter.engine() == Engine::Postgres {
+                let meta = adapter.introspect_table(database, schema.as_deref(), table).await?;
+                let index = meta.indexes.iter().find(|index| &index.name == old_name)
+                    .ok_or_else(|| AppError::InvalidInput("索引已不存在，请刷新结构".into()))?;
+                if index.primary || index.edit_unsupported_reason.is_some() {
+                    return Err(AppError::InvalidInput(index.edit_unsupported_reason.clone().unwrap_or_else(|| "主键索引请通过 SQL 管理".into())));
+                }
+            }
             let target = table_ref(adapter, database, schema.as_deref(), table);
             Ok(vec![
                 render_drop_index(adapter, database, schema.as_deref(), table, old_name)?,
@@ -1271,6 +1304,7 @@ pub async fn preview(
             name,
             columns,
             ref_table,
+            ref_schema,
             ref_columns,
             on_delete,
             on_update,
@@ -1282,6 +1316,7 @@ pub async fn preview(
                 name,
                 columns,
                 ref_table,
+                if adapter.engine() == Engine::Postgres { ref_schema.as_deref().or(schema.as_deref()).or(Some("public")) } else { None },
                 ref_columns,
                 on_delete,
                 on_update,
@@ -1294,6 +1329,7 @@ pub async fn preview(
             old_name,
             columns,
             ref_table,
+            ref_schema,
             ref_columns,
             on_delete,
             on_update,
@@ -1307,6 +1343,7 @@ pub async fn preview(
                     name,
                     columns,
                     ref_table,
+                    if adapter.engine() == Engine::Postgres { ref_schema.as_deref().or(schema.as_deref()).or(Some("public")) } else { None },
                     ref_columns,
                     on_delete,
                     on_update,
@@ -1387,6 +1424,7 @@ fn render_add_foreign_key(
     name: &str,
     columns: &[String],
     ref_table: &str,
+    ref_schema: Option<&str>,
     ref_columns: &[String],
     on_delete: &str,
     on_update: &str,
@@ -1401,6 +1439,12 @@ fn render_add_foreign_key(
             "外键的本地列与引用列数量必须一致".into(),
         ));
     }
+    for action in [on_delete, on_update] {
+        if !["NO ACTION", "RESTRICT", "CASCADE", "SET NULL", "SET DEFAULT"].iter().any(|allowed| action.eq_ignore_ascii_case(allowed))
+            || adapter.engine() == Engine::Mysql && action.eq_ignore_ascii_case("SET DEFAULT") {
+            return Err(AppError::InvalidInput("外键规则不受支持".into()));
+        }
+    }
     let column_list: Vec<String> = columns
         .iter()
         .map(|column| adapter.quote_ident(column))
@@ -1414,7 +1458,7 @@ fn render_add_foreign_key(
         target,
         adapter.quote_ident(name),
         column_list.join(", "),
-        adapter.quote_ident(ref_table),
+        match ref_schema { Some(schema) => format!("{}.{}", adapter.quote_ident(schema), adapter.quote_ident(ref_table)), None => adapter.quote_ident(ref_table) },
         ref_list.join(", ")
     );
     if !on_delete.eq_ignore_ascii_case("NO ACTION") {
@@ -1478,7 +1522,8 @@ pub async fn apply(
     let adapter=state.connected(session_id).await?.adapter.clone();
     if adapter.engine()==Engine::Sqlite && matches!(spec,DdlSpec::ColumnFlags{..}|DdlSpec::MoveColumn{..}|DdlSpec::DropColumn{..}) { return adapter.sqlite_schema_edit(database,spec,true).await; }
     let statements = preview(state, session_id, database, spec).await?;
-    if (adapter.engine()==Engine::Postgres && matches!(spec,DdlSpec::ColumnFlags{..}|DdlSpec::AddColumn{..})) || (adapter.engine()!=Engine::Mysql && matches!(spec,DdlSpec::CreateTableDraft{..}|DdlSpec::AddColumnDraft{..})) {
+    // PostgreSQL 结构修改支持事务；包括先删后建的索引/外键，失败时必须保留旧结构。
+    if adapter.engine()==Engine::Postgres || (adapter.engine()!=Engine::Mysql && matches!(spec,DdlSpec::CreateTableDraft{..}|DdlSpec::AddColumnDraft{..})) {
         let items=statements.iter().map(|sql|crate::adapters::SqlParams{sql:sql.clone(),params:vec![]}).collect::<Vec<_>>();
         adapter.execute_transaction(database,&items).await?;return Ok(statements);
     }

@@ -1,4 +1,5 @@
 pub mod value;
+pub mod data_types;
 
 use serde::{Deserialize, Serialize};
 
@@ -95,6 +96,10 @@ pub struct IndexColumn {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexMeta {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub definition: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edit_unsupported_reason: Option<String>,
     pub name: String,
     pub columns: Vec<IndexColumn>,
     pub unique: bool,

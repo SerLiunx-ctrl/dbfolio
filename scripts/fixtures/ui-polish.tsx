@@ -1,3 +1,4 @@
+import {getGridApi} from "ag-grid-community";
 import {createRoot} from 'react-dom/client';
 import {useState} from 'react';
 import {FluentProvider,Button,Checkbox,Popover,PopoverTrigger,PopoverSurface} from '@fluentui/react-components';
@@ -31,6 +32,7 @@ const detail:any={name:'devices',kind:'table',columns,primaryKey:['id'],indexes:
 const tab:any={id:'t',kind:'table',sessionId:'s',database:'test',table:'devices',title:'devices',view:params.get('view')??'ddl'};
 const tabs=Array.from({length:10},(_,i)=>({...tab,id:'t'+i,title:'long_device_table_name_'+i,database:'long_database_name_'+i}));
 useTabStore.setState({tabs,activeId:tabs[0].id});
+w.gridApi=()=>Array.from({length:10},(_,i)=>getGridApi(String(i))).find(Boolean);
 w.calls=[];w.workspace=useWorkspace;w.tabs=useTabStore;w.settings=useSettingsStore;w.dock=useDockStore;
 w.__TAURI_INTERNALS__={invoke:async(command:string,args:any)=>{
  w.calls.push({command,args});

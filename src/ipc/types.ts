@@ -181,6 +181,8 @@ export interface IndexColumn {
 }
 
 export interface IndexMeta {
+  definition?: string | null;
+  editUnsupportedReason?: string | null;
   name: string;
   columns: IndexColumn[];
   unique: boolean;
@@ -188,6 +190,9 @@ export interface IndexMeta {
   method?: string | null;
   comment?: string | null;
 }
+
+export interface DataTypeOption {name:string;label:string;description:string;category:string;arguments:'none'|'length'|'precision'|'temporal'|'values'|'dimensions';defaultArguments:string;unavailable?:boolean}
+export interface DataTypeCatalog {serverVersion:string;types:DataTypeOption[]}
 
 export interface ForeignKeyMeta {
   refDatabase?: string | null;
@@ -603,6 +608,7 @@ export type DdlSpec =
       name: string;
       columns: string[];
       refTable: string;
+      refSchema?: string | null;
       refColumns: string[];
       onDelete: string;
       onUpdate: string;
@@ -615,6 +621,7 @@ export type DdlSpec =
       oldName: string;
       columns: string[];
       refTable: string;
+      refSchema?: string | null;
       refColumns: string[];
       onDelete: string;
       onUpdate: string;

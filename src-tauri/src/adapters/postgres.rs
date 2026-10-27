@@ -402,6 +402,33 @@ impl DbAdapter for PostgresAdapter {
         Ok(text(&row, "server_version"))
     }
 
+    async fn column_types(&self, database:&str)->AppResult<crate::meta::data_types::DataTypeCatalog>{
+        use crate::meta::data_types::{DataTypeCatalog,option,pg_builtin};
+        let pool=self.pool_for(database).await?;
+        // 扩展是按数据库安装的；不读取 pg_available_extensions，也不主动安装扩展。
+        let rows=sqlx::query("SELECT t.typname, n.nspname, t.typtype::text AS kind, pg_type_is_visible(t.oid) AS visible, e.extname, e.extversion \
+            FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace \
+            LEFT JOIN pg_depend d ON d.classid='pg_type'::regclass AND d.objid=t.oid AND d.refclassid='pg_extension'::regclass AND d.deptype='e' \
+            LEFT JOIN pg_extension e ON e.oid=d.refobjid \
+            WHERE t.typisdefined AND t.typtype IN ('b','e','d','r','m') AND t.typrelid=0 AND t.typelem=0 \
+              AND (n.nspname='pg_catalog' OR (n.nspname NOT LIKE 'pg\\_%' ESCAPE '\\' AND n.nspname <> 'information_schema')) \
+              AND has_schema_privilege(n.oid,'USAGE') AND has_type_privilege(t.oid,'USAGE') \
+            ORDER BY n.nspname,t.typname").fetch_all(&pool).await?;
+        let mut types=Vec::new();
+        for row in &rows{
+            let name=text(row,"typname");let schema=text(row,"nspname");
+            if schema=="pg_catalog" {if let Some(t)=pg_builtin(&name){types.push(t);}continue;}
+            let ext=text_opt(row,"extname");let ext_version=text(row,"extversion");
+            let vector=ext.as_deref()==Some("vector")&&["vector","halfvec","sparsevec"].contains(&name.as_str());
+            let kind=match name.as_str(){"vector" if vector=>"单精度向量","halfvec" if vector=>"半精度向量","sparsevec" if vector=>"稀疏向量",_=>match text(row,"kind").as_str(){"e"=>"枚举类型","d"=>"域类型","r"=>"范围类型","m"=>"多范围类型",_=>"自定义类型"}};
+            let description=match &ext{Some(e)=>format!("{kind} · {e} 扩展 {ext_version}"),None=>format!("{kind} · {schema}")};
+            let sql_name=format!("{}.{}",self.quote_ident(&schema),self.quote_ident(&name));
+            let mut t=option(&sql_name,&description,if vector{"向量"}else if ext.is_some(){"已安装扩展"}else{"自定义类型"},if vector{"dimensions"}else{"none"},"");
+            t.label=if bool_opt(row,"visible")==Some(true){name}else{format!("{schema}.{name}")};types.push(t);
+        }
+        Ok(DataTypeCatalog{server_version:self.server_version().await?,types})
+    }
+
     async fn list_databases(&self) -> AppResult<Vec<DatabaseMeta>> {
         let pool = self.pool_for(&self.default_db).await?;
         let rows = sqlx::query(
@@ -543,13 +570,27 @@ impl DbAdapter for PostgresAdapter {
             "SELECT i.relname AS index_name, ix.indisunique AS is_unique, \
                     ix.indisprimary AS is_primary, a.attname AS column_name, \
                     k.ordinality AS ordinality, \
-                    CASE WHEN a.attname IS NULL THEN pg_get_indexdef(ix.indexrelid, k.ordinality::int, true) END AS expression \
+                    CASE WHEN a.attname IS NULL THEN pg_get_indexdef(ix.indexrelid, k.ordinality::int, true) END AS expression, \
+                    am.amname AS method, pg_get_indexdef(i.oid) AS definition, \
+                    obj_description(i.oid, 'pg_class') AS comment, \
+                    (ix.indoption[k.ordinality::int - 1] & 1) = 1 AS descending, \
+                    (am.amname = 'btree' AND ix.indexprs IS NULL AND ix.indpred IS NULL \
+                     AND ix.indnatts = ix.indnkeyatts AND ix.indisvalid AND ix.indisready \
+                     AND i.reloptions IS NULL AND COALESCE((to_jsonb(ix)->>'indnullsnotdistinct')::boolean, false) = false \
+                     AND obj_description(i.oid, 'pg_class') IS NULL \
+                     AND NOT EXISTS (SELECT 1 FROM pg_constraint con WHERE con.conindid = i.oid AND con.contype IN ('p','u','x')) \
+                     AND NOT EXISTS (SELECT 1 FROM unnest(ix.indoption) opt WHERE opt NOT IN (0,3)) \
+                     AND NOT EXISTS (SELECT 1 FROM unnest(ix.indclass) oc JOIN pg_opclass opc ON opc.oid = oc WHERE NOT opc.opcdefault) \
+                     AND NOT EXISTS (SELECT 1 FROM unnest(ix.indkey) WITH ORDINALITY ck(attnum, ord) \
+                         JOIN pg_attribute ca ON ca.attrelid = t.oid AND ca.attnum = ck.attnum \
+                         WHERE ck.ord <= ix.indnkeyatts AND ix.indcollation[ck.ord::int - 1] <> ca.attcollation)) AS simple_edit \
              FROM pg_index ix \
              JOIN pg_class i ON i.oid = ix.indexrelid \
+             JOIN pg_am am ON am.oid = i.relam \
              JOIN pg_class t ON t.oid = ix.indrelid \
              JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ordinality) ON true \
              LEFT JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum \
-             WHERE t.oid = $1::regclass \
+             WHERE t.oid = $1::regclass AND k.ordinality <= ix.indnkeyatts \
              ORDER BY i.relname, k.ordinality",
         )
         .bind(&rel)
@@ -572,19 +613,21 @@ impl DbAdapter for PostgresAdapter {
                 Some(entry) => entry,
                 None => {
                     indexes.push(IndexMeta {
+                        definition: text_opt(row, "definition"),
+                        edit_unsupported_reason: if bool_opt(row, "simple_edit") == Some(true) { None } else { Some("此索引包含约束、表达式、条件或专属选项，请在 DDL/查询页通过 SQL 管理，避免丢失定义".into()) },
                         name: index_name.clone(),
                         columns: Vec::new(),
                         unique: bool_opt(row, "is_unique").unwrap_or(false),
                         primary: is_primary,
-                        method: None,
-                        comment: None,
+                        method: text_opt(row, "method"),
+                        comment: text_opt(row, "comment"),
                     });
                     indexes.last_mut().expect("just pushed")
                 }
             };
             entry.columns.push(IndexColumn {
                 name: column_name,
-                desc: false,
+                desc: bool_opt(row, "descending").unwrap_or(false),
                 prefix_len: None,
             });
         }

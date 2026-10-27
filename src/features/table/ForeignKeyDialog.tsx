@@ -1,4 +1,5 @@
 import {useSessionReadOnly} from "../../stores/useSessionReadOnly";
+import {useSessionStore} from "../../stores/useSessionStore";
 import {
   Button,
   Dialog,
@@ -79,12 +80,15 @@ export function ForeignKeyDialog({
   onDone,
 }: Props) {
   const readOnly=useSessionReadOnly(sessionId);
+  const engine=useSessionStore(s=>s.sessions.find(session=>session.id===sessionId)?.engine);
   const styles = useStyles();
   const notify = useNotify();
   const [name, setName] = useState("");
   const [localColumns, setLocalColumns] = useState<string[]>([]);
   const [refTable, setRefTable] = useState("");
-  const [refColumns, setRefColumns] = useState("");
+  const [refSchema, setRefSchema] = useState<string | null>(null);
+  const [refColumns, setRefColumns] = useState<string[]>([]);
+  const [referenceColumns, setReferenceColumns] = useState<ColumnMeta[]>([]);
   const [onDelete, setOnDelete] = useState("NO ACTION");
   const [onUpdate, setOnUpdate] = useState("NO ACTION");
   const [tables, setTables] = useState<TableRef[]>([]);
@@ -97,24 +101,31 @@ export function ForeignKeyDialog({
     setName(initial?.name ?? "");
     setLocalColumns(initial?.columns ?? []);
     setRefTable(initial?.refTable ?? "");
-    setRefColumns(initial?.refColumns.join(", ") ?? "");
+    setRefSchema(initial?.refSchema ?? (engine === "postgres" ? schema ?? "public" : null));
+    setRefColumns(initial?.refColumns ?? []);
     setOnDelete(initial?.onDelete ?? "NO ACTION");
     setOnUpdate(initial?.onUpdate ?? "NO ACTION");
     setStep("form");
     setStatements([]);
+    let alive=true;
     api
       .listTables(sessionId, database)
-      .then((list) => setTables(list.filter((item) => item.kind === "table")))
-      .catch(() => setTables([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initial]);
+      .then((list) => {if(alive)setTables(list.filter((item) => item.kind === "table"));})
+      .catch(() => {if(alive)setTables([]);});
+    return()=>{alive=false;};
+  }, [open, initial, sessionId, database, schema, engine]);
+
+  useEffect(()=>{
+    let alive=true;setReferenceColumns([]);
+    if(open&&refTable)void api.tableDetail(sessionId,database,refTable,refSchema).then(meta=>{if(alive)setReferenceColumns(meta.columns);}).catch(()=>{});
+    return()=>{alive=false;};
+  },[open,sessionId,database,refTable,refSchema]);
 
   const isEdit = Boolean(initial);
 
-  const refColumnList = refColumns
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  const refColumnList = refColumns;
+  const selectedRef=JSON.stringify([refSchema??"",refTable]);
+  const referenceLabel=(refSchema?refSchema+".":"")+refTable;
 
   const spec: DdlSpec = isEdit
     ? {
@@ -125,6 +136,7 @@ export function ForeignKeyDialog({
         oldName: initial?.name ?? "",
         columns: localColumns,
         refTable,
+        refSchema,
         refColumns: refColumnList,
         onDelete,
         onUpdate,
@@ -136,6 +148,7 @@ export function ForeignKeyDialog({
         name: name.trim(),
         columns: localColumns,
         refTable,
+        refSchema,
         refColumns: refColumnList,
         onDelete,
         onUpdate,
@@ -211,28 +224,27 @@ export function ForeignKeyDialog({
                 <div className={styles.row}>
                   <Field label="引用表" required>
                     <Dropdown
-                      selectedOptions={[refTable]}
-                      value={refTable || "选择表"}
+                      aria-label="引用表"
+                      selectedOptions={[selectedRef]}
+                      value={refTable ? referenceLabel : "选择表"}
                       onOptionSelect={(_, data) => {
-                        if (data.optionValue) setRefTable(data.optionValue);
+                        if (data.optionValue) {const [selectedSchema,selectedTable]=JSON.parse(data.optionValue);setRefTable(selectedTable);setRefSchema(selectedSchema||null);setRefColumns([]);}
                       }}
                     >
                       {tables.map((item) => (
-                        <Option key={item.name} value={item.name}>
-                          {item.name}
+                        <Option key={JSON.stringify([item.schema??"",item.name])} value={JSON.stringify([item.schema??"",item.name])}>
+                          {(item.schema?item.schema+".":"")+item.name}
                         </Option>
                       ))}
                     </Dropdown>
                   </Field>
                   <Field
-                    label={`引用列（逗号分隔，${localColumns.length} 列）`}
+                    label={`引用列（多选，${localColumns.length} 列）`}
                     required
                   >
-                    <Input
-                      value={refColumns}
-                      placeholder="例如：id"
-                      onChange={(_, data) => setRefColumns(data.value)}
-                    />
+                    <Dropdown aria-label="引用列" multiselect selectedOptions={refColumns} value={refColumns.join(", ")||"选择引用列"} onOptionSelect={(_,data)=>setRefColumns(data.selectedOptions)}>
+                      {[...new Set([...referenceColumns.map(c=>c.name),...refColumns])].map(name=><Option key={name} value={name}>{name}</Option>)}
+                    </Dropdown>
                   </Field>
                 </div>
                 <div className={styles.row}>
@@ -244,7 +256,7 @@ export function ForeignKeyDialog({
                         if (data.optionValue) setOnDelete(data.optionValue);
                       }}
                     >
-                      {ACTIONS.map((action) => (
+                      {ACTIONS.filter(action=>engine!=="mysql"||action!=="SET DEFAULT").map((action) => (
                         <Option key={action} value={action}>
                           {action}
                         </Option>
@@ -259,7 +271,7 @@ export function ForeignKeyDialog({
                         if (data.optionValue) setOnUpdate(data.optionValue);
                       }}
                     >
-                      {ACTIONS.map((action) => (
+                      {ACTIONS.filter(action=>engine!=="mysql"||action!=="SET DEFAULT").map((action) => (
                         <Option key={action} value={action}>
                           {action}
                         </Option>

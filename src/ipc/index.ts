@@ -120,6 +120,7 @@ export const api = {
   databaseInfo: (sessionId: string, database: string) =>
     invoke<InfoEntry[]>("meta_database_info", { sessionId, database }),
   storageEngines: (sessionId:string)=>invoke<string[]>("meta_storage_engines",{sessionId}),
+  columnTypes: (sessionId:string,database:string)=>invoke<import('./types').DataTypeCatalog>('meta_column_types',{sessionId,database}),
   charsets: (sessionId: string) =>
     invoke<CharsetMeta[]>("meta_charsets", { sessionId }),
   collations: (sessionId: string, charset: string) =>

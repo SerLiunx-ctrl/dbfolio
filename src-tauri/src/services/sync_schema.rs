@@ -1323,6 +1323,8 @@ mod tests {
         let mut tgt = meta("items", "b", "int");
         tgt.primary_key.clear();
         let idx = IndexMeta {
+            definition: None,
+            edit_unsupported_reason: None,
             name: "idx".into(),
             columns: vec![IndexColumn {
                 name: "id".into(),
@@ -1368,6 +1370,8 @@ mod tests {
         n.raw_ddl = Some(n.raw_ddl.unwrap().replace("123", "456"));
         assert_eq!(stable_meta(m), stable_meta(n));
         let mut index = IndexMeta {
+            definition: None,
+            edit_unsupported_reason: None,
             name: "i".into(),
             columns: vec![IndexColumn {
                 name: "name".into(),

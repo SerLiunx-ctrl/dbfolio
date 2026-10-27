@@ -298,7 +298,7 @@ pub fn render(engine: Engine, database: &str, d: &TableDraft) -> AppResult<Vec<S
     let mut index_names = std::collections::HashSet::new();
     for i in &d.indexes {
         identifier(&i.name)?;
-        if i.name.eq_ignore_ascii_case("PRIMARY") || !index_names.insert(i.name.to_lowercase()) {
+        if engine != Engine::Postgres && i.name.eq_ignore_ascii_case("PRIMARY") || !index_names.insert(if engine == Engine::Postgres {i.name.clone()} else {i.name.to_lowercase()}) {
             return Err(fail("索引名重复或使用了 PRIMARY 保留名"));
         }
         check_columns(&i.columns.iter().map(|c| c.name.clone()).collect::<Vec<_>>())?;
@@ -337,7 +337,7 @@ pub fn render(engine: Engine, database: &str, d: &TableDraft) -> AppResult<Vec<S
     for f in &d.foreign_keys {
         identifier(&f.name)?;
         identifier(&f.ref_table)?;
-        if !fk_names.insert(f.name.to_lowercase()) {
+        if !fk_names.insert(if engine == Engine::Postgres {f.name.clone()} else {f.name.to_lowercase()}) {
             return Err(fail("外键名重复"));
         }
         check_columns(&f.columns)?;

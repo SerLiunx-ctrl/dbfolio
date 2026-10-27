@@ -3,6 +3,7 @@ import { useEditorTheme } from "../../useEditorTheme";
 import { MetadataTag, TypedColumns, useReferenceColumns } from "./MetadataText";
 import { columnCapabilities } from "./columnCapabilities";
 import {InlineColumnRow,type ColumnEdit} from "./InlineColumnRow";
+import {useColumnTypeCatalog} from './useColumnTypeCatalog';
 import {usePendingEdit} from "../../stores/useEditGuard";
 import {InfoHint} from '../../common/InfoHint';
 import { newColumn, updateColumnDraft } from "./createTableDraft";
@@ -160,6 +161,7 @@ export function ColumnsPanel({
   const [flagsOpen,setFlagsOpen]=useState(false),[flagsBusy,setFlagsBusy]=useState(false);
   const dirtyFlags=Object.keys(flags).length>0;
   const caps = columnCapabilities(engine);
+  const typeCatalog=useColumnTypeCatalog(tab.sessionId,tab.database,engine,detail);
   const flagSpec:DdlSpec={type:'columnFlags',schema:tab.schema,table:tab.table,changes:Object.entries(flags).map(([name,v])=>({name,...v,newName:v.newName?.trim()}))};
   const saveFlags=async()=>{if(readOnly)throw Error('当前会话为只读模式');setFlagsBusy(true);try{await api.ddlApply(tab.sessionId,tab.database,flagSpec,true);setFlags({});onChanged();}finally{setFlagsBusy(false);}};
   usePendingEdit({tabId:tab.id,sessionId:tab.sessionId,label:'列属性',save:saveFlags,discard:()=>setFlags({}),preview:()=>api.ddlPreview(tab.sessionId,tab.database,flagSpec),busy:()=>flagsBusy},dirtyFlags,tab.id+':column-flags');
@@ -219,7 +221,7 @@ export function ColumnsPanel({
     if(!draft)return null;
     const c=draft.column;
     const meta:ColumnMeta={name:c.name,ordinal:addIndex+1,rawType:c.dataType,canonical:{kind:'unknown',raw:c.dataType},nullable:c.nullable,autoIncrement:c.autoIncrement,unsigned:c.unsigned,comment:c.comment};
-    return <InlineColumnRow key={c.id} column={meta} engine={engine} creating adding initialActive="字段名" ariaPrefix="新增列"
+    return <InlineColumnRow key={c.id} column={meta} engine={engine} catalog={typeCatalog.catalog} creating adding initialActive="字段名" ariaPrefix="新增列"
       primary={c.primaryKey} singlePrimary={c.primaryKey} disabled={!canEdit||flagsBusy} deleteDisabled={flagsBusy}
       edit={{...c,newName:c.name}} onEdit={patch=>setDraft(old=>old?{...old,column:updateColumnDraft(old.column,patch)}:old)}
       identityDisabledReason={engine==='sqlite'?'SQLite 追加列不能设置自动增长，需要重建表':engine==='mysql'&&detail.columns.some(c=>c.autoIncrement)?'此表已有自动增长字段':undefined}
@@ -233,7 +235,7 @@ export function ColumnsPanel({
   const rows: React.ReactNode[] = [];
   detail.columns.forEach((column, index) => {
     if (draft && addIndex === index) rows.push(renderAddRow());
-    rows.push(<InlineColumnRow key={column.name} column={column} engine={engine} singlePrimary={detail.primaryKey.length===1} deleteDisabled={dirtyFlags} edit={flags[column.name]} primary={detail.primaryKey.includes(column.name)} disabled={!canEdit||flagsBusy||!!draft} onEdit={patch=>setFlags(old=>({...old,[column.name]:{...(old[column.name]??{nullable:column.nullable}),...patch}}))} onDelete={()=>{if(!dirtyFlags)setDropColumn(column);}} onContextMenu={event=>{event.preventDefault();setRowMenu({x:event.clientX,y:event.clientY,column});}}/>);
+    rows.push(<InlineColumnRow key={column.name} column={column} engine={engine} catalog={typeCatalog.catalog} singlePrimary={detail.primaryKey.length===1} deleteDisabled={dirtyFlags} edit={flags[column.name]} primary={detail.primaryKey.includes(column.name)} disabled={!canEdit||flagsBusy||!!draft} onEdit={patch=>setFlags(old=>({...old,[column.name]:{...(old[column.name]??{nullable:column.nullable}),...patch}}))} onDelete={()=>{if(!dirtyFlags)setDropColumn(column);}} onContextMenu={event=>{event.preventDefault();setRowMenu({x:event.clientX,y:event.clientY,column});}}/>);
   });
   if (draft && addIndex >= detail.columns.length) rows.push(renderAddRow());
 
@@ -257,6 +259,8 @@ export function ColumnsPanel({
           <Button size="small" appearance="primary" disabled={flagsBusy||(!dirtyFlags&&!draft)||!!draft&&!draft.column.name.trim()} onClick={()=>setFlagsOpen(true)}>保存</Button>
           <Button size="small" disabled={(!dirtyFlags&&!draft)||flagsBusy} onClick={()=>{setFlags({});setDraft(null);}}>废弃</Button>
           <span className={styles.addHint}>双击单元格编辑，保存后生效</span>
+          <Button size="small" disabled={typeCatalog.loading} title={typeCatalog.error??`服务器类型：${typeCatalog.catalog?.serverVersion??'未读取'}`} onClick={typeCatalog.refresh}>刷新类型</Button>
+          {typeCatalog.error&&<span className={styles.addHint} title={typeCatalog.error}>类型未核验</span>}
           <div className={styles.spacer} />
           <Button size="small" icon={<DeleteRegular />} disabled={dirtyFlags||flagsBusy||!!draft} onClick={() => setDropTable(true)}>
             删除表
@@ -373,7 +377,7 @@ export function ColumnsPanel({
                   <Menu>
                     <MenuTrigger disableButtonEnhancement><MenuItem disabled={dirtyFlags||flagsBusy||!!draft}>加入索引</MenuItem></MenuTrigger>
                     <MenuPopover><MenuList>
-                      {(detail.indexes??[]).filter(i=>!i.primary&&!i.comment&&(!i.method||i.method.toUpperCase()==='BTREE')&&i.columns.every(c=>!c.prefixLen&&detail.columns.some(v=>v.name===c.name))&&!i.columns.some(c=>c.name===rowMenu.column.name)).map(i=><MenuItem key={i.name} onClick={()=>{setColumnIndex({initial:i,selectedColumns:[...i.columns.map(c=>c.name),rowMenu.column.name]});setRowMenu(null);}}>{i.name}</MenuItem>)}
+                      {(detail.indexes??[]).filter(i=>!i.primary&&!i.editUnsupportedReason&&!i.comment&&(!i.method||i.method.toUpperCase()==='BTREE')&&i.columns.every(c=>!c.prefixLen&&detail.columns.some(v=>v.name===c.name))&&!i.columns.some(c=>c.name===rowMenu.column.name)).map(i=><MenuItem key={i.name} onClick={()=>{setColumnIndex({initial:i,selectedColumns:[...i.columns.map(c=>c.name),rowMenu.column.name]});setRowMenu(null);}}>{i.name}</MenuItem>)}
                       <MenuItem disabled>仅支持未包含此列的普通或唯一 B-tree 索引</MenuItem>
                     </MenuList></MenuPopover>
                   </Menu>
@@ -515,6 +519,8 @@ export function IndexesPanel({
                           size="small"
                           icon={<EditRegular />}
                           aria-label="编辑索引"
+                          disabled={Boolean(index.editUnsupportedReason)}
+                          title={index.editUnsupportedReason ?? undefined}
                           onClick={() => setIndexDialog({ initial: index })}
                         />
                         <Button
@@ -541,7 +547,7 @@ export function IndexesPanel({
             <MenuItem onClick={() => { void navigator.clipboard.writeText(indexMenu.index.name).catch(error => notify.error(error, "复制失败")); setIndexMenu(null); }}>复制索引名称</MenuItem>
             <MenuItem onClick={() => { void navigator.clipboard.writeText(indexMenu.index.columns.map(c => c.name).join(", ")).catch(error => notify.error(error, "复制失败")); setIndexMenu(null); }}>复制列名</MenuItem>
             <MenuDivider />
-            <MenuItem icon={<EditRegular />} disabled={!canEdit || indexMenu.index.primary} onClick={() => { setIndexDialog({initial: indexMenu.index}); setIndexMenu(null); }}>编辑索引</MenuItem>
+            <MenuItem icon={<EditRegular />} disabled={!canEdit || indexMenu.index.primary || Boolean(indexMenu.index.editUnsupportedReason)} title={indexMenu.index.editUnsupportedReason ?? undefined} onClick={() => { setIndexDialog({initial: indexMenu.index}); setIndexMenu(null); }}>编辑索引</MenuItem>
             <MenuItem icon={<DeleteRegular />} disabled={!canEdit || indexMenu.index.primary} onClick={() => { setDropIndex(indexMenu.index); setIndexMenu(null); }}>删除索引</MenuItem>
           </MenuList>
         </ContextMenuSurface>

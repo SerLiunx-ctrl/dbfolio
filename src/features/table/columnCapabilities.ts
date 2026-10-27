@@ -13,8 +13,15 @@ export function columnCapabilities(engine: Engine) {
 
 export function splitColumnType(raw: string, engine: Engine) {
   const text = engine === 'mysql' ? raw.replace(/\s+(unsigned|zerofill)\b/gi, '').trim() : raw.trim();
-  const match = text.match(/^([^()]+)\((.*)\)(.*)$/);
-  return match ? { type: (match[1].trim() + match[3]).trim(), args: match[2] } : { type: text, args: '' };
+  let quote='',start=-1,depth=0;
+  for(let i=0;i<text.length;i++){
+    const char=text[i];
+    if(quote){if(char===quote){if(text[i+1]===quote)i++;else quote='';}else if(char==='\\'&&engine==='mysql')i++;continue;}
+    if(['"',"'",'`'].includes(char)){quote=char;continue;}
+    if(char==='('){if(depth++===0)start=i;}
+    else if(char===')'&&depth>0&&--depth===0)return {type:(text.slice(0,start).trim()+text.slice(i+1)).trim(),args:text.slice(start+1,i)};
+  }
+  return {type:text,args:''};
 }
 
 export function joinColumnType(type: string, args: string) {

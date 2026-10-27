@@ -11,9 +11,8 @@ export function TypedColumns({ names, columns, suffixes = [] }: {
     const column = columns?.find(c => c.name === name);
     return <Fragment key={i}>{i > 0 && ", "}<span
       className="dw-metadata-column"
-      style={column ? fieldTypeStyle(column.rawType, column.canonical) : undefined}
       title={column ? `${name} · ${column.rawType}` : `${name} · 类型未获取`}
-    >{name}{suffixes[i]}{column && <small className="dw-metadata-type">{column.rawType}</small>}</span></Fragment>;
+    ><span className="dw-metadata-name">{name}{suffixes[i]}</span>{column && <> <small className="dw-metadata-type" style={fieldTypeStyle(column.rawType, column.canonical)}>{column.rawType}</small></>}</span></Fragment>;
   })}</>;
 }
 

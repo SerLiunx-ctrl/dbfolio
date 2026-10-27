@@ -45,8 +45,8 @@ export function generateDdl(engine: Engine, detail: TableMeta): string {
     const columns = fk.columns.map(q).join(", ");
     const refColumns = fk.refColumns.map(q).join(", ");
     let clause = `CONSTRAINT ${q(fk.name)} FOREIGN KEY (${columns}) REFERENCES ${
-      schemaPrefix && !fk.refTable.includes(".")
-        ? `${schemaPrefix}${q(fk.refTable)}`
+      engine === "postgres"
+        ? `${q(fk.refSchema ?? detail.schema ?? "public")}.${q(fk.refTable)}`
         : q(fk.refTable)
     } (${refColumns})`;
     if (fk.onDelete && fk.onDelete.toUpperCase() !== "NO ACTION") {
@@ -65,6 +65,11 @@ export function generateDdl(engine: Engine, detail: TableMeta): string {
   const extras: string[] = [];
   for (const index of detail.indexes) {
     if (index.primary) continue;
+    if (engine === "postgres" && index.definition) {
+      extras.push(index.definition.replace(/;\s*$/, "") + ";");
+      if(index.comment) extras.push(`COMMENT ON INDEX ${q(detail.schema ?? "public")}.${q(index.name)} IS E'${index.comment.replace(/\\/g,"\\\\").replace(/'/g,"''")}';`);
+      continue;
+    }
     const columns = index.columns
       .map((c) => `${q(c.name)}${c.desc ? " DESC" : ""}`)
       .join(", ");

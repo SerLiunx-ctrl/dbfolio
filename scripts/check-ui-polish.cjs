@@ -39,11 +39,44 @@ const assert=require('node:assert/strict');
    await visit('mode='+mode);
    const status=page.locator('.ag-header-cell[col-id="c1"]'), code=page.locator('.ag-header-cell[col-id="c2"]');
    await code.waitFor();const short=await status.boundingBox(),long=await code.boundingBox();assert(long.width>short.width+60);
+   // 恢复原有按字段类型的下限，不能退回零下限或统一 30px。
+   for(const [column,minimum] of [['c0',100],['c1',80],['c2',220],['c3',240]]) {
+    const header=page.locator(`.ag-header-cell[col-id="${column}"]`);
+    // 分帧拖动并在需要时继续缩窄，避免测试移动被网格的拖拽阈值/帧合并吞掉。
+    for(let attempt=0;attempt<5&&(await header.boundingBox()).width>minimum+10;attempt++){
+     const before=await header.boundingBox(),resize=await header.locator('.ag-header-cell-resize').boundingBox();
+     await page.mouse.move(resize.x+resize.width/2,resize.y+resize.height/2);await page.mouse.down();
+     await page.waitForTimeout(40);
+     await page.mouse.move(resize.x+resize.width/2-before.width,resize.y+resize.height/2,{steps:8});
+     await page.waitForTimeout(80);await page.mouse.up();await page.waitForTimeout(80);
+    }
+    const draggedWidth=(await header.boundingBox()).width;
+    assert(draggedWidth>=minimum-.1,`${mode}/${column} 拖动不能低于类型下限 ${minimum}px：${draggedWidth}`);
+    assert.equal(await page.evaluate(id=>window.gridApi().getColumn(id).getMinWidth(),column),minimum,'实际网格列模型必须使用原有字段类型下限');
+    await page.evaluate(({column,minimum})=>window.gridApi().applyColumnState({state:[{colId:column,width:minimum,flex:null}]}),{column,minimum});
+    await page.waitForTimeout(80);
+    const narrow=(await header.boundingBox()).width;assert(Math.abs(narrow-minimum)<1,'类型下限应为有效且可渲染的列宽');
+    await page.evaluate(()=>window.reloadRows());assert(Math.abs((await header.boundingBox()).width-narrow)<1,'刷新保留缩窄后的列宽');
+    const cell=page.locator(`.ag-cell[col-id="${column}"]`).first();
+    assert(['hidden','clip'].includes(await cell.evaluate(e=>getComputedStyle(e).overflowX)),'窄列文本必须在本列裁切');
+    if(mode==='grid'&&column==='c1'){
+     await cell.dblclick();const editor=page.locator('.ag-cell-inline-editing input');await editor.waitFor();
+     await editor.fill('窄列编辑内容不应覆盖相邻字段');
+     const inputBox=await editor.boundingBox(),cellBox=await cell.boundingBox();
+     assert(inputBox.x>=cellBox.x-1&&inputBox.x+inputBox.width<=cellBox.x+cellBox.width+1,'窄列编辑框不能超出当前列');
+     await editor.press('Escape');
+    }
+    const edge=await header.locator('.ag-header-cell-resize').boundingBox();
+    await page.mouse.move(edge.x+edge.width/2,edge.y+edge.height/2);await page.mouse.down();
+    await page.mouse.move(edge.x+edge.width/2+20,edge.y+edge.height/2);
+    await page.mouse.move(edge.x+edge.width/2+180,edge.y+edge.height/2,{steps:5});await page.mouse.up();
+    assert((await header.boundingBox()).width>=narrow+150,'缩窄后仍可继续拉宽');
+   }
    const handle=code.locator('.ag-header-cell-resize');const box=await handle.boundingBox();
    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+75,box.y+box.height/2,{steps:5});await page.mouse.up();
    const resized=(await code.boundingBox()).width;await page.evaluate(()=>window.reloadRows());
    assert(Math.abs((await code.boundingBox()).width-resized)<2,'刷新行不能重置手动列宽');
-   console.log(`PASS ${mode}: content/type widths and manual resize retained`);
+   console.log(`PASS ${mode}: restored type minimums 100/80/220/240px, text/editor stay within column, widen and retain widths after refresh`);
   }
   for(const first of ['sessions','explorer']) {
    await visit('mode=grid&theme=oled');

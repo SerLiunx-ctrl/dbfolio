@@ -529,7 +529,8 @@ function AppShell() {
   };
 
   const handleSaved = (session: SessionRecord) => {
-    setActiveSession(session.id);
+    // 编辑只更新配置；新建和复制仍选中新会话。
+    if (!editing || copyingSession) setActiveSession(session.id);
   };
 
   const activeSession = sessions.find((session) => session.id === activeSessionId);

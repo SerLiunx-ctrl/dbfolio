@@ -328,6 +328,8 @@ impl DbAdapter for SqliteAdapter {
                 })
                 .collect();
             indexes.push(IndexMeta {
+                definition: None,
+                edit_unsupported_reason: None,
                 name: index_name,
                 columns,
                 unique,

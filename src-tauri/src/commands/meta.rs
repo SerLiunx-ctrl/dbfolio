@@ -5,6 +5,12 @@ use crate::meta::{CharsetMeta, DatabaseMeta, InfoEntry, TableInfo, TableMeta, Ta
 use crate::state::AppState;
 
 #[tauri::command]
+pub async fn meta_column_types(state:State<'_,AppState>,session_id:String,database:String)->AppResult<crate::meta::data_types::DataTypeCatalog>{
+    let connected=state.connected(&session_id).await?;
+    connected.adapter.column_types(&database).await
+}
+
+#[tauri::command]
 pub async fn meta_charsets(
     state: State<'_, AppState>,
     session_id: String,

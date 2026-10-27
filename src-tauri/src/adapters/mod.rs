@@ -118,6 +118,9 @@ pub trait DbAdapter: Send + Sync {
 
     async fn ping(&self) -> AppResult<()>;
     async fn server_version(&self) -> AppResult<String>;
+    async fn column_types(&self, _database: &str) -> AppResult<crate::meta::data_types::DataTypeCatalog> {
+        Ok(crate::meta::data_types::builtin(self.engine(), &self.server_version().await?))
+    }
     async fn list_databases(&self) -> AppResult<Vec<DatabaseMeta>>;
     async fn storage_engines(&self) -> AppResult<Vec<String>> { Ok(Vec::new()) }
     async fn list_tables(&self, database: &str) -> AppResult<Vec<TableRef>>;

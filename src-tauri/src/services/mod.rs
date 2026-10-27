@@ -3,6 +3,7 @@ pub mod create_table;
 pub mod add_column;
 pub mod column_edit;
 #[cfg(test)] mod column_edit_tests;
+#[cfg(test)] mod postgres_compat_tests;
 pub mod explain;
 pub mod grid;
 pub mod query;

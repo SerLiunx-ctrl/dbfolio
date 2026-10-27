@@ -131,6 +131,7 @@ pub fn run() {
             commands::meta::meta_database_info,
             commands::meta::meta_charsets,
             commands::meta::meta_storage_engines,
+            commands::meta::meta_column_types,
             commands::meta::meta_collations,
             commands::meta::meta_table_detail,
             commands::meta::meta_table_info,

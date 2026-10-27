@@ -122,7 +122,7 @@ pub fn default_sql(change: &ColumnFlags) -> AppResult<Option<String>> {
         _ => Err(invalid("默认值模式无效")),
     }
 }
-pub fn validate_changes(meta: &TableMeta, changes: &[ColumnFlags]) -> AppResult<()> {
+pub fn validate_changes(engine: Engine, meta: &TableMeta, changes: &[ColumnFlags]) -> AppResult<()> {
     if changes.is_empty() {
         return Err(invalid("没有列属性修改"));
     }
@@ -150,7 +150,7 @@ pub fn validate_changes(meta: &TableMeta, changes: &[ColumnFlags]) -> AppResult<
             if meta
                 .columns
                 .iter()
-                .any(|col| col.name.eq_ignore_ascii_case(name) && col.name != c.name)
+                .any(|col| (if engine == Engine::Postgres { &col.name == name } else { col.name.eq_ignore_ascii_case(name) }) && col.name != c.name)
             {
                 return Err(invalid("目标字段名已存在；交换字段名请分步保存"));
             }
@@ -158,7 +158,7 @@ pub fn validate_changes(meta: &TableMeta, changes: &[ColumnFlags]) -> AppResult<
         }
     }
     let mut unique = std::collections::HashSet::new();
-    if names.iter().any(|name| !unique.insert(name.to_lowercase())) {
+    if names.iter().any(|name| !unique.insert(if engine == Engine::Postgres { name.clone() } else { name.to_lowercase() })) {
         return Err(invalid("修改后的字段名重复"));
     }
     Ok(())
@@ -170,7 +170,7 @@ pub fn postgres_columns(
     meta: &TableMeta,
     changes: &[ColumnFlags],
 ) -> AppResult<Vec<String>> {
-    validate_changes(meta, changes)?;
+    validate_changes(Engine::Postgres, meta, changes)?;
     let mut sql = Vec::new();
     for c in changes {
         let old = meta.columns.iter().find(|old| old.name == c.name).unwrap();

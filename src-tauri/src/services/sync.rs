@@ -1805,7 +1805,7 @@ mod sync_integration_tests {
   let mut plan=plan_table(sqlite_pair.source.as_ref(),"main","items").await.unwrap();
   plan.meta.schema=Some("source_a".into());
   let adapter=Arc::new(crate::adapters::mysql::MySqlAdapter::for_sql_tests());
-  plan.meta.indexes.push(crate::meta::IndexMeta{name:"idx_value".into(),columns:vec![crate::meta::IndexColumn{name:"value".into(),desc:false,prefix_len:None}],unique:false,primary:false,method:None,comment:None});
+  plan.meta.indexes.push(crate::meta::IndexMeta{definition:None,edit_unsupported_reason:None,name:"idx_value".into(),columns:vec![crate::meta::IndexColumn{name:"value".into(),desc:false,prefix_len:None}],unique:false,primary:false,method:None,comment:None});
   plan.meta.foreign_keys.push(crate::meta::ForeignKeyMeta{ref_database:None,ref_schema:None,name:"fk_parent".into(),columns:vec!["id".into()],ref_table:"parent".into(),ref_columns:vec!["id".into()],on_delete:"NO ACTION".into(),on_update:"NO ACTION".into()});
   assert!(create_table_sql(adapter.as_ref(),"target_b",&plan.meta,false).starts_with("CREATE TABLE `target_b`.`items`"));
   for statement in create_index_statements(adapter.as_ref(),"target_b",&plan.meta).into_iter().chain(add_foreign_key_statements(adapter.as_ref(),"target_b",&plan.meta)){

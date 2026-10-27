@@ -1,0 +1,199 @@
+scripts/check-postgres-compat.cjs
+  s_f823aea5f80980::t_8602908c3db4f1 1-29
+scripts/fixtures/postgres-compat.tsx
+  s_f823aea5f80980::t_8602908c3db4f1 1-30
+scripts/check-type-catalog.cjs
+  s_f823aea5f80980::t_f7bca9cc700a4c 1-8,10,12-21,23-25
+  s_f823aea5f80980::t_0e5980e239890a 9
+  s_f823aea5f80980::t_9b09843d06e4ec 11,22
+docs/releases/1.0.0-alpha.28-summary.md
+  s_f823aea5f80980::t_366fe1435ac7dd 1-30
+src/features/table/StructurePanel.tsx
+  s_f823aea5f80980::t_508eac41224cad 6
+  s_b41885a4e21eab::t_b719326870fe73 164,224,238,262-263,380,522-523,550
+src/features/table/TypeOptions.tsx
+  s_f823aea5f80980::t_2bcb9b470317cf 2-3,5-9
+src/features/table/ColumnDialog.tsx
+  s_f823aea5f80980::t_508eac41224cad 3-4
+  s_f823aea5f80980::t_63c0bb7c69884d 5
+  s_f823aea5f80980::t_578e647dc7df3a 178-179,222-223,227,258-259,262,287,290-292,296,299,320
+docs/design.md
+  s_f823aea5f80980::t_366fe1435ac7dd 5-7
+  s_f823aea5f80980::t_4922f2b16bc23a 316,937-1001,2850-2857
+src/features/table/ForeignKeyDialog.tsx
+  s_f823aea5f80980::t_f290c6522ccb8f 2
+  s_b41885a4e21eab::t_7d2720052052e6 83,89-91,104-105,110,113-122,126-128,139,151,227-229,231,235-236,242,245-247,259,274
+scripts/fixtures/postgres-compat.html
+  s_f823aea5f80980::t_8602908c3db4f1 1
+src/features/table/columnCapabilities.ts
+  s_f823aea5f80980::t_64a32ae046176b 16-24
+src-tauri/src/services/create_table.rs
+  s_f823aea5f80980::t_6af80edaa1320a 301,340
+scripts/check-session-completion-fixes.cjs
+  s_f823aea5f80980::t_ce9e42cec2bb78 1-14,22-71
+  s_f823aea5f80980::t_16130795dea22f 15-18,20-21
+  s_f823aea5f80980::t_4352cf1e8a257a 19
+src-tauri/src/services/sync_schema.rs
+  s_f823aea5f80980::t_33c3dbe86fe1e0 1326-1327,1373-1374
+docs/verification/postgres-alpha26.md
+  s_f823aea5f80980::t_079d879c1d144d 29
+  s_f823aea5f80980::t_afb7b7245ebe41 1-28,30-38
+docs/verification/type-catalog-alpha28.md
+  s_f823aea5f80980::t_42d2079bbfb61e 24,27-28
+  s_f823aea5f80980::t_711af548da01e7 1-23,25-26,29-34
+src/features/table/useColumnTypeCatalog.ts
+  s_f823aea5f80980::t_508eac41224cad 10,12
+  s_f823aea5f80980::t_08ff6b6e669c2f 1-9,11,13-18
+src-tauri/src/adapters/sqlite/schema_edit.rs
+  s_f823aea5f80980::t_33c3dbe86fe1e0 58
+src/features/table/columnTypes.ts
+  s_f823aea5f80980::t_1d83cc7ba58470 2-3,16,22
+  s_f823aea5f80980::t_f7bca9cc700a4c 20,26
+  s_f823aea5f80980::t_64a32ae046176b 23
+  s_f823aea5f80980::t_08ff6b6e669c2f 1,18-19,21,30,32
+  s_f823aea5f80980::t_2bcb9b470317cf 24-25,27-29
+src/features/table/MetadataText.tsx
+  s_f823aea5f80980::t_451cf685766f52 15
+src/features/table/CreateTableWorkspace.tsx
+  s_f823aea5f80980::t_508eac41224cad 21,29
+  s_f823aea5f80980::t_c158193283643e 65
+src/features/table/ddl.ts
+  s_f823aea5f80980::t_072fb1d11c8278 70
+  s_f823aea5f80980::t_81be53b6026cf2 48-49,68-69,71-72
+docs/releases/1.0.0-alpha.26.md
+  s_f823aea5f80980::t_a80eb772f74389 1-15,17
+  s_f823aea5f80980::t_079d879c1d144d 16
+docs/releases/1.0.0-alpha.22.md
+  s_f823aea5f80980::t_b61b52324c33c5 12
+  s_f823aea5f80980::t_c3de0cfe0d8d56 1-11,13
+scripts/fixtures/type-catalog.html
+  s_f823aea5f80980::t_f7bca9cc700a4c 1
+scripts/check-inline-engines.cjs
+  s_f823aea5f80980::t_c1e255c4675cac 19
+scripts/fixtures/session-completion-fixes.html
+  s_f823aea5f80980::t_5568692ca8e1f1 1
+docs/releases/1.0.0-alpha.23.md
+  s_f823aea5f80980::t_b3b9666ebbd52d 1-20,22
+  s_f823aea5f80980::t_b7b7feb6b24c70 21
+docs/releases/1.0.0-alpha.24.md
+  s_f823aea5f80980::t_851c7ed2b22c4c 1-17,21
+  s_f823aea5f80980::t_ea84f46af05da5 18-20
+docs/releases/1.0.0-alpha.25.md
+  s_f823aea5f80980::t_85e94a19d9d426 13-14
+  s_f823aea5f80980::t_35af3022561b98 11-12
+  s_f823aea5f80980::t_f88aa35a4fbece 1-10,15
+scripts/fixtures/session-completion-fixes.tsx
+  s_f823aea5f80980::t_851c7ed2b22c4c 1-52
+docs/releases/1.0.0-alpha.27.md
+  s_f823aea5f80980::t_e51c3e532657f3 1-10,13
+  s_f823aea5f80980::t_d8b9f947d951a2 12
+  s_f823aea5f80980::t_761bb7f7553ac5 11
+src-tauri/src/meta/mod.rs
+  s_f823aea5f80980::t_33c3dbe86fe1e0 2
+  s_b41885a4e21eab::t_d12f6b73c3eade 99-102
+docs/roadmap.md
+  s_f823aea5f80980::t_dfa9649c4cae1d 3
+  s_f823aea5f80980::t_d8b9f947d951a2 11
+  s_f823aea5f80980::t_651f3a0384d710 274-276,489-496
+src-tauri/src/services/column_edit.rs
+  s_f823aea5f80980::t_33c3dbe86fe1e0 125,153,161,173
+src/features/query/sqlCompletion.ts
+  s_f823aea5f80980::t_16e06e1120ee4d 4,14-29
+  s_f823aea5f80980::t_a4bbe8924a7708 30-36,43,53,56-57,65
+scripts/check-metadata-ui.cjs
+  s_f823aea5f80980::t_451cf685766f52 23-35,43,79
+src/features/table/InlineColumnRow.tsx
+  s_f823aea5f80980::t_2bcb9b470317cf 5-6
+  s_f823aea5f80980::t_fc847999264614 10-11,25-26,45-46,52
+scripts/fixtures/type-catalog.tsx
+  s_f823aea5f80980::t_f7bca9cc700a4c 1-18
+docs/releases/1.0.0-alpha.28.md
+  s_f823aea5f80980::t_711af548da01e7 1-14,16
+  s_f823aea5f80980::t_42d2079bbfb61e 15
+src-tauri/Cargo.toml
+  s_f823aea5f80980::t_60841475e4d6ea 3
+src-tauri/src/services/postgres_compat_tests.rs
+  s_f823aea5f80980::t_6af80edaa1320a 58,60
+  s_f823aea5f80980::t_3d36d386bcaa51 1-5,22-33,35-57,59,62,64-70,75,77,80-87,91,93-100,104,106-114,119-121,137
+  s_f823aea5f80980::t_960553ca8ff388 34
+  s_f823aea5f80980::t_93a1542c743bc0 6-21
+  s_f823aea5f80980::t_34805b0a97f3ff 71-74,76,78-79,115-118,122-123
+  s_f823aea5f80980::t_63c0bb7c69884d 138-140,142-143,146-149,154,157-166
+  s_f823aea5f80980::t_d75fca0fdc0a0f 141,150-153
+  s_f823aea5f80980::t_f872ed9d4d6796 61,63,88-90,92,101-103,105,124-136
+  s_f823aea5f80980::t_bee36a02e4f1d4 144-145,155-156
+src-tauri/src/meta/data_types.rs
+  s_f823aea5f80980::t_63c0bb7c69884d 80-82
+  s_f823aea5f80980::t_3df5bec598c938 1-46,57-79,83-84
+  s_f823aea5f80980::t_64a32ae046176b 47-56
+package-lock.json
+  s_f823aea5f80980::t_36b37edf145669 3,9
+package.json
+  s_f823aea5f80980::t_398c5611d65cd3 4
+scripts/check-column-types.cjs
+  s_f823aea5f80980::t_3f5749e23eea25 2-5,7-14
+scripts/check-settings-preview.cjs
+  s_f823aea5f80980::t_f550aca24aa847 14,26-27,38
+scripts/check-ui-polish.cjs
+  s_f823aea5f80980::t_a265e2cc4b00dd 42-74,79
+scripts/fixtures/settings-preview.tsx
+  s_f823aea5f80980::t_3d87ea810d51b6 31,33-34
+scripts/fixtures/ui-polish.tsx
+  s_f823aea5f80980::t_eae5492c234389 1,35
+src-tauri/Cargo.lock
+  s_f823aea5f80980::t_c61d1f35a0b7fe 1296
+src-tauri/src/adapters/postgres.rs
+  s_f823aea5f80980::t_5c5ab5b9056bbf 405-431,573-586,589,593,616-617,622-623,630
+src-tauri/tauri.conf.json
+  s_f823aea5f80980::t_1d80f8d58b1a9b 4
+src/App.tsx
+  s_f823aea5f80980::t_fc8df3dcda8e02 532-533
+src-tauri/src/adapters/mod.rs
+  s_b41885a4e21eab::t_4602e5db4ff448 121-123
+src-tauri/src/adapters/mysql.rs
+  s_b41885a4e21eab::t_dc32552727adb9 499-500
+src-tauri/src/adapters/sqlite.rs
+  s_b41885a4e21eab::t_d73b1b9ef5125e 331-332
+src-tauri/src/commands/meta.rs
+  s_b41885a4e21eab::t_432a939924fece 7-12
+src-tauri/src/lib.rs
+  s_b41885a4e21eab::t_710d251d17175d 134
+src-tauri/src/services/ddl.rs
+  s_b41885a4e21eab::t_90ca65c549b2e3 67,115,130,132-134,136,138,145,148,150-152,154,156,1113-1123,1136,1276-1283,1307,1319,1332,1346,1427,1442-1447,1461,1525-1526
+src-tauri/src/services/mod.rs
+  s_b41885a4e21eab::t_4bdcd5ed0b4c1e 6
+src-tauri/src/services/sync.rs
+  s_b41885a4e21eab::t_69038cbed7030e 1808
+src/app/releaseInfo.ts
+  s_b41885a4e21eab::t_7a503b179871ed 5,7-9
+src/compact.css
+  s_b41885a4e21eab::t_350b8059999de5 177-178
+src/ipc/index.ts
+  s_b41885a4e21eab::t_a8fbb16f54d74a 123
+src/ipc/types.ts
+  s_b41885a4e21eab::t_a4c39834e96d6e 184-185,194-196,611,624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5e719c1ab81256946ce8e361625adb2c4a47b3b6",
+  "prompts": {},
+  "sessions": {
+    "s_b41885a4e21eab": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17b46-93b5-75f0-81fe-95d22bb34ad0",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

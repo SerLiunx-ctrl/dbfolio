@@ -1,11 +1,11 @@
 # 更新索引发布
 
-2026-10-27：alpha.28 [预发布](https://github.com/SerLiunx-ctrl/dbfolio/releases/tag/v1.0.0-alpha.28) 与 `preview.json` 已公开，公开文件下载、签名及资源预检通过。选择「预览版」通道检查更新；同版本会显示「当前没有可用的新版本」。此前实际客户端检查与下载记录保留，本轮未执行实际界面或完整安装升级，详见 [R06 验收记录](../docs/verification/r06.md)。稳定通道等待首个正式版索引，完整跨版本升级仍待验收。
+2026-10-28：alpha.33 [预发布](https://github.com/SerLiunx-ctrl/dbfolio/releases/tag/v1.0.0-alpha.33) 与 preview.json 已公开，八项公开文件下载、签名及资源预检通过。Release 与在线更新采用同一份最终双语说明，附真实提交记录及从 v1.0.0-alpha.28 开始的 Full Changelog。选择「预览版」通道检查更新；同版本会显示「当前没有可用的新版本」。本轮未执行实际客户端界面或完整安装升级，R06 保持待验收，详见 [R06 验收记录](../docs/verification/r06.md)。稳定通道等待首个正式版索引。
 
 此目录保存实际已发布版本的 `stable.json` / `preview.json`。没有可下载的签名发布包时不放占位索引，以免把“未发布”误报成“已是最新版”。
 
 1. 执行 `npm run app:build`，生成正式安装包、完整 portable 和 ZIP、独立校验清单；构建必须通过隔离的真实启动检查（可见窗口与前端 IPC 就绪）。再执行 `scripts/check-update-release.ps1`，核对签名、安装器资源及安装/便携两个入口的真实启动，资源自检不能替代启动验收。
-2. 有签名私钥时，构建自动执行 `scripts/create-update-feed.ps1`；也可传 `-NotesPath` 使用中文发布说明重新生成索引。
+2. 有签名私钥时，构建自动执行 `scripts/create-update-feed.ps1`；也可传 `-NotesPath` 使用最终双语发布说明（含真实提交链接和 Full Changelog）重新生成索引。
 3. 上传 `release/<版本>/` 的安装包、portable ZIP、两个 `.sig`、校验清单和 `release-metadata.json` / `.sig` 到对应 GitHub Release（标签 `v<版本>`）。
 4. 从实际下载地址核对文件和签名后，将生成的 `preview.json`（预发布）或 `stable.json`（正式版）复制到本目录并提交推送。**最后发布索引，禁止先放索引后传包。**
 5. 用已安装的前一版完成真实检查、下载、签名、退出保护、升级与就绪验证。没有完成这一步，R06 保持待验收。

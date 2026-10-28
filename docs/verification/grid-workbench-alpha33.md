@@ -32,3 +32,7 @@
 ## 正式交付
 
 最终正式构建通过（9 分 03 秒）。当前安装包、完整便携目录、ZIP 与两份校验清单位于 release/1.0.0-alpha.33/；107 项 SHA256、105 个 ZIP 文件、101 个双包前端资源、两种真实 EXE 的资源自检/正常启动/前端 IPC、生产更新模块签名与篡改拒绝验收通过。临时 debug 500 个文件共 126.9 MiB 已清理，target 约 3.08 GiB，磁盘可用约 280.14 GiB；正式 release 缓存与交付保留。本轮未提交或公开发布，未执行完整安装跨版本升级。
+
+## 公开发布（2026-10-28）
+
+累计实现 [197ddb5](https://github.com/SerLiunx-ctrl/dbfolio/commit/197ddb582a0cefcb13a8eff6ee6d59868fe0152d)，[alpha.33](https://github.com/SerLiunx-ctrl/dbfolio/releases/tag/v1.0.0-alpha.33) 已公开。八项草稿与公开下载比对、实际公开 EXE/ZIP/元数据签名及篡改拒绝、便携资源预检通过；最终双语正文、三条真实提交与 Full Changelog 和在线更新签名说明一致，预览索引随发布提交推送。R06 完整安装升级仍待验收。临时 debug 清理后 target 约 3.08 GiB，可用 296.97 GiB。

@@ -177,6 +177,9 @@
 .dw-metadata-column {display:inline-flex;align-items:center;gap:4px;vertical-align:middle;white-space:nowrap}
 .dw-metadata-type {display:inline-block;box-sizing:border-box;font-size:10px;font-weight:400;line-height:14px;padding:0 4px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);border-radius:3px;background:color-mix(in srgb,currentColor 10%,transparent)}
 .dw-metadata-tag {white-space:nowrap}
+.dw-metadata-column-link {border:0;padding:0;margin:0;background:transparent;color:inherit;font:inherit;cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 40%,transparent);text-underline-offset:3px}
+.dw-metadata-column-link:hover {color:var(--colorBrandForeground1);text-decoration-color:currentColor}
+.dw-metadata-column-link:focus-visible {outline:2px solid var(--colorBrandStroke1);outline-offset:2px;border-radius:2px}
 .dw-ddl-panel {display:flex;flex-direction:column;overflow:hidden!important}
 .dw-ddl-editor {flex:1;min-height:120px;min-width:0;overflow:hidden}
 /* 控件外框、Select 内框与 Fluent 焦点伪元素共用圆角，避免主题圆角与紧凑样式错位。 */

@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
+import { Button, MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
 import {
   ClipboardPasteRegular,
   CopyRegular,
@@ -21,7 +21,8 @@ import type { ColDef, GridApi, RowClassRules, ValueSetterParams } from "ag-grid-
 import { api } from "../../ipc";
 import { ContextMenuPortal, ContextMenuSurface } from "../../app/ContextMenuPortal";
 import type { CellValue, ColumnMeta, DbValue, RowChange, SortSpec } from "../../ipc/types";
-import { FullValueDialog } from "./FullValueDialog";
+import { CellInspector, type InspectorTarget } from "./CellInspector";
+import { GridWorkbench, GridColumns, useGridLayout } from "./GridWorkbench";
 import { ImageCell } from './ImageCell';
 import { isImageCandidate } from './base64Image';
 import { cellPreview } from './cellPreview';
@@ -111,12 +112,12 @@ interface Props {
   onPendingChange?: (changes: RowChange[]) => void;
   onSelectionChange?: (count: number) => void;
   onSaved?: () => void;
+  onValidationChange?: (error: string | null) => void;
 }
 
 export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
   function EditableDataGrid(
     {
-      tabId,
       columns,
       rows,
       pkColumns,
@@ -131,7 +132,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       onSortChange,
       onPendingChange,
       onSelectionChange,
-      onSaved,
+      onValidationChange,
     },
     ref,
   ) {
@@ -150,10 +151,12 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       rowIndex: number;
       colIndex: number;
     } | null>(null);
-    const [fullValue, setFullValue] = useState<{
-      rowIndex: number;
-      colIndex: number;
-    } | null>(null);
+    const [inspectorOpen,setInspectorOpen]=useState(false);
+    const [inspector,setInspector]=useState<InspectorTarget|null>(null);
+    const invalidRef=useRef<string|null>(null);
+    const layout=useGridLayout(JSON.stringify([sessionId,database,schema??null,table]),columns);
+    const invalidCallback=useRef(onValidationChange);invalidCallback.current=onValidationChange;
+    const setInvalid=(error:string|null)=>{invalidRef.current=error;invalidCallback.current?.(error);};
 
     const rowKeys = useCallback(
       (rowIndex: number): CellValue[] | null => {
@@ -166,7 +169,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
           const index = columns.findIndex((column) => column.name === pk);
           if (index < 0) return null;
           const value = row.cells[index]?.value;
-          if (!value || value[0] === "null") return null;
+          if (!value || value[0] === "null" || isReadOnlyValue(value)) return null;
           keys.push({ column: pk, value });
         }
         return keys.length > 0 ? keys : null;
@@ -179,9 +182,10 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
 
 
     useEffect(() => {
+      setInspector(null);setInvalid(null);
       rowsRef.current = rows;
       setData(rows.map((cells, index) => toRow(cells, index)));
-    }, [rows]);
+    }, [rows, columns, sessionId, database, schema, table]);
 
     const computeChanges = useCallback((): RowChange[] => {
       const original = rowsRef.current;
@@ -238,7 +242,8 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
     const editableAt = useCallback(
       (row: GridRow | undefined, index: number) => {
         if (!row) return false;
-        if (readOnly || row.state === "deleted" || row.state === "saved") return false;
+        if (readOnly || invalidRef.current || row.state === "deleted" || row.state === "saved") return false;
+        if(row.originalIndex!==null&&(pkColumns.length===0||pkColumns.some(name=>{const value=row.cells[columns.findIndex(c=>c.name===name)]?.value;return !value||value[0]==='null'||isReadOnlyValue(value);})))return false;
         const column = columns[index];
         if (!column || /^(vector|halfvec|sparsevec)(\(|$)/i.test(column.rawType)) return false;
         if (pkColumns.includes(column.name)) return false;
@@ -247,8 +252,45 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       [columns, pkColumns, readOnly],
     );
 
+    const inspect = (rowIndex:number,colIndex:number,force=false) => {
+      if(invalidRef.current){notify.error(Error('请修正或废弃详情中的无效输入'));return;}
+      if(!inspectorOpen&&!force)return;
+      const grid=apiRef.current;
+      grid?.stopEditing();
+      const row=grid?.getDisplayedRowAtIndex(rowIndex)?.data,column=columns[colIndex];
+      if(!row||!column)return;
+      const value=row.cells[colIndex].value;
+      const keys=rowKeys(rowIndex);
+      const original=row.originalIndex===null?null:rowsRef.current[row.originalIndex]?.[colIndex];
+      const canLoad=keys&&original&&sameValue(original,value)&&value[0]!=='readonly'&&row.state!=='deleted'&&row.state!=='saved';
+      let loadedOriginal:DbValue|undefined;
+      const target:InspectorTarget={
+        id:row.id+':'+colIndex,name:column.name,rawType:column.rawType,value,column,
+        editable:!readOnly&&Boolean(row.originalIndex===null||keys)&&!pkColumns.includes(column.name)&&row.state!=='deleted'&&row.state!=='saved'&&value[0]!=='readonly'&&!/^(vector|halfvec|sparsevec)(\(|$)/i.test(column.rawType),
+        load:canLoad?async()=>{const result=await api.cellFullValue(sessionId,database,schema??null,table,column.name,keys);if(result===null)throw Error('目标行不存在，请刷新表格');return result;}:undefined,
+        hydrate:full=>{
+          const latest=grid?.getRowNode(row.id)?.data;
+          if(!latest||latest.originalIndex===null||!sameValue(latest.cells[colIndex].value,value))throw Error('单元格已变化，请重新选中后查看');
+          // 只查看时完整值仅随当前详情存活，避免连续浏览长字段使网格基线无限膨胀。
+          loadedOriginal=full;
+        },
+        change:next=>{
+          const latest=grid?.getRowNode(row.id)?.data;
+          if(!latest||latest.state==='deleted'||latest.state==='saved'||readOnly)throw Error('当前行不可编辑');
+          if(loadedOriginal&&latest.originalIndex!==null&&original&&sameValue(rowsRef.current[latest.originalIndex][colIndex],original)){
+            rowsRef.current=rowsRef.current.map((cells,i)=>i===latest.originalIndex?cells.map((v,j)=>j===colIndex?loadedOriginal!:v):cells);
+          }
+          latest.cells[colIndex]=toCell(next);
+          if(latest.state==='clean')latest.state='dirty';
+          grid?.refreshCells({force:true});grid?.redrawRows({rowNodes:[grid.getRowNode(row.id)!]});
+          onPendingChangeRef.current?.(computeChangesRef.current());
+        },
+      };
+      setInspector(current=>current?.id===target.id?current:target);if(force)setInspectorOpen(true);
+    };
+
     const rowToTsv = (row: GridRow) =>
-      row.cells
+      (apiRef.current?.getAllDisplayedColumns().filter(c=>/^c\d+$/.test(c.getColId())).map(c=>row.cells[Number(c.getColId().slice(1))])??row.cells)
         .map((cell) => cell.text.replace(/\t/g, " ").replace(/\r?\n/g, " "))
         .join("\t");
 
@@ -284,12 +326,16 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
         while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
 
         const pending: { row: GridRow; index: number; cell: CellState }[] = [];
+        const displayed=gridApi.getAllDisplayedColumns().map(c=>c.getColId()).filter(id=>/^c\d+$/.test(id)).map(id=>Number(id.slice(1)));
+        const start=displayed.indexOf(colIndex);
+        if(start<0)return 0;
         try {
           lines.forEach((line, rowOffset) => {
             const row = gridApi.getDisplayedRowAtIndex(rowIndex + rowOffset)?.data;
             if (!row) return;
             line.split("\t").forEach((raw, colOffset) => {
-              const index = colIndex + colOffset;
+              const index = displayed[start + colOffset];
+              if(index===undefined)return;
               if (!editableAt(row, index)) return;
               const column = columns[index];
               pending.push({ row, index, cell: { value: parseCell(column, raw), text: raw } });
@@ -354,6 +400,8 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
           ]);
         },
         deleteSelected: () => {
+          if(invalidRef.current){notify.error(Error("请先修正或废弃详情输入"));return;}
+          setInspector(null);
           const api = apiRef.current;
           if (!api) return;
           const selected = api.getSelectedNodes().filter((node) => node.data && node.data.state !== "saved");
@@ -372,9 +420,11 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
           );
         },
         discard: () => {
+          setInspector(null);setInvalid(null);
           setData(current=>current.filter(row=>row.state!=='new').map(row=>row.originalIndex===null?row:{...row,state:'clean',cells:rowsRef.current[row.originalIndex].map(toCell)}));
         },
         acceptChanges: (indexes) => {
+          setInspector(null);setInvalid(null);
           const accepted=new Set(indexes);
           let changeIndex=0;
           const baseline:DbValue[][]=[];
@@ -492,7 +542,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       <div
         style={{ width: "100%", height: "100%" }}
         onKeyDownCapture={(event) => {
-          if(fullValue || imageTarget || (event.target as HTMLElement).closest("input,textarea,[contenteditable=true]"))return;
+          if(imageTarget || (event.target as HTMLElement).closest("input,textarea,[contenteditable=true],.dw-grid-inspector"))return;
           if (!(event.ctrlKey || event.metaKey)) return;
           const key = event.key.toLowerCase();
           if (key === "c") {
@@ -506,7 +556,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
           }
         }}
       >
-        <AgGridReact<GridRow>
+        <GridWorkbench tools={<><GridColumns layout={layout} columns={columns}/><Button size="small" appearance={inspectorOpen?"primary":"secondary"} onClick={()=>{if(inspectorOpen){if(invalidRef.current){notify.error(Error("请先修正或废弃详情输入"));return;}setInspectorOpen(false);setInspector(null);}else{setInspectorOpen(true);inspect(focusedRef.current.rowIndex,focusedRef.current.colIndex,true);}}}>单元格</Button></>} inspector={inspectorOpen?<CellInspector target={inspector} onInvalid={setInvalid}/>:null} onClose={()=>{if(invalidRef.current){notify.error(Error("请先修正或废弃详情输入"));return;}setInspectorOpen(false);setInspector(null);}}><AgGridReact<GridRow>
           theme={theme}
           rowData={data}
           columnDefs={columnDefs}
@@ -526,6 +576,10 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
               colIndex: Number.isFinite(colIndex) ? colIndex : -1,
             };
           }}
+          onCellClicked={event=>{const id=event.column.getColId();inspect(event.rowIndex??-1,Number(id.replace("c","")));}}
+          onCellEditingStarted={()=>setInspector(null)}
+          onCellEditingStopped={event=>inspect(event.rowIndex??-1,Number(event.column.getColId().replace("c","")))}
+          onCellKeyDown={event=>{const key=(event.event as KeyboardEvent)?.key;if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Tab"].includes(key))setTimeout(()=>inspect(focusedRef.current.rowIndex,focusedRef.current.colIndex),0);}}
           onCellContextMenu={(event) => {
             const mouse = event.event as MouseEvent | null | undefined;
             mouse?.preventDefault();
@@ -562,8 +616,12 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
             params.api.refreshHeader();
           }}
           onGridReady={(params) => {
-            apiRef.current = params.api;
+            apiRef.current = params.api;layout.setGrid(params.api);
           }}
+          onColumnResized={e=>{if(e.finished&&e.source!=="gridInitializing")layout.persist();}}
+          onColumnMoved={e=>{if(e.finished)layout.persist();}}
+          onColumnPinned={()=>layout.persist()}
+          onColumnVisible={()=>layout.persist()}
           onRowDataUpdated={({api: gridApi}) => {
             const id = newRowFocus.current;
             if (!id) return;
@@ -582,7 +640,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
           }
           stopEditingWhenCellsLoseFocus
           animateRows={false}
-        />
+        /></GridWorkbench>
         {cellMenu && (
           <ContextMenuPortal>
             <div
@@ -616,24 +674,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
                 >
                   复制选中行
                 </MenuItem>
-                {rowKeys(cellMenu.rowIndex) !== null && (
-                  <MenuItem
-                    icon={<ZoomInRegular />}
-                    onClick={() => {
-                      if(data.some(row=>row.state!=="clean")) {
-                        notify.error(Error("请先提交或放弃网格修改，再打开完整值编辑"));
-                        setCellMenu(null);return;
-                      }
-                      setFullValue({
-                        rowIndex: cellMenu.rowIndex,
-                        colIndex: cellMenu.colIndex,
-                      });
-                      setCellMenu(null);
-                    }}
-                  >
-                    {readOnly ? "查看完整值" : "查看/编辑完整值"}
-                  </MenuItem>
-                )}
+                <MenuItem icon={<ZoomInRegular/>} onClick={()=>{inspect(cellMenu.rowIndex,cellMenu.colIndex,true);setCellMenu(null);}}>查看/编辑单元格详情</MenuItem>
                 {!readOnly && (
                   <MenuItem
                     icon={<ClipboardPasteRegular />}
@@ -661,32 +702,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
           </ContextMenuPortal>
         )}
         {imageTarget&&<ImageValueDialog target={imageTarget} onClose={()=>setImageTarget(null)}/>}
-        {fullValue &&
-          (() => {
-            const keys = rowKeys(fullValue.rowIndex);
-            if (!keys) return null;
-            const column = columns[fullValue.colIndex];
-            if (!column) return null;
-            const row = apiRef.current?.getDisplayedRowAtIndex(fullValue.rowIndex)?.data;
-            const canEdit =
-              !readOnly && !pkColumns.includes(column.name) && row && row.state === "clean" && row.cells[fullValue.colIndex]?.value[0] !== "readonly" && !/^(vector|halfvec|sparsevec)(\(|$)/i.test(column.rawType);
-            return (
-              <FullValueDialog
-                tabId={tabId}
-                open
-                sessionId={sessionId}
-                database={database}
-                schema={schema}
-                table={table}
-                column={column.name}
-                columnMeta={column}
-                keys={keys}
-                editable={Boolean(canEdit)}
-                onClose={() => setFullValue(null)}
-                onSaved={() => onSaved?.()}
-              />
-            );
-          })()}
+
       </div>
     );
   },

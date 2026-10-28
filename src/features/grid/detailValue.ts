@@ -6,6 +6,12 @@ export function detailValue(original: DbValue | null, text: string, nullValue: b
   // 原值为 NULL 时也根据列元数据恢复类型，不能以旧值推断成字符串。
   const numeric = column && numericValue(column.canonical, text);
   if (numeric) return numeric;
+  if(column?.canonical.kind==='json'){JSON.parse(text);return ['json',text];}
+  if(column?.canonical.kind==='binary'){if(!/^0x(?:[\da-f]{2})*$/i.test(text))throw Error('二进制值须为 0x 开头的完整十六进制字节');return ['bytes',text];}
+  if(column?.canonical.kind==='date')return ['date',text];
+  if(column?.canonical.kind==='time')return ['time',text];
+  if(column?.canonical.kind==='dateTime')return ['datetime',text];
+  if(column?.canonical.kind==='uuid')return ['uuid',text];
   switch(original?.[0]) {
     case "json": JSON.parse(text); return ["json",text];
     case "bytes": if(!/^0x(?:[\da-f]{2})*$/i.test(text))throw Error("二进制值须为 0x 开头的完整十六进制字节"); return ["bytes",text];

@@ -113,6 +113,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   const requestIdRef = useRef(0);
   const activeRef = useRef(active);
   activeRef.current = active;
+  const [detailError,setDetailError]=useState<string|null>(null);
   const changesRef = useRef(0);
   const [stale, setStale] = useState(false);
   const [gridSuspended, setGridSuspended] = useState(false);
@@ -120,7 +121,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
   const [changes, setChanges] = useState<RowChange[]>([]);
-  changesRef.current = changes.length;
+  changesRef.current = changes.length + (detailError?1:0);
   const [selected, setSelected] = useState(0);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -235,7 +236,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
     return () => { window.clearTimeout(suspendTimer); window.clearTimeout(timer); };
   // 重新激活只在数据被回收后读取；普通切换不重复查询。
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, changes.length, stale]);
+  }, [active, changes.length, detailError, stale]);
 
   const canEdit =
     !readOnly && detail.kind === "table" && detail.primaryKey.length > 0;
@@ -243,6 +244,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   const [partialSaved,setPartialSaved]=useState(false);
   const discardChanges=()=>{gridRef.current?.discard();setChanges([]);if(partialSaved){setPartialSaved(false);void load(offset);}};
   const commit = async (indexes?:number[]) => {
+    if(detailError)throw Error("请修正或废弃详情中的无效输入");
     const selected=indexes??changes.map((_,i)=>i);
     const submitted=selected.map(i=>changes[i]);
     const affected = await api.gridCommit(
@@ -269,8 +271,8 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
 
   usePendingEdit({ tabId: tab.id, sessionId: tab.sessionId, label: tab.database + "." + tab.table + "（表数据）",
     save: () => commit(), discard: discardChanges,
-    preview: () => api.gridPreviewChanges(tab.sessionId, tab.database, tab.schema ?? null, tab.table, changes),
-  }, changes.length > 0);
+    preview: () => {if(detailError)throw Error("请修正或废弃详情中的无效输入");return api.gridPreviewChanges(tab.sessionId, tab.database, tab.schema ?? null, tab.table, changes);},
+  }, changes.length > 0 || detailError!==null);
   const copySelected = async () => {
     try {
       const count = await gridRef.current?.copySelected();
@@ -300,7 +302,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
     nextFilters: FilterCondition[],
     nextConjunction: "and" | "or",
   ) => {
-    if (changes.length > 0) {
+    if (changes.length > 0 || detailError) {
       notify.error(new Error("请先提交或放弃当前单元格修改，再应用筛选"), "无法筛选");
       return;
     }
@@ -320,7 +322,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   };
 
   const clearFilters = () => {
-    if (changes.length > 0) {
+    if (changes.length > 0 || detailError) {
       notify.error(new Error("请先提交或放弃当前单元格修改，再清空筛选"), "无法清空");
       return;
     }
@@ -450,7 +452,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         {readOnly && <Tag size="small">只读</Tag>}
         {hasTruncated && (
           <Badge appearance="tint" color="warning" size="small">
-            包含截断或扩展类型字段（相应单元格只读）
+            含截断预览，可在单元格详情读取完整值
           </Badge>
         )}
         {detail.kind === "table" && detail.primaryKey.length === 0 && (
@@ -467,7 +469,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         <Button
           size="small"
           icon={<DismissRegular />}
-          disabled={changes.length === 0}
+          disabled={changes.length === 0 && !detailError}
           onClick={discardChanges}
         >
           放弃修改
@@ -476,7 +478,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
           appearance="primary"
           size="small"
           icon={<CheckmarkRegular />}
-          disabled={changes.length === 0}
+          disabled={changes.length === 0 || Boolean(detailError)}
           onClick={() => setPreviewOpen(true)}
         >
           提交
@@ -489,7 +491,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
           <div className={styles.centered}>
             <Spinner label="加载数据…" />
           </div>
-        ) : (active || changes.length > 0 || !gridSuspended) ? (
+        ) : (active || changes.length > 0 || Boolean(detailError) || !gridSuspended) ? (
           <EditableDataGrid
             tabId={tab.id}
             ref={gridRef}
@@ -501,11 +503,12 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
             schema={tab.schema}
             table={tab.table}
             readOnly={!canEdit}
-            canSort={changes.length === 0}
+            canSort={changes.length === 0 && !detailError}
             onRelated={(column,row)=>setRelated({column,row})}
             onFilterValue={(column,value)=>void applyFilters([{column,operator:value[0]==="null"?"isNull":"eq",value:value[0]==="null"?"":String(value[1]),literal:value}],"and")}
             onSortChange={setSort}
             onPendingChange={setChanges}
+            onValidationChange={setDetailError}
             onSelectionChange={setSelected}
             onSaved={() => void load(offset)}
           />

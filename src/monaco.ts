@@ -3,13 +3,14 @@ import "monaco-editor/nls/lang/zh-cn";
 import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
 import editorWorker from "monaco-editor/editor/editor.worker?worker";
+import jsonWorker from "monaco-editor/language/json/json.worker?worker";
 
 type MonacoEnvironmentLike = {
   getWorker: (moduleId: string, label: string) => Worker;
 };
 
 (self as unknown as { MonacoEnvironment: MonacoEnvironmentLike }).MonacoEnvironment = {
-  getWorker: () => new editorWorker(),
+  getWorker: (_moduleId, label) => label === "json" ? new jsonWorker() : new editorWorker(),
 };
 
 loader.config({ monaco });

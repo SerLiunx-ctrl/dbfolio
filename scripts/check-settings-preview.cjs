@@ -5,13 +5,13 @@ const assert = require('node:assert/strict');
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     const errors = []; page.on('pageerror', error => errors.push(error.message));
-    for (const suffix of ['', '&oled', '&oled&zoom=2']) {
+    for (const suffix of ['', '&zoom=2', '&dark', '&dark&zoom=2', '&oled', '&oled&zoom=2']) {
       await page.goto(`http://127.0.0.1:1425/scripts/fixtures/settings-preview.html?category=updates${suffix}`);
       const nav = page.getByRole('navigation', { name: '首选项分类' });
       for (const group of ['界面与操作', '数据与服务', '应用管理']) assert(await nav.getByRole('heading', { name: group }).isVisible());
       assert.equal(await nav.getByRole('button').count(), 9);
       for (const name of ['编辑器', '同步', '高级']) assert.equal(await nav.getByRole('button', { name, exact: true }).count(), 0);
-      await page.getByText('当前版本：1.0.0-alpha.28', { exact: true }).waitFor();
+      await page.getByText('当前版本：1.0.0-alpha.33', { exact: true }).waitFor();
       assert(!(await page.locator('[aria-label="更新代理"]').isVisible()));
       assert(!(await page.getByRole('button', { name: '打开更新文件夹', exact: true }).isVisible()));
       await page.getByRole('button', { name: '检查更新', exact: true }).click();
@@ -23,8 +23,8 @@ const assert = require('node:assert/strict');
       await page.getByText('更新设置', { exact: true }).click();
       await page.evaluate(() => { window.hasUpdate = true; });
       await page.getByRole('button', { name: '检查更新', exact: true }).click();
-      await page.getByRole('button', { name: '下载 1.0.0-alpha.29', exact: true }).click();
-      await page.getByRole('button', { name: '重启并更新至 1.0.0-alpha.29', exact: true }).waitFor();
+      await page.getByRole('button', { name: '下载 1.0.0-alpha.34', exact: true }).click();
+      await page.getByRole('button', { name: '重启并更新至 1.0.0-alpha.34', exact: true }).waitFor();
       await page.getByText('下载完成，重启即可更新。', { exact: true }).waitFor();
       await page.getByRole('textbox', { name: '搜索设置', exact: true }).fill('分页');
       assert.equal(await nav.getByRole('button').count(), 1);
@@ -35,7 +35,7 @@ const assert = require('node:assert/strict');
       await page.getByRole('textbox', { name: '搜索设置', exact: true }).fill('');
       await nav.getByRole('button', { name: '关于', exact: true }).click();
       const aboutPage = page.getByRole('main', { name: '关于', exact: true });
-      assert(await aboutPage.getByText('版本 1.0.0-alpha.28', { exact: true }).isVisible());
+      assert(await aboutPage.getByText('版本 1.0.0-alpha.33', { exact: true }).isVisible());
       assert.equal(await aboutPage.getByRole('listitem').count(), 3);
       await page.screenshot({ path: `.qa/settings-about${suffix.replaceAll('&', '-') || '-light'}.png` });
       for (const close of ['button', 'escape', 'outside']) {

@@ -1,6 +1,9 @@
 .dw-settings-nav-search { width: 100%; min-width: 0; box-sizing: border-box; margin-bottom: 8px; }
 .dw-settings-nav-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
-.dw-settings-nav-heading { margin: 0; padding: 4px 8px; font-size: 11px; line-height: 18px; color: var(--colorNeutralForeground3); font-weight: 500; }
+.dw-settings-nav-heading { display: flex; align-items: center; gap: 8px; margin: 0; padding: 4px 4px 5px; font-size: 11px; line-height: 18px; color: var(--colorNeutralForeground3); font-weight: 600; cursor: default; }
+.dw-settings-nav-heading::after { content: ""; height: 1px; flex: 1; background: var(--colorNeutralStroke2); }
+.dw-settings-nav-icon { width: 16px; height: 16px; flex-shrink: 0; color: var(--colorNeutralForeground2); }
+.dw-settings-nav-item[aria-current="page"] .dw-settings-nav-icon { color: var(--colorBrandForeground1); }
 .dw-settings-heading { display: flex; align-items: baseline; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--colorNeutralStroke2); }
 .dw-settings-heading > span { color: var(--colorNeutralForeground3); font-size: 11px; }
 .dw-settings-content > section, .dw-settings-content > .dw-settings-section, .dw-settings-content > .fui-Field { padding-bottom: 12px; border-bottom: 1px solid var(--colorNeutralStroke2); }

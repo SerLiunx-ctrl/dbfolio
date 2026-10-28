@@ -7,8 +7,8 @@ import { availableTypeOptions, typeOptionText, supportsIdentity } from './column
 import { columnCapabilities, splitColumnType, joinColumnType } from './columnCapabilities';
 import './inline-columns.css';
 export interface ColumnEdit { nullable: boolean; unsigned?: boolean; newName?: string; dataType?: string; comment?: string; defaultMode?: string; defaultValue?: string; autoIncrement?: boolean; onUpdate?: string }
-export function InlineColumnRow({ column: c, engine, catalog, edit, primary, singlePrimary, disabled, deleteDisabled, onEdit, onDelete, onContextMenu, creating=false, onPrimaryChange, initialActive=null, ariaPrefix, identityDisabledReason, keyControl, keyText, adding=false }: {
-  catalog?:DataTypeCatalog;
+export function InlineColumnRow({ column: c, engine, catalog, edit, primary, singlePrimary, disabled, deleteDisabled, onEdit, onDelete, onContextMenu, creating=false, onPrimaryChange, initialActive=null, ariaPrefix, identityDisabledReason, keyControl, keyText, adding=false, highlighted=false }: {
+  catalog?:DataTypeCatalog; highlighted?:boolean;
   initialActive?:string|null; ariaPrefix?:string; identityDisabledReason?:string; keyControl?:ReactNode; keyText?:string; adding?:boolean;
   creating?:boolean; onPrimaryChange?:(checked:boolean)=>void;
   column: ColumnMeta; engine: Engine; edit?: ColumnEdit; primary: boolean; singlePrimary: boolean;
@@ -39,7 +39,7 @@ export function InlineColumnRow({ column: c, engine, catalog, edit, primary, sin
   </TableCell>;
   const input = (field: string, value: string, change: (value: string) => void) => <Input autoFocus size="small" aria-label={label + ' ' + field} value={value} disabled={disabled} onChange={(_, d) => change(d.value)} />;
   const defaultText = edit?.defaultMode === 'literal' ? (edit.defaultValue === '' ? "''" : edit.defaultValue ?? "''") : edit?.defaultMode === 'null' ? 'NULL' : edit?.defaultMode === 'timestamp' ? 'CURRENT_TIMESTAMP' : edit?.defaultMode === 'none' ? '无默认值' : c.defaultValue ?? '无默认值';
-  return <TableRow onContextMenu={onContextMenu} className={edit ? 'dw-column-dirty' : ''}>
+  return <TableRow onContextMenu={onContextMenu} data-column-name={c.name} tabIndex={highlighted?-1:undefined} aria-label={highlighted?`已定位字段 ${c.name}`:undefined} className={(edit ? 'dw-column-dirty' : '')+(highlighted?' dw-column-located':'')}>
     <TableCell>{c.ordinal}</TableCell>
     {cell('字段名', edit?.newName ?? c.name, input('字段名', edit?.newName ?? c.name, newName => onEdit({ newName })))}
     {cell('字段类型', selectedType?.label??p.type, <Select autoFocus size="small" aria-label={label + ' 字段类型'} value={p.type} disabled={disabled} onChange={(_, d) => {

@@ -41,9 +41,9 @@ const assert=require('node:assert/strict');
   for(const suffix of ['&result','&nokey','&readonly']){
    await page.goto('http://localhost:1425/scripts/fixtures/image-preview.html?engine=sqlite'+suffix);
    await page.locator('.ag-row[row-index="1"] [col-id="c1"]').getByAltText('图片缩略图').waitFor();
-   if(suffix!=='&readonly')assert.equal(await page.evaluate(()=>window.calls.length),0,'无主键/查询结果不补读');
+   if(suffix!=='&readonly')assert.equal(await page.evaluate(()=>window.calls.filter(c=>c.c==='cell_full_value').length),0,'无主键/查询结果不补读');
    await page.locator('.ag-row[row-index="1"] [col-id="c1"]').getByRole('button',{name:'查看图片',exact:true}).click();
-   await page.getByAltText('完整图片').waitFor();await page.getByRole('button',{name:'关闭',exact:true}).click();
+   await page.getByAltText('完整图片').waitFor();await page.getByRole('button',{name:suffix==='&result'?'关闭单元格详情':'关闭',exact:true}).click();
   }
   await page.goto('http://localhost:1425/scripts/fixtures/image-preview.html?engine=sqlite');
   await page.waitForFunction(()=>window.calls.length>0);await page.evaluate(()=>window.refreshRows());

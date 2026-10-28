@@ -31,7 +31,7 @@ function TextValueEditor({text,onChange,readOnly=false,binary=false}: ValueEdito
       <Button size="small" icon={<CopyRegular />} onClick={()=>void api.clipboardWriteText(text).catch(e=>notify.error(e))}>复制</Button>
       <span style={{fontSize:12}}>{binary ? "十六进制" : json ? "JSON" : "文本"} · {text.length.toLocaleString()} 字符</span>
     </div>
-    <div style={{height:"min(48vh, 480px)",minHeight:160,border:"1px solid var(--colorNeutralStroke2)"}}>
+    <div className="dw-value-editor-area" style={{height:"min(48vh, 480px)",minHeight:160,border:"1px solid var(--colorNeutralStroke2)"}}>
       <Editor value={text} onChange={value=>onChange?.(value??"")} onMount={mount} language={json ? "json" : "plaintext"} theme={editorTheme.name} beforeMount={editorTheme.beforeMount}
         options={{readOnly,automaticLayout:true,minimap:{enabled:false},wordWrap:"on",scrollBeyondLastLine:false,fontSize:13,ariaLabel:"单元格详情内容"}} />
     </div>

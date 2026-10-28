@@ -27,6 +27,7 @@ import {
 } from "./StructurePanel";
 import { InfoPanel } from "./InfoPanel";
 import { TableDataPanel } from "./TableDataPanel";
+import type { ColumnFocusRequest } from "./useColumnFocus";
 
 export const useTableWorkspaceStyles = makeStyles({
   root: {
@@ -98,6 +99,7 @@ export function TableWorkspace({ tab, active }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<TableView>(tab.view);
+  const [columnFocus, setColumnFocus] = useState<ColumnFocusRequest | null>(null);
   // 已访问过的页签保持挂载，切换时不重新加载数据
   const [visited, setVisited] = useState<Set<TableView>>(() => new Set([tab.view]));
 
@@ -124,6 +126,7 @@ export function TableWorkspace({ tab, active }: Props) {
   }, [tab.database, tab.schema, tab.sessionId, tab.table]);
 
   useEffect(() => {
+    setColumnFocus(null);
     setView(tab.view);
     setVisited(new Set([tab.view]));
     void load();
@@ -132,6 +135,10 @@ export function TableWorkspace({ tab, active }: Props) {
   const selectView = (next: TableView) => {
     setView(next);
     setVisited((current) => new Set(current).add(next));
+  };
+  const locateColumn = (name: string) => {
+    setColumnFocus({ name });
+    selectView("structure");
   };
 
   const fullName = `${tab.database}${tab.schema ? `.${tab.schema}` : ""}.${tab.table}`;
@@ -215,6 +222,8 @@ export function TableWorkspace({ tab, active }: Props) {
                 style={{ display: view === "structure" ? "flex" : "none" }}
               >
                 <ColumnsPanel
+                  columnFocus={columnFocus}
+                  active={active && view === "structure"}
                   tab={tab}
                   detail={detail}
                   engine={session.engine}
@@ -230,6 +239,7 @@ export function TableWorkspace({ tab, active }: Props) {
                 style={{ display: view === "indexes" ? "flex" : "none" }}
               >
                 <IndexesPanel
+                  onColumnClick={locateColumn}
                   tab={tab}
                   detail={detail}
                   engine={session.engine}

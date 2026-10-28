@@ -1,0 +1,12 @@
+.dw-resizable-schema-table { border-collapse:collapse; }
+.dw-resizable-schema-table .dw-resizable-header { position:relative; overflow:hidden; white-space:nowrap; }
+.dw-resizable-header > .fui-TableHeaderCell__button { min-width:0; max-width:100%; min-height:20px; height:20px; line-height:16px; overflow:hidden; resize:none; }
+.dw-schema-header-text { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-inline-end:5px; }
+.dw-resizable-header > .fui-TableHeaderCell__aside { position:absolute; inset:0 0 0 auto; display:block; width:8px; }
+.dw-schema-resizer { position:absolute; inset:0; display:block; cursor:col-resize; touch-action:none; user-select:none; outline-offset:-2px; }
+.dw-schema-resizer::after { content:""; position:absolute; right:3px; top:25%; height:50%; width:1px; background:var(--colorNeutralStroke1); }
+.dw-schema-resizer:hover::after,.dw-schema-resizer:focus-visible::after { background:var(--colorBrandStroke1); width:2px; }
+.dw-schema-resizer:focus-visible { outline:2px solid var(--colorBrandStroke1); }
+.dw-resizable-schema-table .fui-TableCell { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dw-resizable-schema-table .fui-TableCell > .dw-draft-cell-editor { max-width:100%; }
+.dw-resizable-schema-table .dw-schema-actions { min-width:0; }

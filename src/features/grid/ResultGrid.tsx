@@ -2,15 +2,17 @@ import {valueCellStyle} from "./valueColor";
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
+import { Button, MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
 import { CopyRegular, ZoomInRegular } from "@fluentui/react-icons";
-import { ValueEditor } from "./ValueEditor";
+import { CellInspector, type InspectorTarget } from "./CellInspector";
+import { GridWorkbench, GridColumns, useGridLayout } from "./GridWorkbench";
 import { ImageCell } from './ImageCell';
 import { isImageCandidate } from './base64Image';
 import { cellPreview } from './cellPreview';
@@ -20,7 +22,6 @@ import { ContextMenuPortal, ContextMenuSurface } from "../../app/ContextMenuPort
 import {
   formatDbValue,
   isNullValue,
-  isReadOnlyValue,
   type ColumnInfo,
   type DbValue,
   type SortSpec,
@@ -73,7 +74,10 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
 ) {
   const theme = useGridTheme();
   const styles = useStyles();
-  const [detail,setDetail]=useState<{name:string;value:DbValue}|null>(null);
+  const [detail,setDetail]=useState<InspectorTarget|null>(null);
+  const [inspectorOpen,setInspectorOpen]=useState(false);
+  const layout=useGridLayout("query",columns);
+  const inspect=(rowIndex:number,colIndex:number,force=false)=>{if(!inspectorOpen&&!force)return;const value=apiRef.current?.getDisplayedRowAtIndex(rowIndex)?.data?.cells[colIndex];if(!value)return;const c=columns[colIndex];if(!c)return;setDetail({id:rowIndex+":"+colIndex,name:c.name,rawType:c.rawType,value});if(force)setInspectorOpen(true);};
   const apiRef = useRef<GridApi<ResultRow> | null>(null);
   const focusedRef = useRef<{ rowIndex: number; colIndex: number }>({
     rowIndex: -1,
@@ -86,6 +90,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
     colIndex: number;
   } | null>(null);
 
+  useEffect(()=>{setDetail(null);},[rows,columns]);
   const rowData = useMemo<ResultRow[]>(
     () => rows.map((cells, index) => ({ key: `r${index}`, cells })),
     [rows],
@@ -108,7 +113,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
         cellRendererSelector: (params) => {
           const value = params.value as DbValue | undefined;
           if (!isImageCandidate(value)) return undefined;
-          return { component: ImageCell, params: { value, text: formatDbValue(value), onOpen: () => { if (value) setDetail({ name: column.name, value }); } } };
+          return { component: ImageCell, params: { value, text: formatDbValue(value), onOpen: () => { if (value) {setDetail({id:index+":"+String(params.node.id),name:column.name,rawType:column.rawType,value});setInspectorOpen(true);} } } };
         },
         cellStyle: (params) => valueCellStyle(column.rawType, params.value as DbValue),
       })),
@@ -134,7 +139,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
   const copyRows = useCallback(async (targets: ResultRow[]) => {
     if (targets.length === 0) return 0;
     const text = targets
-      .map((row) => row.cells.map((cell) => cellText(cell)).join("\t"))
+      .map((row) => (apiRef.current?.getAllDisplayedColumns().filter(c=>/^c\d+$/.test(c.getColId())).map(c=>row.cells[Number(c.getColId().slice(1))])??row.cells).map((cell) => cellText(cell)).join("\t"))
       .join("\n");
     await api.clipboardWriteText(text);
     return targets.length;
@@ -166,7 +171,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
     <div
       style={{ width: "100%", height: "100%" }}
       onKeyDownCapture={(event) => {
-        if(detail || (event.target as HTMLElement).closest("input,textarea,[contenteditable=true]"))return;
+        if((event.target as HTMLElement).closest("input,textarea,[contenteditable=true],.dw-grid-inspector"))return;
         if (!(event.ctrlKey || event.metaKey)) return;
         if (event.key.toLowerCase() !== "c") return;
         event.preventDefault();
@@ -174,7 +179,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
         void copyRows(selectedOrFocusedRows());
       }}
     >
-      <AgGridReact<ResultRow>
+      <GridWorkbench tools={<><GridColumns layout={layout} columns={columns}/><Button size="small" appearance={inspectorOpen?"primary":"secondary"} onClick={()=>{if(inspectorOpen){setInspectorOpen(false);setDetail(null);}else{setInspectorOpen(true);inspect(focusedRef.current.rowIndex,focusedRef.current.colIndex,true);}}}>单元格</Button></>} inspector={inspectorOpen?<CellInspector target={detail}/>:null} onClose={()=>{setInspectorOpen(false);setDetail(null);}}><AgGridReact<ResultRow>
         theme={theme}
         rowData={rowData}
         columnDefs={columnDefs}
@@ -193,6 +198,8 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
             colIndex: Number.isFinite(colIndex) ? colIndex : -1,
           };
         }}
+        onCellClicked={event=>inspect(event.rowIndex??-1,Number(event.column.getColId().replace("c","")))}
+        onCellKeyDown={event=>{const key=(event.event as KeyboardEvent)?.key;if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Tab"].includes(key))setTimeout(()=>inspect(focusedRef.current.rowIndex,focusedRef.current.colIndex),0);}}
         onCellContextMenu={(event) => {
           const mouse = event.event as MouseEvent | null | undefined;
           mouse?.preventDefault();
@@ -226,10 +233,14 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
           params.api.refreshHeader();
         }}
         onGridReady={(params) => {
-          apiRef.current = params.api;
+          apiRef.current = params.api;layout.setGrid(params.api);
         }}
+        onColumnResized={e=>{if(e.finished&&e.source!=="gridInitializing")layout.persist();}}
+        onColumnMoved={e=>{if(e.finished)layout.persist();}}
+        onColumnPinned={()=>layout.persist()}
+        onColumnVisible={()=>layout.persist()}
         animateRows={false}
-      />
+      /></GridWorkbench>
       {cellMenu && (
         <ContextMenuPortal>
           <div
@@ -244,7 +255,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
             <MenuList>
               <MenuItem icon={<ZoomInRegular />} onClick={()=>{
                 const value=apiRef.current?.getDisplayedRowAtIndex(cellMenu.rowIndex)?.data?.cells[cellMenu.colIndex];
-                if(value)setDetail({name:columns[cellMenu.colIndex]?.name ?? "单元格",value});
+                if(value)inspect(cellMenu.rowIndex,cellMenu.colIndex,true);
                 setCellMenu(null);
               }}>查看单元格详情</MenuItem>
               <MenuItem
@@ -273,12 +284,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
           </ContextMenuSurface>
         </ContextMenuPortal>
       )}
-      <Dialog open={detail!==null} onOpenChange={(_,d)=>{if(!d.open)setDetail(null);}}><DialogSurface style={{width:"90vw",maxWidth:1000}}><DialogBody>
-        <DialogTitle>单元格详情 · {detail?.name}</DialogTitle><DialogContent>
-          {detail && <><p>{detail.value[0]==="null" ? "NULL" : detail.value[0]==="readonly" ? "扩展类型或解析提示，只读显示。" : isReadOnlyValue(detail.value) ? "查询结果为截断预览；请在表数据页按主键查看完整值。" : "查询结果只读"}</p>
-          <ValueEditor text={String(detail.value[1]??"")} binary={detail.value[0]==="bytes"} allowImage={detail.value[0]==='text'} readOnly /></>}
-        </DialogContent><DialogActions><Button onClick={()=>setDetail(null)}>关闭</Button></DialogActions>
-      </DialogBody></DialogSurface></Dialog>
+
     </div>
   );
 });

@@ -1,6 +1,8 @@
+import {ResizableSchemaTable as Table,ResizableHeaderCell as TableHeaderCell} from './ResizableSchemaTable';
 import Editor from "@monaco-editor/react";
 import { useEditorTheme } from "../../useEditorTheme";
 import { MetadataTag, TypedColumns, useReferenceColumns } from "./MetadataText";
+import { useColumnFocus, type ColumnFocusRequest } from "./useColumnFocus";
 import { columnCapabilities } from "./columnCapabilities";
 import {InlineColumnRow,type ColumnEdit} from "./InlineColumnRow";
 import {useColumnTypeCatalog} from './useColumnTypeCatalog';
@@ -15,11 +17,9 @@ import {
   MenuDivider,
   MenuItem,
   MenuList,
-  Table,
   TableBody,
   TableCell,
   TableHeader,
-  TableHeaderCell,
   TableRow,
   makeStyles,
   tokens,
@@ -129,6 +129,9 @@ interface PanelProps {
   readOnly: boolean;
   onChanged: () => void;
   onDropped?: () => void;
+  columnFocus?: ColumnFocusRequest | null;
+  active?: boolean;
+  onColumnClick?: (name: string) => void;
 }
 
 interface AddDraft {
@@ -144,8 +147,11 @@ export function ColumnsPanel({
   readOnly,
   onChanged,
   onDropped,
+  columnFocus,
+  active = true,
 }: PanelProps) {
   const styles = useStyles();
+  const { rootRef, highlightedColumn } = useColumnFocus(columnFocus, active, detail.columns);
   const notify = useNotify();
   const [dropColumn, setDropColumn] = useState<ColumnMeta | null>(null);
   const [dropTable, setDropTable] = useState(false);
@@ -235,12 +241,12 @@ export function ColumnsPanel({
   const rows: React.ReactNode[] = [];
   detail.columns.forEach((column, index) => {
     if (draft && addIndex === index) rows.push(renderAddRow());
-    rows.push(<InlineColumnRow key={column.name} column={column} engine={engine} catalog={typeCatalog.catalog} singlePrimary={detail.primaryKey.length===1} deleteDisabled={dirtyFlags} edit={flags[column.name]} primary={detail.primaryKey.includes(column.name)} disabled={!canEdit||flagsBusy||!!draft} onEdit={patch=>setFlags(old=>({...old,[column.name]:{...(old[column.name]??{nullable:column.nullable}),...patch}}))} onDelete={()=>{if(!dirtyFlags)setDropColumn(column);}} onContextMenu={event=>{event.preventDefault();setRowMenu({x:event.clientX,y:event.clientY,column});}}/>);
+    rows.push(<InlineColumnRow key={column.name} highlighted={highlightedColumn===column.name} column={column} engine={engine} catalog={typeCatalog.catalog} singlePrimary={detail.primaryKey.length===1} deleteDisabled={dirtyFlags} edit={flags[column.name]} primary={detail.primaryKey.includes(column.name)} disabled={!canEdit||flagsBusy||!!draft} onEdit={patch=>setFlags(old=>({...old,[column.name]:{...(old[column.name]??{nullable:column.nullable}),...patch}}))} onDelete={()=>{if(!dirtyFlags)setDropColumn(column);}} onContextMenu={event=>{event.preventDefault();setRowMenu({x:event.clientX,y:event.clientY,column});}}/>);
   });
   if (draft && addIndex >= detail.columns.length) rows.push(renderAddRow());
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} ref={rootRef}>
       {canEdit && (
         <div className={styles.toolbar}>
           <Button
@@ -268,7 +274,7 @@ export function ColumnsPanel({
         </div>
       )}
       {engine === "sqlite" && <InfoHint label="SQLite 类型说明">声明类型直接来自 SQLite 元数据；varchar(256) 等声明按类型亲和性处理，不自动限制文本长度。</InfoHint>}
-      <Table className={"dw-schema-list dw-inline-columns"+(engine!=="mysql"?" dw-inline-columns-standard":"")} size="extra-small" aria-label="列信息">
+      <Table kind="structure" engine={engine} className={"dw-schema-list dw-inline-columns"+(engine!=="mysql"?" dw-inline-columns-standard":"")} size="extra-small" aria-label="列信息">
         <TableHeader>
           <TableRow>
             <TableHeaderCell style={{ width: 36 }}>#</TableHeaderCell>
@@ -456,10 +462,12 @@ export function ColumnsPanel({
 }
 
 export function IndexesPanel({
+  engine,
   tab,
   detail,
   readOnly,
   onChanged,
+  onColumnClick,
 }: PanelProps) {
   const styles = useStyles();
   const notify = useNotify();
@@ -485,7 +493,7 @@ export function IndexesPanel({
       {detail.indexes.length === 0 ? (
         <div className={styles.empty}>无索引</div>
       ) : (
-        <Table className="dw-schema-list" size="extra-small" aria-label="索引信息">
+        <Table kind="indexes" engine={engine} className="dw-schema-list" size="extra-small" aria-label="索引信息">
           <TableHeader>
             <TableRow>
               <TableHeaderCell>名称</TableHeaderCell>
@@ -506,7 +514,7 @@ export function IndexesPanel({
                 </TableCell>
                 <TableCell>
                   <span className={styles.mono}>
-                    {<TypedColumns names={index.columns.map(c => c.name)} columns={detail.columns} suffixes={index.columns.map(c => `${c.prefixLen ? `(${c.prefixLen})` : ""}${c.desc ? " DESC" : ""}`)} />}
+                    {<TypedColumns onColumnClick={onColumnClick} names={index.columns.map(c => c.name)} columns={detail.columns} suffixes={index.columns.map(c => `${c.prefixLen ? `(${c.prefixLen})` : ""}${c.desc ? " DESC" : ""}`)} />}
                   </span>
                 </TableCell>
                 <TableCell><MetadataTag category="method" value={index.method ?? ""} /></TableCell>
@@ -631,7 +639,7 @@ export function ForeignKeysPanel({
       {detail.foreignKeys.length === 0 ? (
         <div className={styles.empty}>无外键</div>
       ) : (
-        <Table className="dw-schema-list" size="extra-small" aria-label="外键信息">
+        <Table kind="foreignKeys" engine={engine} className="dw-schema-list" size="extra-small" aria-label="外键信息">
           <TableHeader>
             <TableRow>
               <TableHeaderCell>名称</TableHeaderCell>

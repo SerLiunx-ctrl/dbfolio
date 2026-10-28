@@ -14,12 +14,13 @@ import '../../src/motion.css';
 const w = window as any;
 const params = new URLSearchParams(location.search);
 const oled = params.has('oled');
+const mode = oled ? 'oled' : params.has('dark') ? 'dark' : 'light';
 const zoom = Number(params.get('zoom') || 1);
 document.documentElement.dataset.motion = 'full';
 document.documentElement.dataset.density = 'compact';
-document.documentElement.dataset.colorMode = oled ? 'oled' : 'light';
+document.documentElement.dataset.colorMode = mode;
 document.documentElement.style.zoom = String(zoom);
-useSettingsStore.setState({ themeMode: oled ? 'oled' : 'light', motionMode: 'full', interfaceStyle: 'classic' });
+useSettingsStore.setState({ themeMode: mode, motionMode: 'full', interfaceStyle: 'classic' });
 connectionBridge.isOffline = () => false;
 w.calls = [];
 w.settings = new Map();
@@ -28,10 +29,10 @@ w.__TAURI_INTERNALS__ = { invoke: async (command: string, args: any) => {
   w.calls.push({ command, args });
   if (command === 'settings_get') return w.settings.get(args.key) ?? null;
   if (command === 'settings_set') { w.settings.set(args.key, args.value); return; }
-  if (command === 'updater_status') return { version: APP_RELEASE, distribution: 'installed', preferences: prefs, readyVersion: w.ready ? '1.0.0-alpha.29' : null, logPath: 'C:/fixture/updates' };
+  if (command === 'updater_status') return { version: APP_RELEASE, distribution: 'installed', preferences: prefs, readyVersion: w.ready ? '1.0.0-alpha.34' : null, logPath: 'C:/fixture/updates' };
   if (command === 'updater_preferences') { prefs = args.value; return; }
-  if (command === 'updater_check') { prefs.lastCheck = Date.now() / 1000; if (w.failCheck) throw Error('网络不可用'); return w.hasUpdate ? { version: '1.0.0-alpha.29', notes: '示例新版更新内容', size: 1024, date: null, skipped: false } : null; }
-  if (command === 'updater_download') { w.ready = true; return '1.0.0-alpha.29'; }
+  if (command === 'updater_check') { prefs.lastCheck = Date.now() / 1000; if (w.failCheck) throw Error('网络不可用'); return w.hasUpdate ? { version: '1.0.0-alpha.34', notes: '示例新版更新内容', size: 1024, date: null, skipped: false } : null; }
+  if (command === 'updater_download') { w.ready = true; return '1.0.0-alpha.34'; }
   if (command.startsWith('task_') || command.startsWith('plugin:opener')) return null;
   if (command === 'generation_providers') return [];
   if (command === 'local_data_stats') return { databasePath: 'C:/fixture/app.db', databaseBytes: 1024, auxiliaryBytes: 0, sessionCount: 0, historyCount: 0, historyLimit: 500 };

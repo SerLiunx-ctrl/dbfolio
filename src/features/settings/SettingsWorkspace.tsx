@@ -24,7 +24,7 @@ import {
   mergeClasses,
   tokens,
 } from "@fluentui/react-components";
-import { CheckmarkRegular, SearchRegular } from "@fluentui/react-icons";
+import { ArrowDownloadRegular, ArrowSyncRegular, BotRegular, CheckmarkRegular, DatabaseRegular, GridRegular, InfoRegular, KeyboardRegular, PaintBrushRegular, SearchRegular, WindowRegular } from "@fluentui/react-icons";
 import { useEffect, useMemo, useState } from "react";
 import { useNotify } from "../../app/toast";
 import {
@@ -52,23 +52,26 @@ const useStyles = makeStyles({
     overflowY: "auto",
   },
   navItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
     border: "none",
     background: "transparent",
     textAlign: "left",
-    padding: "5px 8px",
+    padding: "5px 10px 5px 14px",
     borderRadius: "6px",
     fontSize: tokens.fontSizeBase200,
     lineHeight: "20px",
-    color: tokens.colorNeutralForeground2,
+    color: tokens.colorNeutralForeground1,
     cursor: "pointer",
     transition: "background-color 140ms cubic-bezier(0.33, 0, 0.67, 1)",
     ":hover": { backgroundColor: tokens.colorSubtleBackgroundHover },
+    ":focus-visible": { outline: `2px solid ${tokens.colorBrandStroke1}`, outlineOffset: "-2px" },
   },
   navItemActive: {
     backgroundColor: tokens.colorSubtleBackgroundSelected,
     color: tokens.colorNeutralForeground1,
     fontWeight: tokens.fontWeightSemibold,
-    boxShadow: `inset 2px 0 0 0 ${tokens.colorBrandStroke1}`,
   },
   content: {
     flex: 1,
@@ -136,15 +139,15 @@ const useStyles = makeStyles({
 });
 
 const CATEGORIES = [
-  { id: "appearance", label: "外观", group: "界面与操作", keywords: "主题 配色 强调色 动效" },
-  { id: "layout", label: "布局与缩放", group: "界面与操作", keywords: "面板 停靠 密度 页签" },
-  { id: "shortcuts", label: "快捷键", group: "界面与操作", keywords: "键盘 快速打开" },
-  { id: "grid", label: "数据浏览", group: "数据与服务", keywords: "数据网格 查询 分页 每页 行数" },
-  { id: "ai", label: "AI 服务", group: "数据与服务", keywords: "模型 密钥 服务商" },
-  { id: "localData", label: "本机数据", group: "应用管理", keywords: "历史 清理 缓存" },
-  { id: "configTransfer", label: "配置迁移", group: "应用管理", keywords: "导入 导出 会话" },
-  { id: "updates", label: "软件更新", group: "应用管理", keywords: "版本 代理 通道 升级" },
-  { id: "about", label: "关于", group: "应用管理", keywords: "版本 更新内容 作者" },
+  { id: "appearance", label: "外观", icon: PaintBrushRegular, group: "界面与操作", keywords: "主题 配色 强调色 动效" },
+  { id: "layout", label: "布局与缩放", icon: WindowRegular, group: "界面与操作", keywords: "面板 停靠 密度 页签" },
+  { id: "shortcuts", label: "快捷键", icon: KeyboardRegular, group: "界面与操作", keywords: "键盘 快速打开" },
+  { id: "grid", label: "数据浏览", icon: GridRegular, group: "数据与服务", keywords: "数据网格 查询 分页 每页 行数" },
+  { id: "ai", label: "AI 服务", icon: BotRegular, group: "数据与服务", keywords: "模型 密钥 服务商" },
+  { id: "localData", label: "本机数据", icon: DatabaseRegular, group: "应用管理", keywords: "历史 清理 缓存" },
+  { id: "configTransfer", label: "配置迁移", icon: ArrowSyncRegular, group: "应用管理", keywords: "导入 导出 会话" },
+  { id: "updates", label: "软件更新", icon: ArrowDownloadRegular, group: "应用管理", keywords: "版本 代理 通道 升级" },
+  { id: "about", label: "关于", icon: InfoRegular, group: "应用管理", keywords: "版本 更新内容 作者" },
 ];
 const CATEGORY_GROUPS = ["界面与操作", "数据与服务", "应用管理"];
 
@@ -212,13 +215,14 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
             key={item.id}
             type="button"
             className={mergeClasses(
-              styles.navItem,
+              styles.navItem, "dw-settings-nav-item",
               item.id === category && styles.navItemActive,
             )}
             onClick={() => setCategory(item.id)}
             aria-current={item.id === category ? "page" : undefined}
           >
-            {item.label}
+            <item.icon className="dw-settings-nav-icon" aria-hidden="true" />
+            <span>{item.label}</span>
           </button>
           ))}</section>;
         })}

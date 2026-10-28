@@ -30,9 +30,9 @@ const assert=require('node:assert/strict');
      await page.waitForFunction(()=>!document.querySelector('.ag-row[row-index="0"] img'));
     } else {
      await cell.click({button:'right'});await page.getByRole('menuitem',{name:'查看单元格详情',exact:true}).click();
-     await page.getByRole('dialog').getByRole('button',{name:'复制',exact:true}).click();
+     await page.getByRole('region',{name:'单元格详情',exact:true}).getByRole('button',{name:'复制',exact:true}).click();
      assert.equal(await page.evaluate(()=>window.copied),text,'详情仍为完整原文');
-     await page.getByRole('button',{name:'关闭',exact:true}).click();
+     await page.getByRole('button',{name:'关闭单元格详情',exact:true}).click();
     }
    }
   }

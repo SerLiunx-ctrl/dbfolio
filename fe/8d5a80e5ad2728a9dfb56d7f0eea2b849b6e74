@@ -1,0 +1,32 @@
+docs/verification/grid-workbench-alpha33.md
+  s_f823aea5f80980::t_d7842142a8dad0 35-38
+docs/verification/r06.md
+  s_f823aea5f80980::t_d7842142a8dad0 7-8
+  s_f823aea5f80980::t_6fd949fab7092c 9-11
+  s_f823aea5f80980::t_86c98d471d32b0 12-13
+updates/README.md
+  s_f823aea5f80980::t_d7842142a8dad0 3,8
+updates/preview.json
+  s_f823aea5f80980::t_d7842142a8dad0 2-4,7-9
+  s_f823aea5f80980::t_53472865e79bee 12-14,17-18
+README.en.md
+  s_f823aea5f80980::t_5a2dbaa03e99b0 230
+docs/roadmap.md
+  s_f823aea5f80980::t_9f25246bdc2736 3,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "fe8d5a80e5ad2728a9dfb56d7f0eea2b849b6e74",
+  "prompts": {},
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

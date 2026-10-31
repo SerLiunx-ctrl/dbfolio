@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod browser_guards;
+mod ui_activity;
 mod startup_check;
 pub mod update_package;
 mod sqlite_drop;
@@ -74,11 +75,12 @@ pub fn run() {
             let state = tauri::async_runtime::block_on(state::AppState::initialize())?;
             app.manage(state);
             #[cfg(windows)]
-            if let Some(window) = app.get_webview_window("main") { browser_guards::configure(&window)?; }
-            tracing::info!("DBFolio 启动");
+            if let Some(window) = app.get_webview_window("main") { browser_guards::configure(&window)?; ui_activity::diagnose(&window)?; ui_activity::start(&window); }
+            tracing::info!(version=env!("CARGO_PKG_VERSION"),"DBFolio 启动");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            ui_activity::ui_inactive,
             commands::updater::updater_status,
             commands::updater::updater_ready,
             commands::updater::updater_preferences,
@@ -150,6 +152,9 @@ pub fn run() {
             commands::analysis::analysis_query,
             commands::analysis::analysis_export,
             commands::image::image_export,
+            commands::er::er_export,
+            commands::er::er_ai_suggest,
+            commands::er::er_ai_verify,
             commands::query::cell_full_value,
             commands::query::update_cell,
             commands::query::grid_preview_changes,

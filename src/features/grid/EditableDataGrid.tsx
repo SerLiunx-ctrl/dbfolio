@@ -1,5 +1,6 @@
+import { loadedFindRules, refreshLoadedFind } from './GridFind';
 import {valueCellStyle} from "./valueColor";
-import { FilterRegular } from "@fluentui/react-icons";
+import { TextFieldRegular, FilterRegular } from "@fluentui/react-icons";
 import {
   forwardRef,
   useCallback,
@@ -10,7 +11,7 @@ import {
   useState,
 } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { Button, MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
+import { MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
 import {
   ClipboardPasteRegular,
   CopyRegular,
@@ -22,7 +23,7 @@ import { api } from "../../ipc";
 import { ContextMenuPortal, ContextMenuSurface } from "../../app/ContextMenuPortal";
 import type { CellValue, ColumnMeta, DbValue, RowChange, SortSpec } from "../../ipc/types";
 import { CellInspector, type InspectorTarget } from "./CellInspector";
-import { GridWorkbench, GridColumns, useGridLayout } from "./GridWorkbench";
+import { GridWorkbench, GridColumns, GridIconButton, useGridLayout } from "./GridWorkbench";
 import { ImageCell } from './ImageCell';
 import { isImageCandidate } from './base64Image';
 import { cellPreview } from './cellPreview';
@@ -96,6 +97,7 @@ export interface EditableDataGridHandle {
 }
 
 interface Props {
+  toolbarHost?:HTMLElement|null;
   onRelated?: (column: string, row: DbValue[]) => void;
   onFilterValue?: (column:string,value:DbValue)=>void;
   tabId: string;
@@ -118,6 +120,7 @@ interface Props {
 export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
   function EditableDataGrid(
     {
+      toolbarHost,
       columns,
       rows,
       pkColumns,
@@ -262,10 +265,11 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       const value=row.cells[colIndex].value;
       const keys=rowKeys(rowIndex);
       const original=row.originalIndex===null?null:rowsRef.current[row.originalIndex]?.[colIndex];
-      const canLoad=keys&&original&&sameValue(original,value)&&value[0]!=='readonly'&&row.state!=='deleted'&&row.state!=='saved';
+      const canLoad=['string','enum','json','binary'].includes(column.canonical.kind)&&value[0]!=='null'&&keys&&original&&sameValue(original,value)&&value[0]!=='readonly'&&row.state!=='deleted'&&row.state!=='saved';
       let loadedOriginal:DbValue|undefined;
       const target:InspectorTarget={
         id:row.id+':'+colIndex,name:column.name,rawType:column.rawType,value,column,
+        baseline:original??undefined,pending:row.state==='new'||Boolean(original&&!sameValue(original,value)),
         editable:!readOnly&&Boolean(row.originalIndex===null||keys)&&!pkColumns.includes(column.name)&&row.state!=='deleted'&&row.state!=='saved'&&value[0]!=='readonly'&&!/^(vector|halfvec|sparsevec)(\(|$)/i.test(column.rawType),
         load:canLoad?async()=>{const result=await api.cellFullValue(sessionId,database,schema??null,table,column.name,keys);if(result===null)throw Error('目标行不存在，请刷新表格');return result;}:undefined,
         hydrate:full=>{
@@ -280,7 +284,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
           if(loadedOriginal&&latest.originalIndex!==null&&original&&sameValue(rowsRef.current[latest.originalIndex][colIndex],original)){
             rowsRef.current=rowsRef.current.map((cells,i)=>i===latest.originalIndex?cells.map((v,j)=>j===colIndex?loadedOriginal!:v):cells);
           }
-          latest.cells[colIndex]=toCell(next);
+          latest.cells[colIndex]=toCell(next);refreshLoadedFind(grid);
           if(latest.state==='clean')latest.state='dirty';
           grid?.refreshCells({force:true});grid?.redrawRows({rowNodes:[grid.getRowNode(row.id)!]});
           onPendingChangeRef.current?.(computeChangesRef.current());
@@ -507,6 +511,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
               return { component: ImageCell, params: { value: cell?.value, text: cell?.text ?? '', loadValue, onOpen: () => { if (cell) setImageTarget({ name: column.name, value: cell.value, loadValue }); } } };
             },
             valueSetter: valueSetter(index),
+            cellClassRules:{...loadedFindRules,'dw-cell-modified':params=>Boolean(params.data&&params.data.state!=='deleted'&&params.data.originalIndex!==null&&!sameValue(params.data.cells[index].value,rowsRef.current[params.data.originalIndex]?.[index]))},
             cellStyle: (params) => valueCellStyle(column.rawType, params.data?.cells[index]?.value, column.canonical),
           };
         }),
@@ -517,7 +522,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
       () => ({
         "dw-row-deleted": (params) => params.data?.state === "deleted",
         "dw-row-new": (params) => params.data?.state === "new",
-        "dw-row-dirty": (params) => params.data?.state === "dirty",
+        "dw-row-dirty": (params) => Boolean(params.data?.state === "dirty" && params.data.originalIndex!==null && params.data.cells.some((cell,i)=>!sameValue(cell.value,rowsRef.current[params.data!.originalIndex!]?.[i]))),
       }),
       [],
     );
@@ -556,7 +561,7 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
           }
         }}
       >
-        <GridWorkbench tools={<><GridColumns layout={layout} columns={columns}/><Button size="small" appearance={inspectorOpen?"primary":"secondary"} onClick={()=>{if(inspectorOpen){if(invalidRef.current){notify.error(Error("请先修正或废弃详情输入"));return;}setInspectorOpen(false);setInspector(null);}else{setInspectorOpen(true);inspect(focusedRef.current.rowIndex,focusedRef.current.colIndex,true);}}}>单元格</Button></>} inspector={inspectorOpen?<CellInspector target={inspector} onInvalid={setInvalid}/>:null} onClose={()=>{if(invalidRef.current){notify.error(Error("请先修正或废弃详情输入"));return;}setInspectorOpen(false);setInspector(null);}}><AgGridReact<GridRow>
+        <GridWorkbench toolbarHost={toolbarHost} grid={layout.grid} tools={<><GridColumns layout={layout} columns={columns}/><GridIconButton showLabel label="单元格详情" icon={<TextFieldRegular/>} aria-pressed={inspectorOpen} appearance={inspectorOpen?"primary":"secondary"} onClick={()=>{if(inspectorOpen){if(invalidRef.current){notify.error(Error("请先修正或废弃详情输入"));return;}setInspectorOpen(false);setInspector(null);}else{setInspectorOpen(true);inspect(focusedRef.current.rowIndex,focusedRef.current.colIndex,true);}}}/></>} inspector={inspectorOpen?<CellInspector target={inspector} onInvalid={setInvalid}/>:null} onClose={()=>{if(invalidRef.current){notify.error(Error("请先修正或废弃详情输入"));return;}setInspectorOpen(false);setInspector(null);}}><AgGridReact<GridRow>
           theme={theme}
           rowData={data}
           columnDefs={columnDefs}

@@ -1,4 +1,5 @@
 pub mod app;
+pub mod er;
 pub mod updater;
 pub mod image;
 pub mod mysql_tools;

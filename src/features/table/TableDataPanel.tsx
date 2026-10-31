@@ -1,3 +1,4 @@
+import {useEditFlusher} from '../../app/editFlush';
 import {ResultPagination, resultRowRange} from "../grid/ResultPagination";
 import {useSettingsStore} from "../../stores/useSettingsStore";
 import {useSessionStore} from "../../stores/useSessionStore";
@@ -63,6 +64,7 @@ const useStyles = makeStyles({
   },
   toolbar: {
     display: "flex",
+    flexWrap:"wrap",
     alignItems: "center",
     gap: "8px",
     padding: "6px 10px",
@@ -103,6 +105,7 @@ interface Props {
 
 export function TableDataPanel({ tab, active, detail, engine, readOnly, onChanged }: Props) {
   const styles = useStyles();
+  const [toolbarHost,setToolbarHost]=useState<HTMLDivElement|null>(null);
   const pageSizeRef = useRef(useSettingsStore.getState().queryPageSize);
   const [pageSize, setPageSize] = useState(pageSizeRef.current);
   const sourceName=useSessionStore(s=>s.sessions.find(v=>v.id===tab.sessionId)?.name)??tab.sessionId;
@@ -110,6 +113,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   const relationSource=useMemo(()=>({sessionId:tab.sessionId,database:tab.database,schema:tab.schema,table:tab.table}),[tab.sessionId,tab.database,tab.schema,tab.table]);
   const notify = useNotify();
   const gridRef = useRef<EditableDataGridHandle | null>(null);
+  useEditFlusher(tab.id,()=>gridRef.current?.finishEditing());
   const requestIdRef = useRef(0);
   const activeRef = useRef(active);
   activeRef.current = active;
@@ -219,14 +223,14 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
     // 先结束正在输入的单元格，让 AG Grid 将值写入待提交变更。
     gridRef.current?.finishEditing();
     const suspendTimer = window.setTimeout(() => {
-      if (!activeRef.current && changesRef.current === 0) {
+      if (!activeRef.current && changesRef.current === 0 && !detailError) {
         setGridSuspended(true);
         setSelected(0);
       }
     }, 300);
     // 保留短时间切换的结果；长期闲置且没有待提交编辑时释放行数据。
     const timer = window.setTimeout(() => {
-      if (activeRef.current || changesRef.current > 0) return;
+      if (activeRef.current || changesRef.current > 0 || Boolean(detailError)) return;
       ++requestIdRef.current;
       setLoading(false);
       setRows([]);
@@ -448,6 +452,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
             导出
           </Button>
         </Tooltip>
+        <div ref={setToolbarHost} className="dw-grid-toolbar-host"/>
         <div className={styles.spacer} />
         {readOnly && <Tag size="small">只读</Tag>}
         {hasTruncated && (
@@ -492,7 +497,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
             <Spinner label="加载数据…" />
           </div>
         ) : (active || changes.length > 0 || Boolean(detailError) || !gridSuspended) ? (
-          <EditableDataGrid
+          <EditableDataGrid toolbarHost={toolbarHost}
             tabId={tab.id}
             ref={gridRef}
             columns={detail.columns}

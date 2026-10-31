@@ -6,3 +6,17 @@
 .dw-inline-columns-standard{min-width:960px}
 .dw-schema-list .dw-column-located > .fui-TableCell { background:var(--colorBrandBackground2); box-shadow:inset 0 1px 0 var(--colorBrandStroke1),inset 0 -1px 0 var(--colorBrandStroke1); }
 .dw-column-located:focus-visible { outline:2px solid var(--colorBrandStroke1); outline-offset:-2px; }
+
+/* 展示与编辑预留相同行高；同时调整外框、原生控件与文字内边距。 */
+:root .dw-inline-columns .dw-inline-column-text{min-height:26px;line-height:26px}
+:root .dw-inline-columns :is(.fui-Input,.fui-Select){height:26px;min-height:26px;vertical-align:middle}
+:root .dw-inline-columns .fui-Input__input{height:24px;min-height:0;box-sizing:border-box;font-size:12px;line-height:18px;padding-block:2px}
+:root .dw-inline-columns .fui-Select__select{height:26px;min-height:26px;box-sizing:border-box;font-size:12px;line-height:18px;padding-block:3px}
+
+:root .dw-inline-columns .dw-column-type-picker{width:100%;min-width:0;height:26px;min-height:26px}:root .dw-inline-columns .dw-column-type-picker input{height:24px;box-sizing:border-box;padding-block:2px;font-size:12px;line-height:18px}.dw-type-option{display:flex;flex-direction:column;gap:2px;min-width:0}.dw-type-option small{font-size:11px;color:var(--colorNeutralForeground3)}
+/* 弹出列表通过 Portal 脱离单元格裁切；窄列也必须保留下拉按钮。 */
+:root .dw-inline-columns .dw-column-type-picker{display:flex;align-items:center;box-sizing:border-box;padding-inline:5px;gap:2px}
+:root .dw-inline-columns .dw-column-type-picker .fui-Combobox__input{flex:1 1 0;width:0;min-width:0;padding-inline:2px}
+:root .dw-inline-columns .dw-column-type-picker .fui-Combobox__expandIcon{flex:0 0 22px;width:22px;min-width:22px;max-width:22px;position:static;margin:0;height:22px;display:flex;align-items:center;justify-content:center}
+.dw-column-type-options{min-width:min(280px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:min(320px,50vh);overflow:auto;white-space:normal}
+:root .dw-column-type-options.fui-Combobox__listbox.fui-Listbox{min-width:min(280px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;background:var(--colorNeutralBackground1)!important;color:var(--colorNeutralForeground1);border:1px solid var(--colorNeutralStroke1)}

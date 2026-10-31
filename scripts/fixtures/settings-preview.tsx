@@ -29,10 +29,10 @@ w.__TAURI_INTERNALS__ = { invoke: async (command: string, args: any) => {
   w.calls.push({ command, args });
   if (command === 'settings_get') return w.settings.get(args.key) ?? null;
   if (command === 'settings_set') { w.settings.set(args.key, args.value); return; }
-  if (command === 'updater_status') return { version: APP_RELEASE, distribution: 'installed', preferences: prefs, readyVersion: w.ready ? '1.0.0-alpha.34' : null, logPath: 'C:/fixture/updates' };
+  if (command === 'updater_status') return { version: APP_RELEASE, distribution: 'installed', preferences: prefs, readyVersion: w.ready ? '1.0.0-alpha.44' : null, logPath: 'C:/fixture/updates' };
   if (command === 'updater_preferences') { prefs = args.value; return; }
-  if (command === 'updater_check') { prefs.lastCheck = Date.now() / 1000; if (w.failCheck) throw Error('网络不可用'); return w.hasUpdate ? { version: '1.0.0-alpha.34', notes: '示例新版更新内容', size: 1024, date: null, skipped: false } : null; }
-  if (command === 'updater_download') { w.ready = true; return '1.0.0-alpha.34'; }
+  if (command === 'updater_check') { prefs.lastCheck = Date.now() / 1000; if (w.failCheck) throw Error('网络不可用'); return w.hasUpdate ? { version: '1.0.0-alpha.44', notes: w.updateNotes ?? '示例新版更新内容', size: 1024, date: null, skipped: false } : null; }
+  if (command === 'updater_download') { w.ready = true; return '1.0.0-alpha.44'; }
   if (command.startsWith('task_') || command.startsWith('plugin:opener')) return null;
   if (command === 'generation_providers') return [];
   if (command === 'local_data_stats') return { databasePath: 'C:/fixture/app.db', databaseBytes: 1024, auxiliaryBytes: 0, sessionCount: 0, historyCount: 0, historyLimit: 500 };

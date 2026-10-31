@@ -1,3 +1,4 @@
+import {useShortcutLabel} from './shortcuts';
 import {useSessionStore} from "../stores/useSessionStore";
 import { Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, MenuDivider, makeStyles, tokens } from "@fluentui/react-components";
 import { AddRegular, ArrowSyncRegular, SettingsRegular, AppFolderRegular, FullScreenMaximizeRegular, InfoRegular, ArrowResetRegular, PanelLeftRegular, ArrowExportRegular } from "@fluentui/react-icons";
@@ -11,6 +12,7 @@ const useStyles = makeStyles({
 });
 
 export function AppMenu({ onNewSession, onSync, onSettings }: { onNewSession: () => void; onSync: () => void; onSettings: () => void }) {
+  const settingsKey=useShortcutLabel('settings'),sidebarKey=useShortcutLabel('sidebar'),focusKey=useShortcutLabel('focus'),reopenKey=useShortcutLabel('reopen');
   const styles = useStyles();
   const focus = useFocusMode(s => s.active);
   const collapsed = useSettingsStore(s => s.sidebarCollapsed);
@@ -30,16 +32,16 @@ export function AppMenu({ onNewSession, onSync, onSettings }: { onNewSession: ()
           emit('dw:show-workspace');
         }}>导出 SQL 文件…</MenuItem>
         <MenuDivider />
-        <MenuItem icon={<SettingsRegular />} secondaryContent="Ctrl+," onClick={onSettings}>首选项</MenuItem>
+        <MenuItem icon={<SettingsRegular />} secondaryContent={settingsKey} onClick={onSettings}>首选项</MenuItem>
       </MenuList></MenuPopover>
     </Menu>
     <Menu><MenuTrigger disableButtonEnhancement><Button appearance="subtle" className={styles.trigger}>视图</Button></MenuTrigger>
       <MenuPopover><MenuList>
-        <MenuItem icon={<PanelLeftRegular />} secondaryContent="Ctrl+B" onClick={() => { if (focus) useFocusMode.setState({ active: false }); else void useSettingsStore.getState().setSidebarCollapsed(!collapsed); }}>{collapsed || focus ? "显示" : "收起"}会话栏</MenuItem>
-        <MenuItem icon={<FullScreenMaximizeRegular />} secondaryContent="Ctrl+Shift+J" onClick={toggleFocusMode}>{focus ? "退出" : "进入"}专注模式</MenuItem>
+        <MenuItem icon={<PanelLeftRegular />} secondaryContent={sidebarKey} onClick={() => { if (focus) useFocusMode.setState({ active: false }); else void useSettingsStore.getState().setSidebarCollapsed(!collapsed); }}>{collapsed || focus ? "显示" : "收起"}会话栏</MenuItem>
+        <MenuItem icon={<FullScreenMaximizeRegular />} secondaryContent={focusKey} onClick={toggleFocusMode}>{focus ? "退出" : "进入"}专注模式</MenuItem>
         <MenuItem icon={<AppFolderRegular />} onClick={() => emit("dw:layouts")}>工作区布局…</MenuItem>
         <MenuDivider />
-        <MenuItem icon={<ArrowResetRegular />} secondaryContent="Ctrl+Shift+T" disabled={!hasClosedTabs} onClick={() => emit("dw:reopen-tab")}>重新打开关闭的页签</MenuItem>
+        <MenuItem icon={<ArrowResetRegular />} secondaryContent={reopenKey} disabled={!hasClosedTabs} onClick={() => emit("dw:reopen-tab")}>重新打开关闭的页签</MenuItem>
       </MenuList></MenuPopover>
     </Menu>
     <Menu><MenuTrigger disableButtonEnhancement><Button appearance="subtle" className={styles.trigger}>工具</Button></MenuTrigger>

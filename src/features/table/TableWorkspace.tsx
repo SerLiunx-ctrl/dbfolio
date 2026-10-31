@@ -4,15 +4,14 @@ import { newPlan } from "../analysis/model";
 import { qualifiedTableSql } from "../grid/value";
 import {
   Button,
-  Menu, MenuTrigger, MenuPopover, MenuList, MenuItem,
   Spinner,
   Tag,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { DataBarVerticalRegular, AddRegular, ArrowClockwiseRegular, CodeRegular, MoreHorizontalRegular } from "@fluentui/react-icons";
+import { DataBarVerticalRegular, AddRegular, ArrowClockwiseRegular, CodeRegular } from "@fluentui/react-icons";
 import { updateDraft } from "../../stores/useWorkspace";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../ipc";
 import type { TableMeta } from "../../ipc/types";
 import { useSessionStore } from "../../stores/useSessionStore";
@@ -100,6 +99,7 @@ export function TableWorkspace({ tab, active }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<TableView>(tab.view);
   const [columnFocus, setColumnFocus] = useState<ColumnFocusRequest | null>(null);
+  const handledColumnFocus = useRef<string | null>(null);
   // 已访问过的页签保持挂载，切换时不重新加载数据
   const [visited, setVisited] = useState<Set<TableView>>(() => new Set([tab.view]));
 
@@ -140,6 +140,13 @@ export function TableWorkspace({ tab, active }: Props) {
     setColumnFocus({ name });
     selectView("structure");
   };
+  useEffect(() => {
+    if (!active || !tab.columnFocus || handledColumnFocus.current === tab.columnFocus.token) return;
+    handledColumnFocus.current = tab.columnFocus.token;
+    setColumnFocus(tab.columnFocus.name ? { name: tab.columnFocus.name } : null);
+    setView("structure");
+    setVisited(current => new Set(current).add("structure"));
+  }, [active, tab.columnFocus]);
 
   const fullName = `${tab.database}${tab.schema ? `.${tab.schema}` : ""}.${tab.table}`;
 
@@ -173,11 +180,12 @@ export function TableWorkspace({ tab, active }: Props) {
         >
           新建查询
         </Button>
-        <Menu><MenuTrigger disableButtonEnhancement><Button size="small" appearance="subtle" icon={<MoreHorizontalRegular/>} aria-label="更多表操作">更多</Button></MenuTrigger><MenuPopover><MenuList>
-          {session?.engine==='mysql'&&<MenuItem onClick={()=>useTabStore.getState().openMysqlTool(tab.sessionId,tab.database,'objects',tab.table)}>触发器</MenuItem>}
-        <MenuItem icon={<DataBarVerticalRegular/>} disabled={!session} title="新建独立分析，预填当前表的 SQL，不使用当前数据页或筛选" onClick={()=>{if(!session)return;const plan=newPlan(tab.sessionId,tab.database);plan.metadataSource={table:tab.table,schema:tab.schema??""};plan.name=(tab.table+" 分析").slice(0,120);plan.query="SELECT * FROM "+qualifiedTableSql(session.engine,tab.database,tab.schema,tab.table)+";";openAnalysis(plan);}}>新建分析</MenuItem>
-        <MenuItem icon={<AddRegular/>} disabled={detail?.kind!=="table"} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</MenuItem>
-        </MenuList></MenuPopover></Menu>
+
+        <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} onClick={()=>useTabStore.getState().openEr(tab.sessionId,tab.database,{table:tab.table,schema:tab.schema})}>查看关联</Button>
+          {session?.engine==='mysql'&&<Button size="small" appearance="subtle" onClick={()=>useTabStore.getState().openMysqlTool(tab.sessionId,tab.database,'objects',tab.table)}>触发器</Button>}
+        <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={!session} title="新建独立分析，预填当前表的 SQL，不使用当前数据页或筛选" onClick={()=>{if(!session)return;const plan=newPlan(tab.sessionId,tab.database);plan.metadataSource={table:tab.table,schema:tab.schema??""};plan.name=(tab.table+" 分析").slice(0,120);plan.query="SELECT * FROM "+qualifiedTableSql(session.engine,tab.database,tab.schema,tab.table)+";";openAnalysis(plan);}}>新建分析</Button>
+        <Button size="small" appearance="subtle" icon={<AddRegular/>} disabled={detail?.kind!=="table"} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</Button>
+
         {view!=="info"&&<Button
           appearance="subtle"
           size="small"
@@ -254,6 +262,7 @@ export function TableWorkspace({ tab, active }: Props) {
                 style={{ display: view === "foreignKeys" ? "flex" : "none" }}
               >
                 <ForeignKeysPanel
+                  onColumnClick={locateColumn}
                   tab={tab}
                   detail={detail}
                   engine={session.engine}

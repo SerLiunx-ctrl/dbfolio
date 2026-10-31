@@ -225,7 +225,7 @@ export function SyncWorkspace({tab,active=true}:{tab?:SyncTab;active?:boolean}) 
   const [filters,setFilters]=useState<Record<string,SourceFilter>>(draft?.filters??{});
   const activeTasks=useTaskStore(s=>s.tasks).filter(t=>tab&&t.tabId===tab.id&&isTaskActive(t));
   const busy=!!loading||activeTasks.length>0;
-  usePendingEdit({tabId:tab?.id??"sync-standalone",sessionId:"",label:"数据同步",busy:()=>busy,save:async()=>{},discard:()=>{}},busy);
+  usePendingEdit({tabId:tab?.id??"sync-standalone",sessionId:"",label:"数据同步",busy:()=>busy,shortcutSave:false,save:async()=>{},discard:()=>{}},busy);
   useEffect(()=>{if(tab)useTabStore.getState().updateSync(tab.id,{sourceSession,sourceDb,targetSession,targetDb,selected:[...selected],schemaOptions,dataOptions,filters});},[sourceSession,sourceDb,targetSession,targetDb,selected,schemaOptions,dataOptions,filters,tab?.id]);
   useEffect(()=>{if(draft?.sourceSession)void loadDatabases(draft.sourceSession,"source");if(draft?.targetSession)void loadDatabases(draft.targetSession,"target");},[]);
   const selectedFilters=Object.fromEntries(Object.entries(filters).filter(([t])=>selected.has(t)));

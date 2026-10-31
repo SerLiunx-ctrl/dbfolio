@@ -1,3 +1,4 @@
+import { loadedFindRules } from './GridFind';
 import {valueCellStyle} from "./valueColor";
 import {
   forwardRef,
@@ -9,10 +10,10 @@ import {
   useState,
 } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { Button, MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
-import { CopyRegular, ZoomInRegular } from "@fluentui/react-icons";
+import { MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
+import { TextFieldRegular, CopyRegular, ZoomInRegular } from "@fluentui/react-icons";
 import { CellInspector, type InspectorTarget } from "./CellInspector";
-import { GridWorkbench, GridColumns, useGridLayout } from "./GridWorkbench";
+import { GridWorkbench, GridColumns, GridIconButton, useGridLayout } from "./GridWorkbench";
 import { ImageCell } from './ImageCell';
 import { isImageCandidate } from './base64Image';
 import { cellPreview } from './cellPreview';
@@ -58,6 +59,7 @@ export interface ResultGridHandle {
 }
 
 interface Props {
+  toolbarHost?:HTMLElement|null;
   columns: ColumnInfo[];
   rows: DbValue[][];
   onSortChange?: (sort: SortSpec[]) => void;
@@ -69,7 +71,7 @@ function cellText(value: DbValue | undefined): string {
 }
 
 export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGrid(
-  { columns, rows, onSortChange },
+  { columns, rows, onSortChange,toolbarHost },
   ref,
 ) {
   const theme = useGridTheme();
@@ -157,7 +159,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
       minWidth: 110,
       resizable: true,
       sortable: Boolean(onSortChange),
-      filter: true,
+      filter: true,cellClassRules:loadedFindRules,
     }),
     [onSortChange],
   );
@@ -179,7 +181,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
         void copyRows(selectedOrFocusedRows());
       }}
     >
-      <GridWorkbench tools={<><GridColumns layout={layout} columns={columns}/><Button size="small" appearance={inspectorOpen?"primary":"secondary"} onClick={()=>{if(inspectorOpen){setInspectorOpen(false);setDetail(null);}else{setInspectorOpen(true);inspect(focusedRef.current.rowIndex,focusedRef.current.colIndex,true);}}}>单元格</Button></>} inspector={inspectorOpen?<CellInspector target={detail}/>:null} onClose={()=>{setInspectorOpen(false);setDetail(null);}}><AgGridReact<ResultRow>
+      <GridWorkbench toolbarHost={toolbarHost} grid={layout.grid} tools={<><GridColumns layout={layout} columns={columns}/><GridIconButton showLabel label="单元格详情" icon={<TextFieldRegular/>} aria-pressed={inspectorOpen} appearance={inspectorOpen?"primary":"secondary"} onClick={()=>{if(inspectorOpen){setInspectorOpen(false);setDetail(null);}else{setInspectorOpen(true);inspect(focusedRef.current.rowIndex,focusedRef.current.colIndex,true);}}}/></>} inspector={inspectorOpen?<CellInspector target={detail}/>:null} onClose={()=>{setInspectorOpen(false);setDetail(null);}}><AgGridReact<ResultRow>
         theme={theme}
         rowData={rowData}
         columnDefs={columnDefs}

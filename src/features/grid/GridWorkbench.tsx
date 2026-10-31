@@ -1,11 +1,17 @@
+import {createPortal} from 'react-dom';
+import { GridFind } from './GridFind';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Button, Checkbox, Input, Popover, PopoverSurface, PopoverTrigger, Select } from '@fluentui/react-components';
+import { Button, Checkbox, Input, Popover, PopoverSurface, PopoverTrigger, Select, Tooltip, type ButtonProps } from '@fluentui/react-components';
+import { TableSettingsRegular, PanelRightRegular, PanelBottomRegular, DismissRegular } from '@fluentui/react-icons';
 import type { ColumnState, GridApi } from 'ag-grid-community';
 import { api } from '../../ipc';
 import { useNotify } from '../../app/toast';
 import './grid-workbench.css';
 
 type Layout = Pick<ColumnState, 'colId' | 'width' | 'hide' | 'pinned' | 'flex'>[];
+export function GridIconButton({label,showLabel=false,...props}:ButtonProps&{label:string;showLabel?:boolean}) {
+  return <Tooltip content={label} relationship="label"><Button size="small" appearance={showLabel?"secondary":"subtle"} className={showLabel?"dw-grid-toolbar-action":"dw-grid-icon-action"} aria-label={label} title={label} {...props}>{showLabel?label:null}</Button></Tooltip>;
+}
 const cached = new Map<string, Layout>();
 export function useGridLayout(scope: string, columns: {name:string;rawType:string}[]) {
   const [grid, setGrid] = useState<GridApi | null>(null);
@@ -68,7 +74,7 @@ export function GridColumns({layout,columns}:{layout:ReturnType<typeof useGridLa
   const states=grid&&!grid.isDestroyed()?grid.getColumnState().filter(c=>/^c\d+$/.test(c.colId)):[];
   const visible=states.filter(c=>!c.hide).length;
   const change=(state:ColumnState)=>{grid?.applyColumnState({state:[state]});layout.persist();};
-  return <Popover positioning={{position:'below',align:'end'}}><PopoverTrigger disableButtonEnhancement><Button size="small" disabled={!grid}>列</Button></PopoverTrigger>
+  return <Popover positioning={{position:'below',align:'end'}}><PopoverTrigger disableButtonEnhancement><Button size="small" appearance="secondary" className="dw-grid-toolbar-action" aria-label="列管理" title="列管理" icon={<TableSettingsRegular/>} disabled={!grid}>列管理</Button></PopoverTrigger>
     <PopoverSurface className="dw-grid-columns"><div className="dw-grid-column-heading"><strong>列管理</strong><Button size="small" onClick={layout.reset}>恢复默认</Button></div>
       <Input size="small" aria-label="搜索列" placeholder="搜索列名" value={search} onChange={(_,d)=>setSearch(d.value)}/>
       <div className="dw-grid-column-list">{states.map((s,index)=>{const c=columns[Number(s.colId.slice(1))];if(!c||!c.name.toLowerCase().includes(search.toLowerCase()))return null;
@@ -86,13 +92,13 @@ export function GridColumns({layout,columns}:{layout:ReturnType<typeof useGridLa
 interface DockSize {side:'bottom'|'right';height:number;width:number}
 const defaultSize:DockSize={side:'bottom',height:240,width:440};
 let savedSize:DockSize|undefined;
-export function GridWorkbench({children,tools,inspector,onClose}:{children:ReactNode;tools:ReactNode;inspector:ReactNode;onClose:()=>void}) {
+export function GridWorkbench({children,tools,inspector,onClose,grid=null,toolbarHost=null}:{toolbarHost?:HTMLElement|null;grid?:GridApi|null;children:ReactNode;tools:ReactNode;inspector:ReactNode;onClose:()=>void}) {
   const [size,setSize]=useState<DockSize>(savedSize??defaultSize), touched=useRef(false), root=useRef<HTMLDivElement>(null);
   const drag=useRef<{start:number;initial:number;scale:number;size:DockSize}|null>(null);
   const notify=useNotify();
   useEffect(()=>{if(savedSize)return;let alive=true;void api.settingsGet('dw.gridDock.v1').then(text=>{if(!alive||touched.current||!text)return;try{const v=JSON.parse(text);const next:DockSize={side:v.side==='right'?'right':'bottom',height:Math.max(140,Math.min(900,Number(v.height)||240)),width:Math.max(260,Math.min(1200,Number(v.width)||440))};savedSize=next;setSize(next);}catch{/* 默认尺寸 */}}).catch(()=>{});return()=>{alive=false;};},[]);
   const save=(v:DockSize)=>{touched.current=true;savedSize=v;setSize(v);void api.settingsSet('dw.gridDock.v1',JSON.stringify(v)).catch(e=>notify.error(e,'详情布局保存失败'));};
-  return <div ref={root} className="dw-grid-workbench"><div className="dw-grid-tools">{tools}</div><div className={`dw-grid-split dw-grid-split-${size.side}`}>
+  return <div ref={root} className="dw-grid-workbench"><div className="dw-grid-tools" data-external={!!toolbarHost}><GridFind grid={grid} root={root} buttonHost={toolbarHost}/>{toolbarHost?createPortal(tools,toolbarHost):tools}</div><div className={`dw-grid-split dw-grid-split-${size.side}`}>
     <div className="dw-grid-main">{children}</div>
     {inspector&&<><div role="separator" aria-label="调整单元格详情尺寸" aria-orientation={size.side==='bottom'?'horizontal':'vertical'} tabIndex={0} className="dw-grid-splitter"
       onPointerDown={e=>{const r=root.current!;drag.current={start:size.side==='bottom'?e.clientY:e.clientX,initial:size.side==='bottom'?size.height:size.width,scale:r.getBoundingClientRect().width/r.offsetWidth,size};e.currentTarget.setPointerCapture(e.pointerId);}}
@@ -100,6 +106,6 @@ export function GridWorkbench({children,tools,inspector,onClose}:{children:React
       onPointerUp={e=>{if(drag.current){drag.current=null;save(size);e.currentTarget.releasePointerCapture(e.pointerId);}}}
       onPointerCancel={()=>{if(drag.current)setSize(drag.current.size);drag.current=null;}}
       onKeyDown={e=>{const delta=e.key==='ArrowUp'||e.key==='ArrowLeft'?20:e.key==='ArrowDown'||e.key==='ArrowRight'?-20:0;if(delta){e.preventDefault();save({...size,[size.side==='bottom'?'height':'width']:Math.max(size.side==='bottom'?140:260,Math.min(size.side==='bottom'?900:1200,(size.side==='bottom'?size.height:size.width)+delta))});}}}/>
-      <section aria-label="单元格详情" className="dw-grid-inspector" style={size.side==='bottom'?{height:size.height}:{width:size.width}}><div className="dw-grid-inspector-bar"><strong>单元格详情</strong><span/><Button size="small" onClick={()=>save({...size,side:size.side==='bottom'?'right':'bottom'})}>{size.side==='bottom'?'停靠右侧':'停靠底部'}</Button><Button size="small" aria-label="关闭单元格详情" onClick={onClose}>关闭</Button></div>{inspector}</section></>}
+      <section aria-label="单元格详情" className="dw-grid-inspector" style={size.side==='bottom'?{height:size.height}:{width:size.width}}><div className="dw-grid-inspector-bar"><strong>单元格详情</strong><span/><GridIconButton label={size.side==='bottom'?'停靠右侧':'停靠底部'} icon={size.side==='bottom'?<PanelRightRegular/>:<PanelBottomRegular/>} onClick={()=>save({...size,side:size.side==='bottom'?'right':'bottom'})}/><GridIconButton label="关闭单元格详情" icon={<DismissRegular/>} onClick={onClose}/></div>{inspector}</section></>}
   </div></div>;
 }

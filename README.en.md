@@ -63,6 +63,12 @@ Server, client, memory, and other Redis metrics are grouped for scanning. Switch
 <a id="features"></a>
 ## Features
 
+### ER diagrams
+
+AI can suggest potential business relationships from selected schema metadata. Review column pairs, model-assessed confidence and rationale; adoption revalidates the schema and creates local annotations without reading rows or creating foreign keys.
+
+Open shared MySQL, PostgreSQL, and SQLite diagrams from database overviews/context menus or the table toolbar. Drag, zoom, search, jump to structure columns, annotate business relations, save layouts, and export SVG, PNG, or Mermaid. Large catalogs load metadata by selected scope; partial diagrams do not guarantee complete incoming relationships. Annotations do not create database foreign keys. See the [diagram guide (Chinese)](docs/er.md).
+
 ### Session management
 
 - Organize connections in groups, mark environments, duplicate sessions, and save favorites.
@@ -179,7 +185,7 @@ Configure an AI service in **File → Preferences** before using AI generation. 
 
 SQL-file import is limited to 64 MiB per statement and a 30-minute preflight snapshot. It does not support `SOURCE`, shell commands, client connection switching, or `NO_BACKSLASH_ESCAPES`/`ANSI_QUOTES` modes. Cancellation does not undo applied DDL or committed data; an interrupted connection may leave partial writes, which are not retried automatically. MySQL object replacement can use `DROP + CREATE`, so keep the original definition available. See the [R01–R03 verification record](docs/verification/r01-r03.md).
 
-Useful shortcuts: `Ctrl+P` for Quick Open and commands, `Ctrl+Enter` to execute SQL, `Ctrl+S` to save a SQL file, `Ctrl+,` for preferences, and `Ctrl+B` to toggle the session sidebar. The complete list is in Preferences.
+Useful shortcuts: `Ctrl+P` for Quick Open and commands, `Ctrl+Enter` to execute SQL, `Ctrl+S` to save the current editor (a SQL file in query tabs), `Ctrl+,` for preferences, and `Ctrl+B` to toggle the session sidebar. Edit, clear, or restore bindings in Preferences → Shortcuts. Bindings work inside DBFolio only; no system-wide hotkeys are registered.
 
 <a id="development"></a>
 ## Develop from source

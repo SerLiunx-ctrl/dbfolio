@@ -12,7 +12,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const asse
    await page.getByRole('button',{name:'添加列',exact:true}).click();const row=page.locator('table[aria-label="列草稿"] tbody tr').nth(i);
    assert.equal(await row.getByRole('textbox').count(),0,'默认无输入框');
    await row.locator('td').nth(1).dblclick();await row.getByRole('textbox').fill(name);await row.getByRole('textbox').press('Tab');
-   if(i<2){await row.locator('td').nth(2).dblclick();await row.getByRole('combobox').selectOption(engine==='sqlite'?'integer':'bigint');await row.getByRole('combobox').press('Tab');}
+   if(i<2){await row.locator('td').nth(2).dblclick();await row.getByRole('combobox').fill(engine==='sqlite'?'integer':'bigint');await page.getByRole('option',{name:new RegExp(engine==='sqlite'?'^integer':'^bigint')}).click();await row.getByRole('combobox').press('Tab');}
    if(i===0){await row.getByRole('checkbox',{name:'id 主键',exact:true}).check();await row.getByRole('checkbox',{name:'id 自动增长',exact:true}).check();}
   }
   await page.getByRole('tab',{name:/索引/}).click();await page.getByRole('button',{name:'添加索引',exact:true}).click();

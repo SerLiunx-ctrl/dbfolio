@@ -16,6 +16,7 @@ export interface QueryTab {
   database: string;
   title: string;
 }
+export interface ErTab {id:string;kind:'er';sessionId:string;database:string;title:string;focus?:{table:string;schema?:string|null;token:string}}
 
 export type TableView =
   | "data"
@@ -35,6 +36,7 @@ export interface TableTab {
   view: TableView;
   title: string;
   pinned?: boolean;
+  columnFocus?: { name: string; token: string };
 }
 
 export interface RedisTab {
@@ -52,7 +54,7 @@ export interface SyncTab {id:string;kind:"sync";sessionId:"";database:"";title:s
 export interface SqlExportTab {id:string;kind:"sqlExport";sessionId:"";database:"";title:string;draft?:Partial<SqlExportDraft>}
 export interface MysqlToolTab {id:string;kind:'mysqlTool';sessionId:string;database:string;title:string;mode:'import'|'objects';table?:string}
 export interface CreateTableTab {id:string;kind:"createTable";sessionId:string;database:string;title:string;draft:CreateTableState}
-export type WorkspaceTab = CreateTableTab | MysqlToolTab | SqlExportTab | SyncTab | AnalysisTab | QueryTab | TableTab | RedisTab | MongoTab | GenerationTab;
+export type WorkspaceTab = ErTab | CreateTableTab | MysqlToolTab | SqlExportTab | SyncTab | AnalysisTab | QueryTab | TableTab | RedisTab | MongoTab | GenerationTab;
 
 /** 置顶的表页签（按会话持久化，下次连接自动恢复） */
 export interface PinnedTab {
@@ -78,6 +80,7 @@ function nextId(prefix: string) {
 }
 
 interface TabState {
+  openEr:(sessionId:string,database:string,focus?:{table:string;schema?:string|null})=>void;
   openCreateTable:(sessionId:string,database:string,engine:Engine)=>void;
   updateCreateTable:(id:string,draft:CreateTableState)=>void;
   finishCreateTable:(id:string,table:string,schema:string|null)=>void;
@@ -97,7 +100,7 @@ interface TabState {
   openGeneration: (target:Target)=>void;
   openMongo: (sessionId:string,database:string,collection:string)=>void;
   openQuery: (sessionId: string, database: string, prepare?: (tabId:string)=>void) => void;
-  openTable: (selection: TableSelection, view?: TableView) => void;
+  openTable: (selection: TableSelection, view?: TableView, focusColumn?: string) => void;
   openRedis: (sessionId: string, database: string, title: string) => void;
   close: (id: string) => void;
   closeSession: (sessionId: string) => void;
@@ -112,6 +115,7 @@ interface TabState {
 }
 
 export const useTabStore = create<TabState>((set, get) => ({
+  openEr:(sessionId,database,focus)=>{const old=get().tabs.find(t=>t.kind==='er'&&t.sessionId===sessionId&&t.database===database);const nextFocus=focus?{...focus,token:nextId('er-focus')}:undefined;if(old){set({activeId:old.id,...(nextFocus?{tabs:get().tabs.map(t=>t.id===old.id?{...t,focus:nextFocus}:t)}:{})});return;}const tab:ErTab={id:nextId('er'),kind:'er',sessionId,database,title:'关系图 · '+database,focus:nextFocus};set({tabs:[...get().tabs,tab],activeId:tab.id});},
   openCreateTable:(sessionId,database,engine)=>{if(!['mysql','postgres','sqlite'].includes(engine))return;const id=nextId('create-table');set({tabs:[...get().tabs,{id,kind:'createTable',sessionId,database,title:'新建表*',draft:newTableState(engine)}],activeId:id});window.dispatchEvent(new Event('dw:show-workspace'));},
   updateCreateTable:(id,draft)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==='createTable'?{...t,draft}:t)}),
   finishCreateTable:(id,table,schema)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==='createTable'?{id:t.id,kind:'table',sessionId:t.sessionId,database:t.database,table,schema,title:table,view:'info'}:t)}),
@@ -161,7 +165,7 @@ export const useTabStore = create<TabState>((set, get) => ({
     set({ tabs: [...get().tabs, tab], activeId: tab.id });
   },
 
-  openTable: (selection, view = "data") => {
+  openTable: (selection, view = "data", focusColumn) => {
     const existing = get().tabs.find(
       (tab) =>
         tab.kind === "table" &&
@@ -171,7 +175,8 @@ export const useTabStore = create<TabState>((set, get) => ({
         (tab.schema ?? null) === (selection.schema ?? null),
     );
     if (existing) {
-      set({ activeId: existing.id });
+      // 定位请求不改 tab.view，避免现有工作区因重载而丢失结构编辑草稿。
+      set({ activeId: existing.id, ...(focusColumn !== undefined ? { tabs: get().tabs.map(tab => tab.id === existing.id ? { ...tab, columnFocus: { name: focusColumn, token: nextId("column-focus") } } : tab) } : {}) });
       return;
     }
     const pinnedList = get().pinned[selection.sessionId] ?? [];
@@ -191,6 +196,7 @@ export const useTabStore = create<TabState>((set, get) => ({
       view,
       title: selection.table,
       pinned,
+      columnFocus: focusColumn !== undefined ? { name: focusColumn, token: nextId("column-focus") } : undefined,
     };
     set({ tabs: [...get().tabs, tab], activeId: tab.id });
   },

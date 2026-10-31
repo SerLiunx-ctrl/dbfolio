@@ -1,3 +1,5 @@
+import {useShortcutLabel} from '../../app/shortcuts';
+import {ShortcutEditor} from './ShortcutEditor';
 import { ConfigTransferSettings } from "./ConfigTransferSettings";
 import { UpdatePanel } from '../updates/UpdatePanel';
 import { AboutContent } from "./AboutContent";
@@ -152,6 +154,7 @@ const CATEGORIES = [
 const CATEGORY_GROUPS = ["界面与操作", "数据与服务", "应用管理"];
 
 export function SettingsWorkspace({initialCategory="appearance"}:{initialCategory?:string}) {
+  const zoomInKey=useShortcutLabel('zoomIn'),zoomOutKey=useShortcutLabel('zoomOut'),zoomResetKey=useShortcutLabel('zoomReset'),sidebarKey=useShortcutLabel('sidebar');
   const styles = useStyles();
   const dark = useIsDark();
   const notify = useNotify();
@@ -382,7 +385,7 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
               </div>
               <InfoHint label="缩放说明">拖动滑块只选择比例，点击「应用缩放」后生效，避免调节时滑轨移动。</InfoHint>
               <InfoHint label="缩放快捷键">
-                快捷键：Ctrl+加号放大、Ctrl+减号缩小、Ctrl+0 恢复，或在右侧区域按住
+                快捷键：{zoomInKey} 放大、{zoomOutKey} 缩小、{zoomResetKey} 恢复，或在右侧区域按住
                 Ctrl 滚动鼠标。
               </InfoHint>
             </div>
@@ -432,15 +435,13 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
                 />
               </Field>
               <InfoHint label="面板快捷键">
-                提示：Ctrl+B 收起/展开两侧面板；拖动标题可以停靠，拖动分隔条可以调整尺寸。
+                提示：{sidebarKey} 收起/展开两侧面板；拖动标题可以停靠，拖动分隔条可以调整尺寸。
               </InfoHint>
             </div>
           </>
         )}
 
-        {category === "shortcuts" && <div className={styles.section}>
-          {[ ["Ctrl+P","全局快速打开；输入 > 搜索应用命令"], ["Ctrl+Shift+J","临时专注模式"], ["Ctrl+Shift+T","重新打开关闭的页签"], ["Ctrl+Alt+Z","撤销本地收藏、分组、布局操作"], ["Ctrl+,","打开首选项"], ["Ctrl+Enter","执行选中 SQL；未选中时执行光标所在语句"], ["Ctrl+Shift+F","格式化选中 SQL 或整个编辑器（可撤销）"], ["Ctrl+S","保存 SQL 文件"], ["Ctrl+加号 / 减号 / 0","放大 / 缩小 / 恢复界面比例"], ["Ctrl+B","展开或收起侧栏"] ].map(([key,label])=><div key={key} style={{display:"flex",gap:16}}><strong style={{minWidth:160}}>{key}</strong><span>{label}</span></div>)}
-        </div>}
+        {category === "shortcuts" && <ShortcutEditor/>}
         {category === "grid" && <QueryPageSettings/>}
       </main>
     </div>

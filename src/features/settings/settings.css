@@ -27,7 +27,11 @@
 .dw-update-setting-row .fui-Dropdown { min-width: 150px; }
 .dw-update-proxy { display: flex; gap: 6px; }
 .dw-update-proxy .fui-Input { flex: 1; min-width: 0; }
-.dw-update-notes > div { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow-y: auto; padding-top: 6px; }
+.dw-release-notes { white-space:normal;overflow-wrap:anywhere;max-height:min(42vh,360px);overflow:auto;padding:8px 10px;margin-top:6px;border:1px solid var(--colorNeutralStroke2);border-radius:4px;line-height:1.65; }
+.dw-release-notes>:first-child{margin-top:0}.dw-release-notes>:last-child{margin-bottom:0}
+.dw-release-notes h1{font-size:15px}.dw-release-notes h2{font-size:13px}.dw-release-notes h3,.dw-release-notes h4{font-size:12px}.dw-release-notes h1,.dw-release-notes h2,.dw-release-notes h3,.dw-release-notes h4{margin:12px 0 5px;line-height:1.5}
+.dw-release-notes p{margin:5px 0}.dw-release-notes ul,.dw-release-notes ol{margin:5px 0;padding-left:20px}.dw-release-notes li+li{margin-top:4px}.dw-release-notes a{color:var(--colorBrandForegroundLink);text-decoration:underline}.dw-release-notes a:focus-visible{outline:2px solid var(--colorBrandStroke1);outline-offset:2px}
+.dw-release-notes code{font-size:11px;background:var(--colorNeutralBackground3);border-radius:3px;padding:1px 3px}.dw-release-notes pre{overflow:auto;padding:6px;background:var(--colorNeutralBackground3)}.dw-release-notes pre code{padding:0}.dw-release-notes blockquote{margin:6px 0;padding-left:10px;border-left:2px solid var(--colorNeutralStroke2);color:var(--colorNeutralForeground2)}
 .dw-update-meta { color: var(--colorNeutralForeground3); font-size: 11px; }
 @media (max-width: 700px) {
   .dw-settings-heading { align-items: flex-start; flex-direction: column; gap: 2px; }

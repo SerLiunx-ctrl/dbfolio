@@ -2,7 +2,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
 (async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
  const p=await browser.newPage({viewport:{width:1600,height:950}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
  const cell=(row,col)=>p.locator(`.ag-row[row-index="${row}"] .ag-cell[col-id="c${col}"]`).first();
- const open=async(col=1)=>{await p.getByRole('button',{name:'单元格',exact:true}).click();await cell(0,col).click();await p.locator('.dw-grid-inspector .monaco-editor').waitFor();await p.waitForFunction(()=>!document.querySelector('.dw-grid-inspector [role=progressbar]'));};
+ const open=async(col=1)=>{await p.getByRole('button',{name:'单元格详情',exact:true}).click();await cell(0,col).click();await p.locator('.dw-grid-inspector .monaco-editor').waitFor();await p.waitForFunction(()=>!document.querySelector('.dw-grid-inspector [role=progressbar]'));};
  const edit=async(text)=>{await p.locator('.dw-grid-inspector .monaco-editor').waitFor();await p.waitForTimeout(150);await p.evaluate(text=>window.editText(text),text);await p.waitForTimeout(100);};
  for(const engine of ['mysql','postgres','sqlite']){
   await p.goto(`http://127.0.0.1:1425/scripts/fixtures/grid-workbench.html?engine=${engine}`);await cell(0,1).waitFor();await open();
@@ -16,13 +16,13 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   assert.equal(await p.evaluate(()=>window.calls.filter(c=>['update_cell','grid_commit'].includes(c.c)).length),0,'详情编辑不得直接写数据库');
   await p.getByRole('button',{name:'放弃修改',exact:true}).click();assert.deepEqual(await p.evaluate(()=>window.grid.current.getChanges()),[]);
   await cell(0,1).click();await p.waitForFunction(()=>window.editorText()==='2');await edit('9');await p.getByRole('button',{name:'提交',exact:true}).click();assert.equal((await p.evaluate(()=>window.submitted))[0].changes[0].newValue[1],9);
-  await p.getByRole('button',{name:'列',exact:true}).click();await p.getByRole('checkbox',{name:'显示列 notes',exact:true}).uncheck();await p.getByRole('combobox',{name:'冻结列 count',exact:true}).selectOption('left');await p.getByRole('button',{name:'上移列 amount',exact:true}).click();
+  await p.getByRole('button',{name:'列管理',exact:true}).click();await p.getByRole('checkbox',{name:'显示列 notes',exact:true}).uncheck();await p.getByRole('combobox',{name:'冻结列 count',exact:true}).selectOption('left');await p.getByRole('button',{name:'上移列 amount',exact:true}).click();
   await p.keyboard.press('Escape');await p.waitForTimeout(400);assert.equal(await p.locator('.ag-header-cell[col-id="c3"]').count(),0);assert((await p.locator('.ag-header-cell[col-id="c1"]').boundingBox()).x<(await p.locator('.ag-header-cell[col-id="c0"]').boundingBox()).x,'冻结列位于其他数据列左侧');
   await p.reload();await cell(0,1).waitFor();await p.waitForTimeout(400);assert.equal(await p.locator('.ag-header-cell[col-id="c3"]').count(),0);assert((await p.locator('.ag-header-cell[col-id="c1"]').boundingBox()).x<(await p.locator('.ag-header-cell[col-id="c0"]').boundingBox()).x,'冻结列位于其他数据列左侧');
   await cell(0,2).click();await p.evaluate(()=>{window.clipboard='9.99\t{"k":2}';});assert.equal(await p.evaluate(()=>window.grid.current.pasteFromClipboard()),2);
   let pasted=(await p.evaluate(()=>window.grid.current.getChanges()))[0].changes;assert.deepEqual(pasted.map(c=>c.column),['amount','document']);
   await p.evaluate(()=>window.grid.current.copySelected());assert((await p.evaluate(()=>window.copied)).startsWith('2\t1\t9.99\t{"k":2}\t'),'复制跟随可见列顺序');await p.evaluate(()=>window.grid.current.discard());
-  await p.getByRole('button',{name:'列',exact:true}).click();await p.getByRole('button',{name:'恢复默认',exact:true}).click();await p.keyboard.press('Escape');await p.locator('.ag-header-cell[col-id="c3"]').waitFor();await p.waitForTimeout(400);
+  await p.getByRole('button',{name:'列管理',exact:true}).click();await p.getByRole('button',{name:'恢复默认',exact:true}).click();await p.keyboard.press('Escape');await p.locator('.ag-header-cell[col-id="c3"]').waitFor();await p.waitForTimeout(400);
   console.log(`PASS ${engine}: dock numeric/decimal/full baseline, invalid buffer guard, discard/commit staging, columns hide/pin/order/reset/persistence`);
  }
  for(const variant of ['readonly','noKey','badKey','result']){
@@ -41,7 +41,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  await cell(0,6).click();await p.locator('.dw-grid-inspector input[type=checkbox]').check();await p.locator('.dw-grid-inspector input[type=checkbox]').uncheck();assert.deepEqual((await p.evaluate(()=>window.grid.current.getChanges()))[0].changes[0].newValue,['text','']);
  await cell(0,4).click();await p.waitForFunction(()=>window.editorText()==='{"a":1}');await edit('{"a":');assert(await p.getByRole('button',{name:'提交',exact:true}).isDisabled());await edit('{"a":2}');assert.deepEqual((await p.evaluate(()=>window.grid.current.getChanges()))[0].changes.find(c=>c.column==='document').newValue,['json','{"a":2}']);await p.getByRole('button',{name:'格式化 JSON',exact:true}).click();await p.waitForFunction(()=>window.editorText()?.includes('\n'));assert.deepEqual(JSON.parse((await p.evaluate(()=>window.grid.current.getChanges()))[0].changes.find(c=>c.column==='document').newValue[1]),{a:2});
  await cell(0,5).click();await p.waitForFunction(()=>window.editorText()==='0x0102');await edit('0x0');assert(await p.getByRole('button',{name:'提交',exact:true}).isDisabled());await edit('0x010203');assert.deepEqual((await p.evaluate(()=>window.grid.current.getChanges()))[0].changes.find(c=>c.column==='binary').newValue,['bytes','0x010203']);
- await p.goto('http://127.0.0.1:1425/scripts/fixtures/grid-workbench.html?late&table=late');await cell(0,1).waitFor();await p.getByRole('button',{name:'列',exact:true}).click();await p.getByRole('checkbox',{name:'显示列 notes',exact:true}).uncheck();await p.evaluate(()=>window.releaseSettings());await p.waitForTimeout(200);assert.equal(await p.locator('.ag-header-cell[col-id="c3"]').count(),0,'迟到偏好不覆盖用户调整');
+ await p.goto('http://127.0.0.1:1425/scripts/fixtures/grid-workbench.html?late&table=late');await cell(0,1).waitFor();await p.getByRole('button',{name:'列管理',exact:true}).click();await p.getByRole('checkbox',{name:'显示列 notes',exact:true}).uncheck();await p.evaluate(()=>window.releaseSettings());await p.waitForTimeout(200);assert.equal(await p.locator('.ag-header-cell[col-id="c3"]').count(),0,'迟到偏好不覆盖用户调整');
  console.log('PASS displayed-column paste/copy, NULL vs empty string, JSON/hex validation, stale full read and late layout preferences');
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

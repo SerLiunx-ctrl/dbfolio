@@ -1,3 +1,4 @@
+import {useShortcut,useShortcutLabel} from '../../app/shortcuts';
 import {ResultPagination, resultRowRange} from "../grid/ResultPagination";
 import {useObjectPreferences} from '../../stores/useObjectPreferences';
 import {AiSqlEdit,type SqlEditRequest} from "./AiSqlEdit";
@@ -93,6 +94,7 @@ const useStyles = makeStyles({
     flexDirection: "column",
   },
   resultToolbar: {
+    flexWrap:"wrap",
     display: "flex",
     alignItems: "center",
     gap: "10px",
@@ -134,9 +136,14 @@ interface Props {
 }
 
 export function QueryWorkspace({ tab, active }: Props) {
+  const executeKey=useShortcutLabel('execute');
+  useShortcut('save',()=>saveFileRef.current(),active,30);
+  useShortcut('execute',()=>{if(!editorRef.current?.hasTextFocus())return false;runRef.current(false);},active,30);
+  useShortcut('formatSql',()=>{if(!editorRef.current?.hasTextFocus())return false;formatRef.current();},active,30);
   const [pageSize,setPageSize] = useState(useSettingsStore.getState().queryPageSize);
   const targetSession = useSessionStore(state => state.sessions.find(item => item.id === tab.sessionId));
   const styles = useStyles();
+  const [toolbarHost,setToolbarHost]=useState<HTMLDivElement|null>(null);
   const notify = useNotify();
   const editorTheme=useEditorTheme();
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -399,14 +406,9 @@ export function QueryWorkspace({ tab, active }: Props) {
     fileIdleRef.current=editor.createContextKey("dwQueryFileIdle",!fileBusy);
     menuRef.current?.dispose();
     menuRef.current=registerQueryActions(editor,{runCurrent:()=>runRef.current(false,"current"),runSelection:()=>runRef.current(false,"selection"),format:()=>formatRef.current(),aiFormat:()=>aiEditRef.current("format"),aiOptimize:()=>aiEditRef.current("optimize"),save:()=>saveFileRef.current(),history:()=>window.dispatchEvent(new Event("dw:history"))});
-    editor.addAction({id:"dw-format-sql",label:"格式化 SQL",keybindings:[monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyF],run:()=>formatRef.current()});
+    editor.addAction({id:"dw-format-sql",label:"格式化 SQL",run:()=>formatRef.current()});
     completionRef.current?.dispose();
     completionRef.current=registerSqlCompletion(editor,monacoInstance,()=>completionContext.current);
-    editor.addCommand(
-      monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.Enter,
-      () => runRef.current(false),
-    );
-    editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS,()=>saveFileRef.current());
   };
 
   const cancel = async () => {
@@ -463,7 +465,7 @@ export function QueryWorkspace({ tab, active }: Props) {
         {Object.entries(parameters?.values??{}).map(([name,p])=><Field key={name} label={name}><div style={{display:"flex",gap:8,marginBottom:8}}><select className="dw-native-select" disabled={parameterBusy} value={p.type} onChange={e=>setParameters(old=>old?{...old,values:{...old.values,[name]:{...p,type:e.target.value}}}:old)}><option value="text">文本</option><option value="number">数字</option><option value="bool">布尔</option><option value="null">NULL</option></select><Input disabled={parameterBusy||p.type==="null"} value={p.value} onChange={(_,d)=>setParameters(old=>old?{...old,values:{...old.values,[name]:{...p,value:d.value}}}:old)}/></div></Field>)}
       </DialogContent><DialogActions><Button disabled={parameterBusy} onClick={()=>setParameters(null)}>取消</Button><Button appearance="primary" disabled={parameterBusy} onClick={()=>void submitParameters()}>执行</Button></DialogActions></DialogBody></DialogSurface></Dialog>
       <div className={styles.toolbar}>
-        <Tooltip content="执行 (Ctrl+Enter)" relationship="label">
+        <Tooltip content={`执行 (${executeKey})`} relationship="label">
           <Button
             appearance="primary"
             size="small"
@@ -600,11 +602,12 @@ export function QueryWorkspace({ tab, active }: Props) {
           >
             导出
           </Button>
+          <div ref={setToolbarHost} className="dw-grid-toolbar-host"/>
 
         </div>
         <div className={styles.grid}>
           {active && result && result.columns.length > 0 ? (
-            <ResultGrid
+            <ResultGrid toolbarHost={toolbarHost}
               ref={resultGridRef}
               columns={result.columns}
               rows={result.rows}
@@ -623,7 +626,7 @@ export function QueryWorkspace({ tab, active }: Props) {
                   fontSize: 13,
                 }}
               >
-                {result ? "语句执行完成" : "按 Ctrl+Enter 执行 SQL，选中文本时可只执行选中部分"}
+                {result ? "语句执行完成" : `按 ${executeKey} 执行 SQL，选中文本时可只执行选中部分`}
               </div>
             )
           )}

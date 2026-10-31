@@ -22,7 +22,7 @@ export function SqlExportWorkspace({tab}:{tab:SqlExportTab}) {
  useEffect(()=>{let active=true;setDatabases([]);if(!draft.sessionId||!connected)return;void api.listDatabases(draft.sessionId).then(values=>{if(active)setDatabases(values.map(v=>v.name));}).catch(e=>{if(active)setError(normalizeError(e).message);});return()=>{active=false;};},[draft.sessionId,connected]);
  useEffect(()=>{let active=true;setTables([]);if(!draft.sessionId||!draft.database||!connected)return;setLoading(true);void api.listTables(draft.sessionId,draft.database).then(values=>{if(active)setTables(values.filter(t=>t.kind==='table'));}).catch(e=>{if(active)setError(normalizeError(e).message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[draft.sessionId,draft.database,connected]);
  const chosen=draft.allTables?tables.map(t=>t.name):draft.tables.filter(n=>tables.some(t=>t.name===n));const filtered=tables.filter(t=>`${t.name} ${t.comment??''}`.toLowerCase().includes(search.toLowerCase()));
- usePendingEdit({tabId:tab.id,sessionId:draft.sessionId,label:'SQL 文件导出',busy:()=>busy,save:async()=>{},discard:()=>{}},busy);
+ usePendingEdit({tabId:tab.id,sessionId:draft.sessionId,label:'SQL 文件导出',busy:()=>busy,shortcutSave:false,save:async()=>{},discard:()=>{}},busy);
  const run=async()=>{if(locked.current)return;locked.current=true;setBusy(true);setError('');setResult(null);try{
   const path=draft.splitFiles&&!draft.compressed?await open({directory:true,multiple:false,title:'选择 SQL 导出目录'}):await save({defaultPath:`${draft.database.replace(/[<>:"/\\|?*]/g,'_')||'export'}.${draft.compressed?'zip':'sql'}`,filters:[{name:draft.compressed?'ZIP 压缩包':'SQL 文件',extensions:[draft.compressed?'zip':'sql']}]});
   if(typeof path!=='string')return;

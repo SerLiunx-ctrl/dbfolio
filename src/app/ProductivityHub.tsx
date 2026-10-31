@@ -1,3 +1,4 @@
+import {useShortcut,useShortcutLabel} from './shortcuts';
 import {InfoHint} from '../common/InfoHint';
 import { toggleFocusMode } from "../stores/useFocusMode";
 import { useObjectNavigation } from "../stores/useObjectNavigation";
@@ -17,6 +18,7 @@ import type { TableRef } from "../ipc/types";
 interface IndexedTable { sessionId:string; database:string; table:TableRef }
 interface Item { command?:boolean; id:string; label:string; detail:string; open:()=>Promise<void>|void }
 export function ProductivityHub(){
+ const quickKey=useShortcutLabel('quickOpen'),focusKey=useShortcutLabel('focus'),reopenKey=useShortcutLabel('reopen');
   const sessions=useSessionStore(s=>s.sessions),tabs=useTabStore(s=>s.tabs),drafts=useWorkspace(s=>s.drafts),favorites=useObjectPreferences(s=>s.favorites),library=useLibrary();
   const [history,setHistory]=useState(false),[quick,setQuick]=useState(false),[text,setText]=useState(""),[selected,setSelected]=useState(0),[index,setIndex]=useState<IndexedTable[]>([]),[loading,setLoading]=useState(false),[opening,setOpening]=useState(false),[scope,setScope]=useState(""),[error,setError]=useState("");
   const notify=useNotify(),version=useRef(0);
@@ -25,7 +27,7 @@ export function ProductivityHub(){
   const connectionKey=useSessionStore(s=>JSON.stringify(Object.keys(s.statuses).filter(id=>s.statuses[id]).sort()));
   const commandMode=text.trimStart().startsWith(">");
   const searchObjects=Boolean(text.trim())&&!commandMode;
-  useEffect(()=>{void loadLibrary().catch(e=>notify.error(e));const showHistory=()=>{setQuick(false);setHistory(true);};const key=(e:KeyboardEvent)=>{if(e.ctrlKey&&e.key.toLowerCase()==="p"){e.preventDefault();e.stopImmediatePropagation();setHistory(false);setQuick(true);setText("");setScope(useSessionStore.getState().activeSessionId??"");}};window.addEventListener("keydown",key,true);window.addEventListener("dw:history",showHistory);return()=>{window.removeEventListener("keydown",key,true);window.removeEventListener("dw:history",showHistory);};},[notify]);
+  useEffect(()=>{void loadLibrary().catch(e=>notify.error(e));const showHistory=()=>{setQuick(false);setHistory(true);};window.addEventListener("dw:history",showHistory);return()=>{window.removeEventListener("dw:history",showHistory);};},[notify]);
   useEffect(()=>{
     if(!quick||!searchObjects){setIndex([]);setLoading(false);setError("");return;}
     const key=scope+connectionKey,hit=cache.current.get(key);
@@ -46,8 +48,8 @@ export function ProductivityHub(){
       ["generation","数据生成","批量模板、规则生成与 AI 协助"],
       ["settings","打开首选项","外观、密度、缩放与快捷键"],
       ["layouts","工作区布局","保存当前布局、切换布局预设"],
-      ["focus","切换专注模式","临时隐藏面板 · Ctrl+Shift+J"],
-      ["reopen-tab","重新打开关闭的页签","恢复最近关闭的页签 · Ctrl+Shift+T"],
+      ["focus","切换专注模式",`临时隐藏面板 · ${focusKey}`],
+      ["reopen-tab","重新打开关闭的页签",`恢复最近关闭的页签 · ${reopenKey}`],
       ["tasks","打开任务中心","进度、失败详情与来源页签"],
       ["history","打开历史中心","查询历史与收藏"],
       ["about","关于与快捷键","版本、更新说明与诊断信息"],
@@ -64,11 +66,12 @@ export function ProductivityHub(){
     index.forEach(t=>result.push({id:`object:${t.sessionId}/${t.database}/${t.table.schema}/${t.table.name}`,label:t.table.name,detail:`${t.table.kind} · ${name(t.sessionId)} / ${t.database} / ${t.table.schema??""} · ${t.table.comment??""}`,open:()=>activate(t.sessionId,()=>useTabStore.getState().openTable({sessionId:t.sessionId,database:t.database,schema:t.table.schema,table:t.table.name}))}));
     result.push(...commands);
     const terms=text.toLowerCase().split(/\s+/).filter(Boolean);return result.filter(i=>terms.every(term=>(i.label+" "+i.detail).toLowerCase().includes(term))).slice(0,100);
-  },[sessions,tabs,drafts,favorites,library,index,text,commandMode]);
+  },[sessions,tabs,drafts,favorites,library,index,text,commandMode,focusKey,reopenKey]);
   useEffect(()=>setSelected(0),[text,scope,items.length]);
   useEffect(()=>{if(quick)document.getElementById("dw-quick-option-"+selected)?.scrollIntoView({block:"nearest"});},[quick,selected]);
   const choose=async(item:Item)=>{if(opening)return;setOpening(true);try{if(item.command)setQuick(false);await item.open();setQuick(false);}catch(e){notify.error(e,"打开失败");}finally{setOpening(false);}};
-  return <><Button size="small" appearance="subtle" icon={<HistoryRegular/>} onClick={()=>setHistory(true)}>历史中心</Button><Button size="small" appearance="subtle" icon={<SearchRegular/>} onClick={()=>{setScope(useSessionStore.getState().activeSessionId??"");setText("");setQuick(true);}}>快速打开 Ctrl+P</Button>
+  useShortcut('quickOpen',()=>{setHistory(false);setQuick(true);setText('');setScope(useSessionStore.getState().activeSessionId??'');});
+  return <><Button size="small" appearance="subtle" icon={<HistoryRegular/>} onClick={()=>setHistory(true)}>历史中心</Button><Button size="small" appearance="subtle" icon={<SearchRegular/>} onClick={()=>{setScope(useSessionStore.getState().activeSessionId??"");setText("");setQuick(true);}}>快速打开 {quickKey}</Button>
     <HistoryCenter open={history} onClose={()=>setHistory(false)}/>
     <Dialog open={quick} onOpenChange={(_,d)=>{if(!d.open&&!opening)setQuick(false);}}><DialogSurface style={{maxWidth:850,width:"92vw"}}><DialogBody><DialogTitle>快速打开</DialogTitle><DialogContent>
       <Input aria-label="搜索快速打开项目" aria-controls="dw-quick-results" aria-activedescendant={items[selected]?"dw-quick-option-"+selected:undefined} autoFocus style={{width:"100%"}} placeholder="搜索表、收藏、文件、页签；输入 > 搜索应用命令" value={text} onChange={(_,d)=>setText(d.value)} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();setSelected(n=>Math.min(items.length-1,n+1));}if(e.key==="ArrowUp"){e.preventDefault();setSelected(n=>Math.max(0,n-1));}if(e.key==="Enter"&&items[selected]){e.preventDefault();void choose(items[selected]);}}}/>

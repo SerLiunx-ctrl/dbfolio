@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useLayoutEffect, useRef } from "react";
 export interface PendingEdit {
+  local?:boolean; shortcutSave?:boolean;
   tabId: string; sessionId: string; label: string; kind?: "transaction";
   save: () => Promise<void>; discard: () => void | Promise<void>;
   preview?: () => Promise<string[]>;
@@ -8,7 +9,7 @@ export interface PendingEdit {
 }
 interface GuardState {
   entries: Record<string, PendingEdit>;
-  request: { entries: PendingEdit[]; resolve: (value: boolean) => void } | null;
+  request: { entries: PendingEdit[]; resolve: (value: boolean) => void; purpose?:'save' } | null;
 }
 export const useEditGuard = create<GuardState>(() => ({ entries: {}, request: null }));
 export function usePendingEdit(entry: PendingEdit, dirty: boolean, registryKey = entry.tabId) {
@@ -21,11 +22,11 @@ export function usePendingEdit(entry: PendingEdit, dirty: boolean, registryKey =
     return () => useEditGuard.setState(s => { const entries={...s.entries}; delete entries[registryKey]; return {entries}; });
   }, [dirty, entry.tabId, entry.sessionId, entry.label, registryKey]);
 }
-export async function confirmEdits(predicate: (entry: PendingEdit) => boolean = () => true): Promise<boolean> {
+export async function confirmEdits(predicate: (entry: PendingEdit) => boolean = () => true, purpose?:'save'): Promise<boolean> {
   const state=useEditGuard.getState();
   if(state.request) return false;
   const entries=Object.values(state.entries).filter(predicate);
   if(entries.some(entry=>entry.busy?.())) return false;
   if(!entries.length) return true;
-  return new Promise(resolve => useEditGuard.setState({request:{entries,resolve}}));
+  return new Promise(resolve => useEditGuard.setState({request:{entries,resolve,purpose}}));
 }

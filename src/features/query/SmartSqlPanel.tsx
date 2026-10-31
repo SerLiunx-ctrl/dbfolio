@@ -28,7 +28,7 @@ export function SmartSqlPanel({sessionId,database,tabId,sql,executionError='',on
  const activeTab=useTabStore(s=>s.activeId);
  const connected=useSessionStore(s=>!!s.statuses[sessionId]?.connected),tasks=useTaskStore(s=>s.tasks).filter(t=>t.tabId===tabId&&t.label.startsWith('智能生成')&&isTaskActive(t));
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;cancelled.current=true;for(const t of useTaskStore.getState().tasks.filter(t=>t.tabId===tabId&&t.label.startsWith("智能生成")&&isTaskActive(t)))void cancelTask(t.id).catch(()=>{});};},[tabId]);
- usePendingEdit({tabId,sessionId,label:'智能生成',busy:()=>lock.current,save:async()=>{},discard:()=>{}},busy,tabId+':smart-sql');
+ usePendingEdit({tabId,sessionId,label:'智能生成',busy:()=>lock.current,shortcutSave:false,save:async()=>{},discard:()=>{}},busy,tabId+':smart-sql');
  const send=async(continuation?:Record<string,unknown>)=>{
   if(lock.current||!connected||disabled)return;
   lock.current=true;cancelled.current=false;setBusy(true);setAiRisk(undefined);setError('');setOutput('');text.current='';appendPending.current=null;setApplied(false);

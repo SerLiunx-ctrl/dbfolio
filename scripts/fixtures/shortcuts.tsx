@@ -1,0 +1,23 @@
+import {createRoot} from 'react-dom/client';
+import {useEffect,useState} from 'react';
+import {Button,FluentProvider,Input} from '@fluentui/react-components';
+import {ShortcutEditor} from '../../src/features/settings/ShortcutEditor';
+import {useShortcut} from '../../src/app/shortcuts';
+import {useShortcutStore} from '../../src/stores/useShortcutStore';
+import {SaveCommandBridge} from '../../src/app/SaveCommandBridge';
+import {usePendingEdit,useEditGuard} from '../../src/stores/useEditGuard';
+import {UnsavedChangesDialog} from '../../src/app/UnsavedChangesDialog';
+import {installBrowserGuards} from '../../src/app/browserGuards';
+import {buildTheme} from '../../src/theme';
+import '../../src/styles.css';import '../../src/compact.css';
+const w=window as any,p=new URLSearchParams(location.search),mode=p.get('theme')??'light',zoom=Number(p.get('zoom')??1);document.documentElement.style.zoom=String(zoom);document.documentElement.dataset.oled=String(mode==='oled');w.calls=[];w.saved=[];w.transactions=0;w.commands=0;w.guard=useEditGuard;w.shortcuts=useShortcutStore;
+w.__TAURI_INTERNALS__={invoke:async(command:string,args:any)=>{w.calls.push({command,args});if(command==='settings_get')return localStorage.getItem(args.key);if(command==='settings_set'){if(w.failSave)throw Error('模拟写入失败');localStorage.setItem(args.key,args.value);return;}throw Error(command);}};
+installBrowserGuards();
+function Bench(){const [settings,setSettings]=useState(true),[text,setText]=useState(''),[baseline,setBaseline]=useState(''),[db,setDb]=useState(false),[message,setMessage]=useState('');
+ useEffect(()=>{void useShortcutStore.getState().load();},[]);
+ useShortcut('execute',()=>{w.commands++;},!settings);
+ usePendingEdit({tabId:'active',sessionId:'test',local:!db,label:db?'数据库草稿':'本地草稿',save:async()=>{w.saved.push(text);setBaseline(text);},discard:()=>setText(baseline),...(db?{preview:async()=>['UPDATE sample SET text = ?']}:{})},text!==baseline);
+ usePendingEdit({tabId:'active',sessionId:'test',kind:'transaction',label:'未提交事务',save:async()=>{w.transactions++;},discard:()=>{}},true,'transaction');
+ return <FluentProvider data-color-mode={mode==='light'?'light':'dark'} theme={buildTheme(mode!=='light','#0f6cbd',mode==='oled'?'oled':'classic')} style={{minHeight:100/zoom+'vh',padding:10,boxSizing:'border-box'}}><Button size="small" onClick={()=>setSettings(v=>!v)}>{settings?'编辑工作区':'快捷键设置'}</Button>{settings?<ShortcutEditor/>:<div><Input aria-label="编辑草稿" value={text} onChange={(_,d)=>setText(d.value)}/><Button size="small" onClick={()=>setDb(v=>!v)}>{db?'切换本地草稿':'切换数据库草稿'}</Button><p>{message}</p></div>}<SaveCommandBridge tabId="active" enabled={!settings} onError={e=>setMessage(String(e))}/><UnsavedChangesDialog/></FluentProvider>;
+}
+createRoot(document.getElementById('root')!).render(<Bench/>);

@@ -1,3 +1,4 @@
+import {useShortcutLabel} from './shortcuts';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type PointerEvent } from "react";
 import { Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, tokens } from "@fluentui/react-components";
 import { MoreHorizontalRegular, ArrowLeftRegular, ArrowRightRegular, ArrowUpRegular, ArrowDownRegular, ArrowResetRegular } from "@fluentui/react-icons";
@@ -30,6 +31,7 @@ export function DockTitle({panel,children}:{panel:DockPanel;children:ReactNode})
   </span>;
 }
 export function DockLayout({sessions,explorer,children}:{sessions:ReactNode;explorer:ReactNode;children:ReactNode}) {
+  const focusKey=useShortcutLabel('focus'),sidebarKey=useShortcutLabel('sidebar');
   const layout=useDockStore(s=>s.layout), notify=useNotify();
   const rightWidth=useSettingsStore(s=>s.rightSidebarWidth);
   const width=useSettingsStore(s=>s.sidebarWidth), split=useSettingsStore(s=>s.sidebarSplit), savedCollapsed=useSettingsStore(s=>s.sidebarCollapsed);
@@ -62,7 +64,7 @@ export function DockLayout({sessions,explorer,children}:{sessions:ReactNode;expl
     <div className="dw-sidebar" data-session-collapsed={compactSessions} style={panelStyle("sessions")}>{sessions}</div>
     <div className="dw-sidebar" style={panelStyle("explorer")}>{explorer}</div>
     <div style={{gridColumn:3,gridRow:"1 / 4",minWidth:0,minHeight:0,display:"flex"}}>{children}</div>
-    {collapsed&&<Button appearance="subtle" size="small" style={{gridColumn:1,gridRow:"1 / 4",minWidth:22,padding:0}} title={focus?"退出专注模式 (Ctrl+Shift+J)":"展开面板 (Ctrl+B)"} aria-label="展开面板" onClick={()=>{if(focus)useFocusMode.setState({active:false});else void useSettingsStore.getState().setSidebarCollapsed(false);}} icon={<ArrowRightRegular/>}/>}
+    {collapsed&&<Button appearance="subtle" size="small" style={{gridColumn:1,gridRow:"1 / 4",minWidth:22,padding:0}} title={focus?`退出专注模式 (${focusKey})`:`展开面板 (${sidebarKey})`} aria-label="展开面板" onClick={()=>{if(focus)useFocusMode.setState({active:false});else void useSettingsStore.getState().setSidebarCollapsed(false);}} icon={<ArrowRightRegular/>}/>}
     {(["left","right"] as const).map(side=>(side==="left"?left:right)&&<div key={side} style={{gridColumn:side==="left"?2:4,gridRow:"1 / 4",display:"flex"}}><ResizeHandle invert={side==="right"} value={side==="left"?leftWidth:actualRightWidth} min={Math.min(200,widthCap)} max={Math.min(460,widthCap)} onChange={v=>(side==="left"?useSettingsStore.getState().setSidebarWidth:useSettingsStore.getState().setRightSidebarWidth)(v,false)} onCommit={v=>(side==="left"?useSettingsStore.getState().setSidebarWidth:useSettingsStore.getState().setRightSidebarWidth)(v,true)}/></div>)}
     {!collapsed&&both&&!compactSessions&&<div style={{gridColumn:layout.sessions==="left"?1:5,gridRow:2,display:"flex",flexDirection:"column"}}><ResizeHandle direction="vertical" value={size.height*split} min={Math.min(100,size.height*.2)} max={Math.max(100,size.height-100)} onChange={v=>useSettingsStore.getState().setSidebarSplit(v/Math.max(1,size.height),false)} onCommit={v=>useSettingsStore.getState().setSidebarSplit(v/Math.max(1,size.height),true)}/></div>}
     {drag&&<div style={{position:"absolute",inset:0,zIndex:1000,pointerEvents:"none",border:`2px dashed ${tokens.colorBrandStroke1}`}}>

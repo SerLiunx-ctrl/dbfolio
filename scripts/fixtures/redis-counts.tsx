@@ -1,0 +1,20 @@
+import {createRoot} from 'react-dom/client';
+import {FluentProvider,webLightTheme} from '@fluentui/react-components';
+import {RedisKeysView} from '../../src/features/redis/RedisKeysView';
+import {ExplorerPanel} from '../../src/features/explorer/ExplorerPanel';
+import {useSessionStore} from '../../src/stores/useSessionStore';
+import {useExplorerStore} from '../../src/stores/useExplorerStore';
+import {connectionBridge} from '../../src/ipc/connectionBridge';
+import {AppToaster} from '../../src/app/toast';
+import '../../src/styles.css';
+const w=window as any;w.count=125;w.calls=[];w.fail=false;
+connectionBridge.isOffline=()=>false;connectionBridge.onFailure=()=>{};
+useSessionStore.setState({sessions:[{id:'r',engine:'redis',name:'Redis'} as any],statuses:{r:{connected:true}} as any,activeSessionId:'r'});
+useExplorerStore.setState({databases:{r:[{name:'db0',comment:'0 个键'}]}});
+w.__TAURI_INTERNALS__={invoke:async(command:string,args:any)=>{w.calls.push({command,args});
+ if(command==='settings_get')return null;if(command==='settings_set')return;
+ if(command==='meta_databases'){if(w.fail)throw Error('模拟计数读取失败');return [{name:'db0',comment:w.count+' 个键'}];}
+ if(command==='redis_scan_keys')return {cursor:args.cursor?0:7,keys:[{key:args.cursor?'other:second':'test:new',kind:'string',ttlMs:-1}]};
+ throw Error(command);
+}};
+createRoot(document.getElementById('root')!).render(<FluentProvider theme={webLightTheme}><div style={{display:'flex',height:750}}><div style={{width:240,display:'flex'}}><ExplorerPanel/></div><RedisKeysView tab={{id:'r0',kind:'redis',sessionId:'r',database:'db0',title:'Redis'}}/></div><AppToaster/></FluentProvider>);

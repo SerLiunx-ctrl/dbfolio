@@ -4,8 +4,8 @@ import type { ColumnMeta, ForeignKeyMeta, TableMeta } from "../../ipc/types";
 import type { TableTab } from "../../stores/useTabStore";
 import { fieldTypeStyle } from "../grid/valueColor";
 
-export function TypedColumns({ names, columns, suffixes = [], onColumnClick }: {
-  names: string[]; columns?: ColumnMeta[]; suffixes?: string[]; onColumnClick?: (name: string) => void;
+export function TypedColumns({ names, columns, suffixes = [], onColumnClick, linkLabel }: {
+  names: string[]; columns?: ColumnMeta[]; suffixes?: string[]; onColumnClick?: (name: string) => void; linkLabel?: (name:string)=>string;
 }) {
   return <>{names.map((name, i) => {
     const column = columns?.find(c => c.name === name);
@@ -13,7 +13,7 @@ export function TypedColumns({ names, columns, suffixes = [], onColumnClick }: {
       className="dw-metadata-column"
       title={column ? `${name} · ${column.rawType}` : `${name} · 类型未获取`}
     ><span className="dw-metadata-name">{column && onColumnClick ? <button type="button" className="dw-metadata-column-link"
-      aria-label={`在结构中定位字段 ${name}`} title={`在结构中定位字段 ${name}`}
+      aria-label={linkLabel?.(name) ?? `在结构中定位字段 ${name}`} title={linkLabel?.(name) ?? `在结构中定位字段 ${name}`}
       onClick={event => { event.stopPropagation(); onColumnClick(name); }}
       onDoubleClick={event => event.stopPropagation()}
       onKeyDown={event => { if (event.key === "Enter" || event.key === " ") event.stopPropagation(); }}

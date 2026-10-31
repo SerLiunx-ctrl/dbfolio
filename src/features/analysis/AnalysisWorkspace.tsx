@@ -40,7 +40,7 @@ export function AnalysisWorkspace({tab}:{tab:AnalysisTab}) {
  useEffect(()=>useTabStore.getState().updateAnalysis(tab.id,plan),[plan,tab.id]);
  const run=async(action:()=>Promise<void>)=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');setNote('');try{await action();}catch(e){setError(normalizeError(e).message);notify.error(e,'分析操作失败');}finally{lock.current=false;setBusy(false);}};
  const persist=async()=>{const clean=validatePlan(plan);await saveAnalysis(clean);setPlan(clean);setSavedStamp(JSON.stringify(clean));setNote('分析方案已保存。下次打开后手动刷新数据。');};
- usePendingEdit({tabId:tab.id,sessionId:tab.sessionId,label:plan.name+'（分析方案）',busy:()=>lock.current,save:persist,discard:()=>{}},busy||savedStamp!==JSON.stringify(plan));
+ usePendingEdit({tabId:tab.id,sessionId:tab.sessionId,local:true,label:plan.name+'（分析方案）',busy:()=>lock.current,save:persist,discard:()=>{}},busy||savedStamp!==JSON.stringify(plan));
  const change=(patch:Partial<AnalysisPlan>)=>setPlan(p=>({...p,...patch}));
  const chartChange=(patch:Partial<ChartConfig>)=>change({chart:{...plan.chart,...patch}});
  const paramNames=useMemo(()=>plan.source==='sql'?[...new Set(namedParameters(plan.query,session?.engine).map(p=>p.name))]:mongoParams(plan.query),[plan.query,plan.source,session?.engine]);

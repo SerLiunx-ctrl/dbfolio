@@ -538,6 +538,7 @@ function SqlExplorerPanel() {
                   >
                     新建查询
                   </MenuItem>
+                  <MenuItem icon={<TableRegular/>} onClick={()=>{if(session)useTabStore.getState().openEr(session.id,contextMenu.database);setContextMenu(null);}}>ER 关系图</MenuItem>
                   {!readOnly && (<MenuItem
                     icon={<AddRegular />}
                     onClick={() => {
@@ -590,6 +591,7 @@ function SqlExplorerPanel() {
                 </>
               ) : (
                 <>
+                  <MenuItem icon={<TableRegular/>} onClick={()=>{if(session&&contextMenu.table)useTabStore.getState().openEr(session.id,contextMenu.database,{table:contextMenu.table.name,schema:contextMenu.table.schema});setContextMenu(null);}}>查看关联</MenuItem>
                   <MenuItem icon={<AddRegular />} disabled={contextMenu.table?.kind !== "table"} onClick={()=>{if(session&&contextMenu.table)window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:session.id,database:contextMenu.database,schema:contextMenu.table.schema??null,object:contextMenu.table.name}}));setContextMenu(null);}}>生成测试数据…</MenuItem>
                   <MenuItem icon={<TableRegular />}
                     onClick={() => {

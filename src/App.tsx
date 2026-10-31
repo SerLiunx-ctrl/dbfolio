@@ -1,3 +1,8 @@
+import {useShortcut,useShortcutLabel} from './app/shortcuts';
+import {useShortcutStore} from './stores/useShortcutStore';
+import {SaveCommandBridge} from './app/SaveCommandBridge';
+import {ErWorkspace} from './features/er/ErWorkspace';
+import {useUiActivity,useUiActivityLifecycle} from './app/uiActivity';
 import { CreateTableWorkspace } from './features/table/CreateTableWorkspace';
 import {UpdateManager} from './features/updates/UpdateManager';
 import {useExplorerStore} from "./stores/useExplorerStore";
@@ -295,6 +300,7 @@ const useStyles = makeStyles({
 });
 
 export default function App() {
+  useUiActivityLifecycle();
   const { theme, dark } = useAppTheme();
   const interfaceStyle = useSettingsStore((s) => s.interfaceStyle);
 
@@ -317,12 +323,14 @@ export default function App() {
 }
 
 const WorkspaceContent = memo(function WorkspaceContent({tab,active}:{tab:WorkspaceTab;active:boolean}) {
+  const uiInactive=useUiActivity(s=>s.inactive);
   const session=useSessionStore(s=>s.sessions.find(v=>v.id===tab.sessionId));
   if(session?.allowedDatabases && tab.database && !session.allowedDatabases.includes(tab.database)) return <div role="alert" style={{padding:24}}>数据库「{tab.database}」不在本会话允许范围内。请在会话设置中调整数据库范围。</div>;
   if(tab.kind==="sqlExport")return <SqlExportWorkspace tab={tab}/>;
   if(tab.kind==="mysqlTool")return <MysqlToolsWorkspace tab={tab}/>;
   if(tab.kind==="sync")return <SyncWorkspace tab={tab} active={active}/>;
-  return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "createTable" ? <CreateTableWorkspace tab={tab}/> : tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab} active={active}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab} active={active}/>}</>;
+  if(tab.kind==='er')return <ErWorkspace tab={tab} active={active&&!uiInactive}/>;
+  return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "createTable" ? <CreateTableWorkspace tab={tab}/> : tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab} active={active&&!uiInactive}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab} active={active&&!uiInactive}/>}</>;
 });
 function VisitedWorkspace({tab,active}:{tab:WorkspaceTab;active:boolean}) {
   const visited=useRef(false);
@@ -331,6 +339,7 @@ function VisitedWorkspace({tab,active}:{tab:WorkspaceTab;active:boolean}) {
 }
 
 function AppShell() {
+  const sidebarKey=useShortcutLabel('sidebar');
   const styles = useStyles();
   const notify = useNotify();
   const load = useSessionStore((s) => s.load);
@@ -431,32 +440,12 @@ function AppShell() {
       .catch(() => {});
   }, [themeMode, dark]);
 
-  // 快捷键：Ctrl+加减号缩放、Ctrl+0 复位、Ctrl+B 收起/展开侧栏
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if (!event.ctrlKey) return;
-      const settings = useSettingsStore.getState();
-      if (event.key === "=" || event.key === "+") {
-        event.preventDefault();
-        void settings.setZoom(settings.zoom + 0.1);
-      } else if (event.key === "-") {
-        event.preventDefault();
-        void settings.setZoom(settings.zoom - 0.1);
-      } else if (event.key === "0") {
-        event.preventDefault();
-        void settings.setZoom(1);
-      } else if (event.key === "b" || event.key === "B") {
-        event.preventDefault();
-        if(useFocusMode.getState().active)useFocusMode.setState({active:false});else void settings.setSidebarCollapsed(!settings.sidebarCollapsed);
-      } else if (event.key === ",") {
-        event.preventDefault();
-        setSettingsOpen(true);
-
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  useEffect(()=>{void useShortcutStore.getState().load().catch(e=>notify.error(e,'快捷键加载失败'));},[]);
+  useShortcut('zoomIn',()=>{const s=useSettingsStore.getState();void s.setZoom(s.zoom+.1).catch(e=>notify.error(e));});
+  useShortcut('zoomOut',()=>{const s=useSettingsStore.getState();void s.setZoom(s.zoom-.1).catch(e=>notify.error(e));});
+  useShortcut('zoomReset',()=>{void useSettingsStore.getState().setZoom(1).catch(e=>notify.error(e));});
+  useShortcut('sidebar',()=>{const s=useSettingsStore.getState();if(useFocusMode.getState().active)useFocusMode.setState({active:false});else void s.setSidebarCollapsed(!s.sidebarCollapsed).catch(e=>notify.error(e));});
+  useShortcut('settings',()=>setSettingsOpen(true));
 
   // Ctrl+滚轮缩放右侧内容
   useEffect(() => {
@@ -548,13 +537,14 @@ function AppShell() {
 
   return (
     <div className={styles.root}>
+      <SaveCommandBridge tabId={activeId} enabled={!settingsOpen} onError={e=>notify.error(e,"保存失败")}/>
       <TitleBar><AppMenu onNewSession={() => handleNew()} onSync={() => { useTabStore.getState().openSync(); setSettingsOpen(false); }} onSettings={() => setSettingsOpen(true)} /></TitleBar>
       <DockLayout sessions={<>
               <div className={styles.sidebarHeader}>
                 <DockTitle panel="sessions"><span className={styles.sidebarTitle}>会话</span></DockTitle>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <div ref={setSessionToolbarTarget} style={{ display: "flex" }} />
-                  <Tooltip content="收起侧栏 (Ctrl+B)" relationship="label">
+                  <Tooltip content={`收起侧栏 (${sidebarKey})`} relationship="label">
                     <Button
                       appearance="subtle"
                       size="small"
@@ -626,7 +616,7 @@ function AppShell() {
                     setTabMenu({ x: event.clientX, y: event.clientY, tabId: tab.id });
                   }}
                 >
-                {tab.kind === "sqlExport" ? (<ArrowExportRegular fontSize={14}/>) : tab.kind === "sync" ? (<ArrowSyncRegular fontSize={14}/>) : tab.kind === "query" ? (
+                {tab.kind === "er" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.kind === "sqlExport" ? (<ArrowExportRegular fontSize={14}/>) : tab.kind === "sync" ? (<ArrowSyncRegular fontSize={14}/>) : tab.kind === "query" ? (
                     <CodeRegular fontSize={14} />
                   ) : tab.kind === "redis" ? (
                     <DatabaseRegular fontSize={14} />

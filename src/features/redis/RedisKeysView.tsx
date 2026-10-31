@@ -1,3 +1,4 @@
+import { useExplorerStore } from '../../stores/useExplorerStore';
 import {useSessionReadOnly} from "../../stores/useSessionReadOnly";
 import {InfoHint} from '../../common/InfoHint';
 import './redis-keys.css';
@@ -321,6 +322,8 @@ const sortDirection = (
 
 export function RedisKeysView({ tab }: Props) {
   const readOnly=useSessionReadOnly(tab.sessionId);
+  const databaseComment=useExplorerStore(s=>s.databases[tab.sessionId]?.find(db=>db.name===tab.database)?.comment);
+  const totalKeys=databaseComment?.match(/^(\d+) 个键$/)?.[1]??'未知';
   const styles = useStyles();
   const notify = useNotify();
   const redisTreeWidth = useSettingsStore((s) => s.redisTreeWidth);
@@ -401,6 +404,8 @@ export function RedisKeysView({ tab }: Props) {
         cursorRef.current = next;
         setKeys(collected);
         setDone(next === 0);
+        // 计数来自服务器，不使用当前 SCAN 页或筛选结果代替总数。
+        if(reset)void useExplorerStore.getState().loadDatabases(tab.sessionId).catch(error=>notify.error(error,"刷新 Redis 数据库计数失败"));
         if (reset && !keepContext) {
           setSelectedKey(null);
           setActivePrefix(null);
@@ -738,7 +743,7 @@ export function RedisKeysView({ tab }: Props) {
                 iconBefore={<FolderRegular fontSize={14} />}
                 onClick={() => setActivePrefix(null)}
               >
-                全部键
+                已加载键
                 <span className={styles.folderCount}>{tree.count}</span>
               </TreeItemLayout>
             </TreeItem>
@@ -870,9 +875,9 @@ export function RedisKeysView({ tab }: Props) {
           />
         </div>
       </div>
-      <InfoHint label="扫描与排序说明">
-        基于 SCAN 游标遍历（不禁用服务器）；「继续扫描」按游标追加下一页。点击前缀节点仅筛选当前已加载键，不改变搜索模式；表头排序仅作用于已加载数据。
-      </InfoHint>
+      <div className="dw-redis-counts" style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap",padding:"3px 8px",fontSize:12,flexShrink:0}}><span>数据库总键数 {totalKeys}</span><span>已加载 {keys.length}</span><span>当前筛选 {visibleKeys.length}</span><span>{scanning?'扫描中':done?'本轮扫描完成':'扫描未完成，可继续扫描'}</span><InfoHint label="扫描与排序说明">
+        基于 SCAN 游标遍历；「继续扫描」按游标追加下一页。点击前缀节点仅筛选当前已加载键，不改变搜索模式；表头排序仅作用于已加载数据。
+      </InfoHint></div>
 
       <RedisNewKeyDialog
         tab={tab}

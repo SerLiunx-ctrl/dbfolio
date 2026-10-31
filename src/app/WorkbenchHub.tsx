@@ -1,3 +1,4 @@
+import {useShortcut,useShortcutLabel} from './shortcuts';
 import {InfoHint} from '../common/InfoHint';
 import { useEffect, useRef, useState } from "react";
 import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Input, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, tokens } from "@fluentui/react-components";
@@ -35,28 +36,26 @@ export function WorkbenchHub() {
     };
     const layout = () => { setError(""); setDialog("layout"); void loadLayoutPresets().catch(e => setError(String(e))); };
     const about = () => { setAboutOpen(true); };
-    const key = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") { e.preventDefault(); toggleFocusMode(); }
-      else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "t" && !document.querySelector('[role="dialog"]')) { e.preventDefault(); void reopen(); }
-      else if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
-    };
     const restore = () => void reopen();
-    window.addEventListener("keydown", key, true); window.addEventListener("dw:layouts", layout); window.addEventListener("dw:about", about); window.addEventListener("dw:reopen-tab", restore);
-    return () => { window.removeEventListener("keydown", key, true); window.removeEventListener("dw:layouts", layout); window.removeEventListener("dw:about", about); window.removeEventListener("dw:reopen-tab", restore); };
+    window.addEventListener("dw:layouts", layout); window.addEventListener("dw:about", about); window.addEventListener("dw:reopen-tab", restore);
+    return () => { window.removeEventListener("dw:layouts", layout); window.removeEventListener("dw:about", about); window.removeEventListener("dw:reopen-tab", restore); };
   }, [notify]);
+  useShortcut('focus',()=>toggleFocusMode());
+  useShortcut('reopen',()=>window.dispatchEvent(new Event('dw:reopen-tab')));
+  useShortcut('undoLocal',()=>undo());
+  const focusKey=useShortcutLabel('focus'),reopenKey=useShortcutLabel('reopen'),undoKey=useShortcutLabel('undoLocal'),settingsKey=useShortcutLabel('settings');
   const emit = (event: string) => window.dispatchEvent(new Event(event));
   return <>
-    {focus && <Button size="small" appearance="subtle" icon={<FullScreenMaximizeRegular />} onClick={toggleFocusMode} title="退出专注模式 (Ctrl+Shift+J)">退出专注</Button>}
-    {entries.length > 0 && <Button size="small" appearance="subtle" icon={<ArrowUndoRegular />} aria-label={"撤销" + entries.slice(-1)[0]!.label} title={"撤销" + entries.slice(-1)[0]!.label + " (Ctrl+Alt+Z)"} disabled={undoBusy} onClick={undo} />}
+    {focus && <Button size="small" appearance="subtle" icon={<FullScreenMaximizeRegular />} onClick={toggleFocusMode} title={`退出专注模式 (${focusKey})`}>退出专注</Button>}
+    {entries.length > 0 && <Button size="small" appearance="subtle" icon={<ArrowUndoRegular />} aria-label={"撤销" + entries.slice(-1)[0]!.label} title={"撤销" + entries.slice(-1)[0]!.label + ` (${undoKey})`} disabled={undoBusy} onClick={undo} />}
     <Menu><MenuTrigger disableButtonEnhancement><Button size="small" appearance="subtle" icon={<AppFolderRegular />} title="工作区布局、页签恢复与关于" aria-label="工作区菜单" /></MenuTrigger><MenuPopover><MenuList>
       <MenuItem icon={<DataBarVerticalRegular />} onClick={() => emit("dw:analysis")}>数据分析与图表…</MenuItem>
       <MenuItem icon={<AddRegular />} onClick={() => emit("dw:generation")}>数据生成…</MenuItem>
       <MenuItem icon={<AppFolderRegular />} onClick={() => emit("dw:layouts")}>工作区布局…</MenuItem>
-      <MenuItem icon={<FullScreenMaximizeRegular />} onClick={toggleFocusMode}>{focus ? "退出" : "进入"}专注模式 · Ctrl+Shift+J</MenuItem>
-      <MenuItem icon={<ArrowResetRegular />} disabled={!closed.length} onClick={() => emit("dw:reopen-tab")}>重新打开关闭的页签 · Ctrl+Shift+T</MenuItem>
-      <MenuItem icon={<ArrowUndoRegular />} disabled={!entries.length || undoBusy} onClick={undo}>撤销本地操作 · Ctrl+Alt+Z</MenuItem>
-      <MenuItem icon={<SettingsRegular />} onClick={() => emit("dw:settings")}>首选项 · Ctrl+,</MenuItem>
+      <MenuItem icon={<FullScreenMaximizeRegular />} onClick={toggleFocusMode}>{focus ? "退出" : "进入"}专注模式 · {focusKey}</MenuItem>
+      <MenuItem icon={<ArrowResetRegular />} disabled={!closed.length} onClick={() => emit("dw:reopen-tab")}>重新打开关闭的页签 · {reopenKey}</MenuItem>
+      <MenuItem icon={<ArrowUndoRegular />} disabled={!entries.length || undoBusy} onClick={undo}>撤销本地操作 · {undoKey}</MenuItem>
+      <MenuItem icon={<SettingsRegular />} onClick={() => emit("dw:settings")}>首选项 · {settingsKey}</MenuItem>
       <MenuItem icon={<InfoRegular />} onClick={() => emit("dw:about")}>关于 DBFolio</MenuItem>
     </MenuList></MenuPopover></Menu>
     <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />

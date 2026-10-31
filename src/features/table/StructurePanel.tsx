@@ -49,7 +49,7 @@ import type {
   IndexMeta,
   TableMeta,
 } from "../../ipc/types";
-import type { TableTab } from "../../stores/useTabStore";
+import { useTabStore, type TableTab } from "../../stores/useTabStore";
 import { ConfirmSqlDialog } from "./ConfirmSqlDialog";
 import { ForeignKeyDialog } from "./ForeignKeyDialog";
 import { IndexDialog } from "./IndexDialog";
@@ -611,6 +611,7 @@ export function ForeignKeysPanel({
   engine,
   readOnly,
   onChanged,
+  onColumnClick,
 }: PanelProps) {
   const styles = useStyles();
   const notify = useNotify();
@@ -618,6 +619,11 @@ export function ForeignKeysPanel({
   const [dropFk, setDropFk] = useState<ForeignKeyMeta | null>(null);
   const referenceColumns = useReferenceColumns(tab, detail);
   const canEdit = !readOnly && detail.kind === "table" && engine !== "sqlite";
+  const navigateReference = (fk:ForeignKeyMeta, name:string) => {
+    const database=fk.refDatabase??tab.database,schema=fk.refSchema??tab.schema??null;
+    if(database===tab.database&&schema===(tab.schema??null)&&fk.refTable===tab.table&&name&&onColumnClick){onColumnClick(name);return;}
+    useTabStore.getState().openTable({sessionId:tab.sessionId,database,schema,table:fk.refTable},"structure",name);
+  };
 
   return (
     <div className={styles.wrap}>
@@ -657,11 +663,11 @@ export function ForeignKeysPanel({
                   <span className={styles.mono}>{fk.name}</span>
                 </TableCell>
                 <TableCell>
-                  <span className={styles.mono}><TypedColumns names={fk.columns} columns={detail.columns} /></span>
+                  <span className={styles.mono}><TypedColumns names={fk.columns} columns={detail.columns} onColumnClick={onColumnClick}/></span>
                 </TableCell>
                 <TableCell>
                   <span className={styles.mono}>
-                    {fk.refSchema ?? fk.refDatabase ? `${fk.refSchema ?? fk.refDatabase}.` : ""}{fk.refTable}(<TypedColumns names={fk.refColumns} columns={referenceColumns(fk)} />)
+                    <button type="button" className="dw-metadata-column-link" aria-label={`打开引用表 ${fk.refTable} 的结构`} title={`打开引用表 ${fk.refTable} 的结构`} onClick={()=>navigateReference(fk,fk.refColumns[0]??"")}>{fk.refSchema ?? fk.refDatabase ? `${fk.refSchema ?? fk.refDatabase}.` : ""}{fk.refTable}</button>(<TypedColumns names={fk.refColumns} columns={referenceColumns(fk)} onColumnClick={name=>navigateReference(fk,name)} linkLabel={name=>`在引用表 ${fk.refTable} 的结构中定位字段 ${name}`}/>)
                   </span>
                 </TableCell>
                 <TableCell><MetadataTag category="rule" value={fk.onDelete} /></TableCell>

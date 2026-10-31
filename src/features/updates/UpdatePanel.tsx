@@ -5,6 +5,7 @@ import { TaskActivity } from '../../app/TaskActivity';
 import { errorText } from '../../stores/useTaskStore';
 import { checkUpdate, downloadUpdate, installUpdate, loadUpdateStatus, saveUpdatePreferences, useUpdateStore } from './updateStore';
 import '../settings/settings.css';
+import { ReleaseNotes } from './ReleaseNotes';
 
 export function UpdatePanel() {
   const { status, available, busy, error, message } = useUpdateStore();
@@ -32,7 +33,7 @@ export function UpdatePanel() {
     {busy === 'download' && <TaskActivity kind="更新" />}
     {available && <div>
       <strong>新版本 {available.version}</strong>
-      <details className="dw-update-notes"><summary>新版更新说明</summary><div>{available.notes || '此版本未提供更新说明。'}</div></details>
+      <details className="dw-update-notes"><summary>新版更新说明</summary><ReleaseNotes text={available.notes}/></details>
     </div>}
     <Checkbox size="medium" checked={status?.preferences.automatic ?? false} disabled={!status || disabled} label="自动检查更新" onChange={(_, data) => void save({ automatic: !!data.checked })} />
     <details className="dw-update-settings">

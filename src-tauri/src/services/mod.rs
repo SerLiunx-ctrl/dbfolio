@@ -12,6 +12,8 @@ pub mod session;
 pub mod sync;
 pub mod transfer;
 pub mod ai;
+pub mod er_ai;
+pub mod er_ai_model;
 pub mod generation;
 
 pub mod readonly;

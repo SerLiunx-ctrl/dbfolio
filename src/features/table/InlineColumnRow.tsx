@@ -1,9 +1,10 @@
+import { ColumnTypePicker } from './ColumnTypePicker';
 import { fieldTypeStyle } from '../grid/valueColor';
 import { useState, type ReactNode } from 'react';
 import { Checkbox, Input, Select, TableCell, TableRow, Button, Badge } from '@fluentui/react-components';
 import { DeleteRegular } from '@fluentui/react-icons';
 import type { ColumnMeta, DataTypeCatalog, Engine } from '../../ipc/types';
-import { availableTypeOptions, typeOptionText, supportsIdentity } from './columnTypes';
+import { availableTypeOptions, supportsIdentity } from './columnTypes';
 import { columnCapabilities, splitColumnType, joinColumnType } from './columnCapabilities';
 import './inline-columns.css';
 export interface ColumnEdit { nullable: boolean; unsigned?: boolean; newName?: string; dataType?: string; comment?: string; defaultMode?: string; defaultValue?: string; autoIncrement?: boolean; onUpdate?: string }
@@ -42,14 +43,14 @@ export function InlineColumnRow({ column: c, engine, catalog, edit, primary, sin
   return <TableRow onContextMenu={onContextMenu} data-column-name={c.name} tabIndex={highlighted?-1:undefined} aria-label={highlighted?`已定位字段 ${c.name}`:undefined} className={(edit ? 'dw-column-dirty' : '')+(highlighted?' dw-column-located':'')}>
     <TableCell>{c.ordinal}</TableCell>
     {cell('字段名', edit?.newName ?? c.name, input('字段名', edit?.newName ?? c.name, newName => onEdit({ newName })))}
-    {cell('字段类型', selectedType?.label??p.type, <Select autoFocus size="small" aria-label={label + ' 字段类型'} value={p.type} disabled={disabled} onChange={(_, d) => {
-      const next = d.value, patch: Partial<ColumnEdit> = { dataType: joinColumnType(next, types.find(t=>t.name===next)?.defaultArguments??'') };
+    {cell('字段类型', selectedType?.label??p.type, <ColumnTypePicker types={types} label={label + ' 字段类型'} value={p.type} disabled={disabled} onSelect={next => {
+      const patch: Partial<ColumnEdit> = { dataType: joinColumnType(next, types.find(t=>t.name===next)?.defaultArguments??'') };
       if (caps.unsigned) patch.unsigned = /^(tinyint|smallint|mediumint|int|integer|bigint|decimal|numeric|float|double|real)$/.test(next) ? edit?.unsigned ?? c.unsigned : false;
       if ((creating || caps.identityEditable) && auto && !supportsIdentity(engine, next)) patch.autoIncrement = false;
       if (caps.onUpdate && !['timestamp', 'datetime'].includes(next)) patch.onUpdate = '';
       if (engine === 'mysql' && !['timestamp', 'datetime'].includes(next) && (edit?.defaultMode === 'timestamp' || (!edit?.defaultMode && /^CURRENT_TIMESTAMP(?:\(\d+\))?$/i.test(c.defaultValue??'')))) { patch.defaultMode = 'none'; patch.defaultValue = ''; }
       onEdit(patch);
-    }}>{types.map(t => <option key={t.name} value={t.name} disabled={t.unavailable}>{typeOptionText(t)}</option>)}</Select>)}
+    }}/>)}
     {cell('长度/集合', p.args, input('长度/集合', p.args, args => onEdit({ dataType: joinColumnType(p.type, args) })), hasArgs ? '' : '此类型不支持长度或精度参数')}
     <TableCell><Checkbox aria-label={label + ' 可空'} checked={edit?.nullable ?? c.nullable} disabled={disabled || primary || auto} onChange={(_, d) => onEdit({ nullable: d.checked === true, ...(!d.checked && edit?.defaultMode === 'null' ? {defaultMode:'none',defaultValue:''} : {}) })} /></TableCell>
     {caps.unsigned && <TableCell>{numeric ? <Checkbox aria-label={label + ' 无符号'} checked={edit?.unsigned ?? c.unsigned} disabled={disabled} onChange={(_, d) => onEdit({ unsigned: d.checked === true })} /> : '—'}</TableCell>}

@@ -1,0 +1,23 @@
+docs/releases/1.0.0-alpha.43.md
+  s_f823aea5f80980::t_e42ce24dc3ca35 30-38
+updates/preview.json
+  s_f823aea5f80980::t_ee5e3903239f37 2-4,7-9,12-14,17-18
+docs/roadmap.md
+  s_f823aea5f80980::t_dc36fa23631be0 11,536-538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2093269f93c32c334e4b2df1299ee13fa3f86a2f",
+  "prompts": {},
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

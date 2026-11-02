@@ -1,0 +1,26 @@
+updates/preview.json
+  s_f823aea5f80980::t_30c9a6e401f28b 2-4,7-9
+  s_f823aea5f80980::t_1053c5cf251fdf 12-14,17-18
+docs/design.md
+  s_f823aea5f80980::t_420cafe966d6e8 937,939,3046-3047
+docs/roadmap.md
+  s_f823aea5f80980::t_e4bf63385c6f85 3,9
+docs/verification/release-alpha49.md
+  s_f823aea5f80980::t_be21a9a4b8e281 11-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "11a708b63ad76d14c4fd6808360c027b86025dba",
+  "prompts": {},
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

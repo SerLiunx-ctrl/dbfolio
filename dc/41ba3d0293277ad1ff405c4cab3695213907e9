@@ -1,0 +1,409 @@
+src/features/message-queue/MqExplorer.tsx
+  s_f823aea5f80980::t_e3129d00a6ca30 1-23
+scripts/check-dictionary.cjs
+  s_f823aea5f80980::t_ed59ea01d2c4b3 26
+  s_f823aea5f80980::t_02533167b0bded 13
+  s_f823aea5f80980::t_ad9f6c9ef2e46e 1-6,8-11,14-25,27
+  s_f823aea5f80980::t_dbb14a4538ad21 12
+  s_f823aea5f80980::t_aab56b4c980a97 7
+scripts/check-message-queue.cjs
+  s_f823aea5f80980::t_b27bc1f5b1d4e6 2
+  s_f823aea5f80980::t_f85358902b187d 1,3-16
+scripts/check-view-adaptation-native.cjs
+  s_f823aea5f80980::t_440d1a700e0ed5 21,40
+  s_f823aea5f80980::t_faf41ce159e43a 1-20,22-39,41-86
+scripts/check-er-card-details.cjs
+  s_f823aea5f80980::t_9916c23f299684 1-8
+  s_f823aea5f80980::t_842a27b50cf4db 9
+  s_f823aea5f80980::t_3b502a316aec6b 10-11
+src/features/message-queue/useCatalog.ts
+  s_f823aea5f80980::t_e3129d00a6ca30 1-5,9-11
+  s_f823aea5f80980::t_c158576edaa72a 6-8
+src/features/table/ViewColumnsPanel.tsx
+  s_f823aea5f80980::t_33dc968a8ae98a 1-32
+docs/design.md
+  s_f823aea5f80980::t_2c2d89b149f7ce 5-7
+  s_f823aea5f80980::t_5ec84feb265a8f 937-957,2686-2708,2711-2716,3038-3045
+docs/roadmap.md
+  s_f823aea5f80980::t_ed5425cf170b7c 11-12
+  s_f823aea5f80980::t_7433104e7b1231 15
+  s_f823aea5f80980::t_5b3f3ff4384672 17
+  s_f823aea5f80980::t_862d50c994851a 19
+  s_f823aea5f80980::t_027d4269ee8afb 10,16
+  s_f823aea5f80980::t_2c2d89b149f7ce 3
+  s_f823aea5f80980::t_8b37f06dfe8b99 9,18,20-21
+  s_f823aea5f80980::t_3b088b2800b2f1 191,197-198,407-413,556-563
+docs/verification/ai-settings-alpha44.md
+  s_f823aea5f80980::t_5ac39a3110e16f 1-31
+src-tauri/src/adapters/message_queue/kafka.rs
+  s_f823aea5f80980::t_f65971aba293ed 1-3,7,11,13,15-22,24-30,38-57,59-72,74-87,89-110,112-127,133-139,141-154,156-176,178-209,211-217,219-230,232-253,255,257-260,262,265-266
+  s_f823aea5f80980::t_30ae72f097cf0b 31-37
+  s_f823aea5f80980::t_a0ef1ca70e38cd 4-6,8-10,12,14,23,58,73,88,111,128-132,140,155,177,210,218,231,254,256,261,263-264
+scripts/check-message-queue-native.cjs
+  s_f823aea5f80980::t_319dac3efc5693 1-2,4-9,11-12,14-15,18-19,21-23
+  s_f823aea5f80980::t_b27bc1f5b1d4e6 3
+  s_f823aea5f80980::t_862d50c994851a 17
+  s_f823aea5f80980::t_4cd6791e5035d5 20
+  s_f823aea5f80980::t_f9c85f60ee4670 13
+  s_f823aea5f80980::t_afbea7514d1aa1 24
+  s_f823aea5f80980::t_8dc02474409130 10
+  s_f823aea5f80980::t_4ac80a30cbc757 25
+  s_f823aea5f80980::t_f256e92198dc6d 16
+scripts/check-message-queue-actions.cjs
+  s_f823aea5f80980::t_b27bc1f5b1d4e6 1-2
+  s_f823aea5f80980::t_83d2f6047fbdbb 3
+scripts/check-er-card-native.cjs
+  s_f823aea5f80980::t_bc8bc7df011957 12
+  s_f823aea5f80980::t_fdaf8b269236a9 1-11,13-14
+src/features/dictionary/DictionaryWorkspace.tsx
+  s_f823aea5f80980::t_c7d784870bab56 3-19,22-24,26-29,31-47,53-57,59-62,64-68,70,72-73,75-76
+  s_f823aea5f80980::t_a38ff44b7276a1 25,48-52,69,71
+  s_f823aea5f80980::t_e9d5489d8b83e8 58
+  s_f823aea5f80980::t_0143cd1acd7093 63
+  s_f823aea5f80980::t_ad9f6c9ef2e46e 2,74
+  s_f823aea5f80980::t_d438ba86580d1b 1,20-21,30
+scripts/docker/message-queues.compose.yaml
+  s_f823aea5f80980::t_08ed4f691a61c2 3-22
+  s_f823aea5f80980::t_de29a03f7f824d 54-75
+  s_f823aea5f80980::t_25a99b816a9856 1-2,23-53,76-98
+src-tauri/src/services/ai.rs
+  s_f823aea5f80980::t_01d086afe8aa3f 30-32
+  s_f823aea5f80980::t_90045d37524b98 70-72,74-76,332,454-456,458-459,496-498,502-526,764-766
+src-tauri/src/services/ai/config.rs
+  s_f823aea5f80980::t_06f13345a3ae32 100-155
+  s_f823aea5f80980::t_cf39ac84e0e08e 1-69,71-74,76-98
+  s_f823aea5f80980::t_f4159712cf41b0 70,75,99
+src/App.tsx
+  s_f823aea5f80980::t_d94ffdd87a6898 3
+  s_f823aea5f80980::t_c90ee94cb94fca 1-2
+  s_3012229996fd44::t_36fc1b7ab6d62b 54-55,337-338,626,630,668
+scripts/fixtures/ai-settings.tsx
+  s_f823aea5f80980::t_d077c128069d93 21
+  s_f823aea5f80980::t_b57fad6e4ad999 1-12,14-20,22-27,30
+  s_f823aea5f80980::t_f70d01ec8d8a0e 13,28-29
+scripts/check-ai-settings.cjs
+  s_f823aea5f80980::t_d077c128069d93 67-79
+  s_f823aea5f80980::t_5436ba13eb31b0 60
+  s_f823aea5f80980::t_11f14a63ce5747 1-6,8-58,62-66,80-86
+  s_f823aea5f80980::t_a1e5a67a8abcfc 7,59,61
+src-tauri/src/adapters/message_queue/model.rs
+  s_f823aea5f80980::t_c37ce356286ae4 1-2,4,8-28,31-44,47-56,58-60,70-79,81-89,91-107,109-111,135-152,154-202
+  s_f823aea5f80980::t_b8a08872a64372 61-67,69,112-132,134
+  s_f823aea5f80980::t_ea038f997f4740 3,5-7,29-30,45-46,57,68,80,90,108,133,153
+src-tauri/src/adapters/message_queue/rabbit.rs
+  s_f823aea5f80980::t_b8a08872a64372 158-181,183-185
+  s_f823aea5f80980::t_f65971aba293ed 1-2,6-24,27,29-35,41-50,52-75,77-83,85-88,90-111,113-134,136-152,154-157,186-197,199-201,203-206,208-219,221-223,225-226
+  s_f823aea5f80980::t_b89706aa30dcdb 3-5,25-26,28,36-40,51,76,84,89,112,135,153,182,198,202,207,220,224
+scripts/docker/mariadb.compose.yaml
+  s_f823aea5f80980::t_1f7e7e0730c06f 1-28
+src-tauri/src/services/mysql_schema.rs
+  s_f823aea5f80980::t_e2ac8f7a0f73e2 39-59,67-73
+  s_f823aea5f80980::t_e125a5ac873562 1-38,60-66,74-80
+docs/verification/views-alpha48.md
+  s_f823aea5f80980::t_e067febfeeacad 3,10-18
+  s_f823aea5f80980::t_c4589d69bead25 7-8
+  s_f823aea5f80980::t_55e2a6d3e8e17f 1-2
+  s_f823aea5f80980::t_a0054957921fac 4-6
+  s_f823aea5f80980::t_1c0a75a20e082b 9
+docs/verification/r08.md
+  s_f823aea5f80980::t_7433104e7b1231 1-34
+docs/releases/1.0.0-alpha.46.md
+  s_f823aea5f80980::t_67643182416272 10-21
+  s_f823aea5f80980::t_7127511e8a8c2e 1-9
+src/features/settings/ai-settings.css
+  s_f823aea5f80980::t_2f1daeb3e1bbaa 1-19
+docs/releases/1.0.0-alpha.44.md
+  s_f823aea5f80980::t_028e649b54eacc 1-15
+docs/verification/mariadb-alpha46.md
+  s_f823aea5f80980::t_027d4269ee8afb 3,13,17-27
+  s_f823aea5f80980::t_25a1810bebfa3b 1-2,4-12,14-16,28-31
+src-tauri/src/adapters/message_queue/rocket.rs
+  s_f823aea5f80980::t_b2218cabbeb30f 163-175,177-180
+  s_f823aea5f80980::t_f65971aba293ed 1-26,28-43,45-54,56-63,65-73,75-80,85-89,91-94,96-111,115-128,156-159,161-162,182-183
+  s_f823aea5f80980::t_b8a08872a64372 129-137,139,141-154
+  s_f823aea5f80980::t_9b4f8ae933ded1 27,44,55,64,74,81-84,90,95,112-114,138,140,155,160,176,181
+scripts/fixtures/view-adaptation.tsx
+  s_f823aea5f80980::t_caa1800420ed43 1-11,13-32
+  s_f823aea5f80980::t_e9acde991e3ebf 12
+scripts/check-mariadb-native.cjs
+  s_f823aea5f80980::t_c9b6893f57ab02 1-22,24-27,29-36,38-51,53,57,60,62-69,71-72
+  s_f823aea5f80980::t_48325e565c6777 52
+  s_f823aea5f80980::t_67643182416272 28,54-56,58-59,61
+  s_f823aea5f80980::t_e19fb512621bfd 73
+  s_f823aea5f80980::t_11cb0733f2adeb 23
+  s_f823aea5f80980::t_5bfa35db5686a0 37,70
+docs/verification/release-alpha49.md
+  s_f823aea5f80980::t_87c0b713191ac1 1-10
+scripts/fixtures/dictionary.html
+  s_f823aea5f80980::t_3e7745892a305b 1
+docs/verification/er-card-alpha49.md
+  s_f823aea5f80980::t_4bcb39518b4214 1-13
+src/features/message-queue/MqActionDialog.tsx
+  s_f823aea5f80980::t_e3129d00a6ca30 1-5,7-12,14-20
+  s_f823aea5f80980::t_dbba33f541e0e6 6,13
+src/features/settings/AiSettings.tsx
+  s_f823aea5f80980::t_5436ba13eb31b0 1,16,51,54,57-61,77-78,100
+  s_f823aea5f80980::t_9abf6af2a9fe11 21,27,36-39,43,47-49,55,86
+  s_f823aea5f80980::t_2f1daeb3e1bbaa 2-6,8-15,17-20,22-26,28-35,40-42,44-46,50,52-53,56,62-76,79-85,87-98,101
+  s_f823aea5f80980::t_f80acd0b88d3e6 99,102
+scripts/fixtures/ai-settings.html
+  s_f823aea5f80980::t_b57fad6e4ad999 1
+src-tauri/src/services/dictionary.rs
+  s_f823aea5f80980::t_db6033c4cd3744 1-178,189-423,425-438,443-445,448,456-458,460-462,464-468,474-558,596-605
+  s_f823aea5f80980::t_09cf37af1bf03b 559,561-562,564-565,568,572-585,588,591-595
+  s_f823aea5f80980::t_60bf2a59291dc7 424,439-442,446-447,449-455,459,463,469-473
+  s_f823aea5f80980::t_00d5284eec0c7e 179-188,560,563,566-567,569-571,586-587,589-590
+src/stores/useExplorerVisibility.ts
+  s_f823aea5f80980::t_33dc968a8ae98a 1-38
+src-tauri/src/meta/mod.rs
+  s_f823aea5f80980::t_e125a5ac873562 14
+  s_f823aea5f80980::t_d7bb20dbcff645 15-16,27-29,40-42,47-48,432-434
+docs/releases/1.0.0-alpha.45.md
+  s_f823aea5f80980::t_7d437a07de6b70 9,19
+  s_f823aea5f80980::t_b50cf44c8f2833 1-8,10-18
+src/features/sessions/engine.ts
+  s_f823aea5f80980::t_e125a5ac873562 11-12
+  s_f823aea5f80980::t_ce59ec83bad29e 10
+  s_3e36e88fef330a::t_eb8846b396cff9 21-23,26,33-35,42-49
+docs/verification/message-queues-alpha47.md
+  s_f823aea5f80980::t_b27bc1f5b1d4e6 9
+  s_f823aea5f80980::t_8b37f06dfe8b99 3,8,10-23
+  s_f823aea5f80980::t_a04d0935da36d8 1-2,4-7
+scripts/fixtures/dictionary.tsx
+  s_f823aea5f80980::t_ed59ea01d2c4b3 21
+  s_f823aea5f80980::t_3e7745892a305b 1-20,22-35
+src/features/table/objectCapabilities.ts
+  s_f823aea5f80980::t_33dc968a8ae98a 1-4,7-8
+  s_f823aea5f80980::t_3eb054048c720f 5-6
+docs/releases/1.0.0-alpha.49.md
+  s_f823aea5f80980::t_6cc0cb31a4a8b8 1-31
+src-tauri/src/commands/dictionary.rs
+  s_f823aea5f80980::t_eb1004d4c39eb4 1-6,11-15,17-23,25-51,60-130,133,135-137,139
+  s_f823aea5f80980::t_60bf2a59291dc7 138,140-141,143,147-176
+  s_f823aea5f80980::t_f24826a7bdfb5c 7-10,16,24,131-132,144-145,177
+  s_f823aea5f80980::t_71a3d82f5181d5 52-59,134,142,146
+scripts/fixtures/view-adaptation.html
+  s_f823aea5f80980::t_caa1800420ed43 1
+docs/dictionary.md
+  s_f823aea5f80980::t_7d437a07de6b70 10
+  s_f823aea5f80980::t_b50cf44c8f2833 1-9,11-29
+docs/er.md
+  s_f823aea5f80980::t_b7d467fe0d3202 3
+  s_6751a9df5ed21a::t_9e20d0fa6ee672 11-12
+src/features/dictionary/dictionary.css
+  s_f823aea5f80980::t_60c2d4980a455b 1-5
+  s_f823aea5f80980::t_02533167b0bded 6
+README.md
+  s_f823aea5f80980::t_862d50c994851a 11,13
+  s_f823aea5f80980::t_36945ab3b0a87b 80,104,126-129,137,154,160-167
+src/features/dictionary/model.ts
+  s_f823aea5f80980::t_0143cd1acd7093 1,25
+  s_f823aea5f80980::t_591f980d963526 2-14,16-24,26-27
+  s_f823aea5f80980::t_30fd7c2cf80e91 15
+scripts/docker/mariadb.env.example
+  s_f823aea5f80980::t_1f7e7e0730c06f 1-4
+src-tauri/src/adapters/message_queue/mod.rs
+  s_f823aea5f80980::t_b8a08872a64372 36,38,43,50,63,65,69-98,101,110,112,121,185,189,192,206,212,214-215,217
+  s_f823aea5f80980::t_3e6b23199dfe88 1-35,37,39-42,44-49,51-62,64,66-68,99-100,102-109,111,113-120,122-184,186-188,190-191,193-205,207-211,213,216,218-270
+src-tauri/src/adapters/message_queue/http.rs
+  s_f823aea5f80980::t_c37ce356286ae4 1-4,6-10,20-46,49-65,67-68,86-94,97-101,118-126,135-138,200-217,219-233,237-241,243-260,262-288
+  s_f823aea5f80980::t_b2218cabbeb30f 11-17,19,69-77,79-85,102-117,127-129,131-134,139-156,158-163,165-199,234-236
+  s_f823aea5f80980::t_bf941da37a3c5a 5,18,47-48,66,78,95-96,130,157,164,218,242,261
+README.en.md
+  s_f823aea5f80980::t_b35750eb5b5944 13
+  s_f823aea5f80980::t_1b3078a07e9c51 11,104,131-132,149,155-162
+docs/mariadb.md
+  s_f823aea5f80980::t_708e1bc0cbb6da 1-31
+docs/message-queues.md
+  s_f823aea5f80980::t_55648bb479d619 1-55
+docs/releases/1.0.0-alpha.47.md
+  s_f823aea5f80980::t_4d6ac4171c0b82 1-13
+package-lock.json
+  s_f823aea5f80980::t_a2f189c4faccdc 3,9
+package.json
+  s_f823aea5f80980::t_048e9ccd86b2ad 4
+scripts/check-view-adaptation.cjs
+  s_f823aea5f80980::t_7d8d5c4ea3bb4d 1-16
+scripts/docker/rocketmq-broker.conf
+  s_f823aea5f80980::t_a2ea578c63ad86 1-8
+src-tauri/Cargo.lock
+  s_f823aea5f80980::t_bccbf1bb4e9aeb 1060-1068,1305,1322,2967-2972,3401-3419,4288-4296,5173-5215,5996-6001,8881-8908
+src-tauri/src/adapters/mysql.rs
+  s_f823aea5f80980::t_1f93ca5231b844 4,482-485,500-504,522-527,678-679,753-754,778-790
+src-tauri/src/adapters/mysql_export.rs
+  s_f823aea5f80980::t_f804cc829b7eb9 38,64
+src-tauri/src/adapters/postgres.rs
+  s_f823aea5f80980::t_f77a68313a0fb6 681-687,708
+src-tauri/src/commands/message_queue.rs
+  s_f823aea5f80980::t_85c8ba67771a4b 1-183
+src-tauri/src/meta/data_types.rs
+  s_f823aea5f80980::t_c1b64a2e4d8e72 39-43,54,79-86
+src-tauri/src/services/connection_config.rs
+  s_f823aea5f80980::t_db8ac3bc343832 17-18,67-75
+src-tauri/src/services/generation/tests.rs
+  s_f823aea5f80980::t_e9c9e3fb75938d 393-395,456-458,551-553,752-754
+src-tauri/src/services/manual_transaction.rs
+  s_f823aea5f80980::t_0886daf484657d 185-190
+src-tauri/src/services/mod.rs
+  s_f823aea5f80980::t_011698284be85b 35-38
+src-tauri/src/services/query.rs
+  s_f823aea5f80980::t_635172edb6a6fe 202-206,215
+src-tauri/tauri.conf.json
+  s_f823aea5f80980::t_fbb9c735604ee9 4
+src/app/StatusBar.tsx
+  s_f823aea5f80980::t_ef877f3cef892a 6,62
+src/app/releaseInfo.ts
+  s_f823aea5f80980::t_cb0ee5cda7d158 5-6
+src/features/analysis/AnalysisWorkspace.tsx
+  s_f823aea5f80980::t_9e329843581604 127-128,131
+src/features/generation/GenerationWorkspace.tsx
+  s_f823aea5f80980::t_d8021d4a53973a 24
+src/features/sessions/EngineIcon.tsx
+  s_f823aea5f80980::t_c8f208229357f5 1,49
+src/stores/useTaskStore.ts
+  s_f823aea5f80980::t_a6f0a17e434813 4
+src/stores/useWorkspace.ts
+  s_f823aea5f80980::t_8d6ff38d4699ca 23
+docs/releases/1.0.0-alpha.48.md
+  s_b54573b93dcdd5::t_5fa5c36b4abdd5 1-15
+scripts/docker/message-queues.env.example
+  s_3e36e88fef330a::t_d3086f149df343 1-2
+scripts/fixtures/message-queue.html
+  s_caec44c869c2c2::t_63f93dfeb0fa13 1
+scripts/fixtures/message-queue.tsx
+  s_caec44c869c2c2::t_e6a098fe17cc44 1-18
+src-tauri/Cargo.toml
+  s_109f5739e791f5::t_018a16f955020b 3,65
+src-tauri/src/adapters/mod.rs
+  s_3e36e88fef330a::t_78d3f8dc93ca04 1,108,210
+src-tauri/src/commands/mod.rs
+  s_3e36e88fef330a::t_368232e0f68787 25-28
+src-tauri/src/lib.rs
+  s_3e36e88fef330a::t_7ed46483dcaaa3 83-87,161-162
+src-tauri/src/services/ddl.rs
+  s_3e36e88fef330a::t_e8fdd88592f936 271,408,733,892,1000,1043-1045,1047,1096-1098,1101,1281,1421,1493,1575,1618
+src-tauri/src/services/grid.rs
+  s_3012229996fd44::t_d7e72fe3c6ec55 27-29
+src-tauri/src/services/session.rs
+  s_3e36e88fef330a::t_99389b8f1701d5 216,254-256
+src-tauri/src/services/sync.rs
+  s_3e36e88fef330a::t_ff0072525a7364 45-47,934
+src/app/ProductivityHub.tsx
+  s_caec44c869c2c2::t_2402d61a651ea0 37,78
+src/features/er/ErWorkspace.tsx
+  s_6751a9df5ed21a::t_5cb06d7003f72f 82,99-102,114,117,121,123-124
+src/features/er/er.css
+  s_6751a9df5ed21a::t_7d6eaeb7f81c14 21-32
+src/features/explorer/DatabaseOverview.tsx
+  s_3012229996fd44::t_445efc1294fe76 14-15
+src/features/explorer/ExplorerPanel.tsx
+  s_3012229996fd44::t_a6a31372ccbc5e 1-4,30,157-158,203,230,253-256,359-364,392,397,403,436,559,561,614-616,667,688
+src/features/explorer/ObjectFinder.tsx
+  s_3012229996fd44::t_e758d9487c811a 38
+src/features/explorer/explorer-actions.css
+  s_3012229996fd44::t_a6cc90ff90d4ca 1-6
+src/features/generation/model.ts
+  s_6751a9df5ed21a::t_27118172461eff 5
+src/features/message-queue/MqWorkspace.tsx
+  s_6751a9df5ed21a::t_b15ed21f659dbf 1-48
+src/features/message-queue/message-queue.css
+  s_caec44c869c2c2::t_5c19af26013189 1-7
+src/features/message-queue/model.ts
+  s_6751a9df5ed21a::t_a141403a76a95d 1-16
+src/features/query/HistoryCenter.tsx
+  s_caec44c869c2c2::t_db4af993982672 35
+src/features/sessions/ConnectionSecurity.tsx
+  s_f823aea5f80980::t_9977bd63765546 1,19,21
+src/features/sessions/SessionDialog.tsx
+  s_caec44c869c2c2::t_a96a9f186d8ac3 19,32,209-211,217,241,243,303,338,345,371,396,430,450-454
+src/features/sessions/SessionList.tsx
+  s_3e36e88fef330a::t_6f8a0095fe63a6 50,400
+src/features/sync/SyncWorkspace.tsx
+  s_caec44c869c2c2::t_8a681d878e12a1 187
+src/features/table/InfoPanel.tsx
+  s_3012229996fd44::t_e729f2a1ce1b5f 1-2,123,128,171-173,178,182,186,228,255-257,273,282-284
+src/features/table/ResizableSchemaTable.tsx
+  s_6751a9df5ed21a::t_96ec26ef77fd86 22-26,54,56
+src/features/table/StructurePanel.tsx
+  s_3012229996fd44::t_fb5228998e0284 1,144-147,491,495,765,770
+src/features/table/TableDataPanel.tsx
+  s_3012229996fd44::t_fdde00c3f4a7ad 348,362,374,378,390,472,488
+src/features/table/TableViewTabs.tsx
+  s_f823aea5f80980::t_78f8fef56233d5 4,8
+src/features/table/TableWorkspace.tsx
+  s_3012229996fd44::t_821ea2397447f1 1,136-137,154-156,176,190-194,196,206,210,222,226,234,237,241,251,254,266,269,284,294,296
+src/features/table/columnTypes.ts
+  s_3e36e88fef330a::t_dbe82fce27060f 7
+src/features/table/ddl.ts
+  s_3012229996fd44::t_8dd16572173f42 9
+src/ipc/taskInvoke.ts
+  s_caec44c869c2c2::t_61a06c4850cd04 6-7
+src/ipc/types.ts
+  s_3012229996fd44::t_95ac455f36de0a 1,4,268
+src/stores/useTabStore.ts
+  s_3012229996fd44::t_70fb6b1165a750 10,19,31,44-45,61,87-89,125-127,209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dc41ba3d0293277ad1ff405c4cab3695213907e9",
+  "prompts": {},
+  "sessions": {
+    "s_109f5739e791f5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15c5a-f69e-7d72-8f75-20e0ea982620",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_3012229996fd44": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1966d-18e1-7f82-82f1-9a59067ef377",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_3e36e88fef330a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19552-c75a-7b72-813a-246140d7ac43",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_6751a9df5ed21a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18009-90c3-7a60-9532-66ed6b9e9306",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_b54573b93dcdd5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a196dc-efc4-7a82-b037-f0dc3de164c5",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_caec44c869c2c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19654-6a60-7652-aeb6-bce3cce9892d",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

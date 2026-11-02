@@ -2,7 +2,7 @@ import { trackedInvoke as invoke } from '../../ipc/taskInvoke';
 import {Channel} from '@tauri-apps/api/core';
 import type {GenerationEvent} from './progress';
 import type { Engine } from '../../ipc/types';
-export interface Provider { id:string;name:string;baseUrl:string;model:string;outputFormat:'schema'|'json'|'text';tokenParameter:'max_tokens'|'max_completion_tokens';timeoutSeconds:number;maxTokens:number;isDefault:boolean;hasKey:boolean }
+export interface Provider { id:string;name:string;baseUrl:string;model:string;outputFormat:'schema'|'json'|'text';tokenParameter:'max_tokens'|'max_completion_tokens';timeoutSeconds:number;maxTokens:number;reasoningEffort?:'none'|'minimal'|'low'|'medium'|'high'|'xhigh'|'max'|null;temperature?:number|null;topP?:number|null;isDefault:boolean;hasKey:boolean }
 export interface Target { sessionId:string;database:string;schema:string|null;object:string;redisKind:string|null;ttlSeconds:number|null }
 export interface FieldRule { name:string;kind:string;args:Record<string,unknown>;nullPercent:number;unique:boolean }
 export interface AiOptions {stream?:boolean;providerId:string;model:string|null;prompt:string}

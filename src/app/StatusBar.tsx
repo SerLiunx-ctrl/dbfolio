@@ -3,7 +3,7 @@ import { ProductivityHub } from "./ProductivityHub";
 import { TaskCenter } from "./TaskCenter";
 import { Button, makeStyles, tokens } from "@fluentui/react-components";
 import { CircleFilled, DataBarVerticalRegular } from "@fluentui/react-icons";
-import { ENGINE_LABELS } from "../features/sessions/engine";
+import { serverEngineLabel } from "../features/sessions/engine";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useTabStore } from "../stores/useTabStore";
 import { EnvironmentBadge } from "../features/sessions/EnvironmentBadge";
@@ -59,7 +59,7 @@ export function StatusBar() {
       </div>
       {session && (
         <div className={styles.item}>
-          {session.name} · {ENGINE_LABELS[session.engine]}
+          {session.name} · {serverEngineLabel(session.engine, status?.serverVersion)}
           <EnvironmentBadge sessionId={session.id} />
           {status?.serverVersion ? ` · ${status.serverVersion}` : ""}
         </div>

@@ -8,9 +8,9 @@
 
 DBFolio is a Windows desktop database workbench for managing connections, writing SQL, editing data and table structures, comparing and synchronizing databases, and exploring or exporting results in one place.
 
-Built with **Tauri 2, React, TypeScript, and Rust**, it supports **MySQL, PostgreSQL, SQLite, Redis, and MongoDB** and is released under the **MIT License**.
+Built with **Tauri 2, React, TypeScript, and Rust**, it supports **MySQL, MariaDB, PostgreSQL, SQLite, Redis, MongoDB, Kafka, RabbitMQ, and RocketMQ** and is released under the **MIT License**.
 
-> DBFolio is under active development, with Windows as its primary development and validation platform. The five engines share interaction patterns, but their supported operations and maturity differ. Read the [capabilities and limitations](#support) before writing, synchronizing, or exporting important data.
+> DBFolio is under active development, with Windows as its primary development and validation platform. The engines share interaction patterns, but their supported operations and maturity differ. Read the [capabilities and limitations](#support) before writing, synchronizing, or exporting important data.
 
 > The Task Center tracks background work such as imports, exports, synchronization, data generation, and AI jobs. Ordinary queries show results and cancellation controls in their query tab. Index and foreign-key metadata use type-aware colors, and DDL uses the same SQL highlighting as the query editor.
 
@@ -101,6 +101,7 @@ Choose **New Table** from a database's context menu to open a dedicated **New Ta
 - Select multiple MySQL statements to execute them sequentially on an isolated connection. Fixed SQL strings and current-database metadata `IF(EXISTS(...), SQL, SQL)` migration patterns are supported with all branches checked before execution. Errors stop remaining statements; completed writes/DDL are not automatically rolled back. Script results show only the bounded final result and cannot be paged or re-executed for export. Arbitrary expressions, server settings and transaction control are unsupported.
 - Database overviews list tables and views with estimated rows, sizes, engines, and comments. Table data supports pagination, sorting, and combined filters. The maximum page size is configurable from 1 to 5,000 rows (default 200); suggested filter values come only from **currently loaded rows**.
 - Add, change, or delete grid rows, review the before/after values and SQL, then submit selected staged rows. Results that cannot be located reliably, such as those without a suitable primary key, remain read-only.
+- Views have distinct workspace icons and show applicable information, read-only result columns, and DDL. Ordinary views hide indexes, foreign keys, and grid writes. Right-aligned database-row buttons toggle views, refresh objects, and open queries. Visibility is saved per session/database without closing open tabs.
 - Table data and query results provide a cell inspector docked at the bottom or right, plus column search, visibility, pinning, reordering, and saved layouts. Inspector edits join the same staged changes; copy and paste follow the visible column order.
 - Inspect table information, columns, indexes, foreign keys, and DDL. MySQL, PostgreSQL, and SQLite share double-click inline editing and Save/Discard behavior for column names, types, length/set, nullability, and defaults. Comments, auto-increment, unsigned values, and `ON UPDATE` follow engine capabilities. SQLite uses transactional table rebuilding when needed, preserving dependencies and rolling back on failure. MySQL table properties offer server-supported engine, charset, and collation choices.
 - Recognizable Base64 bitmap strings may show a thumbnail; open the full image or source text, switch to native size, or export the original bytes. Truncated values are fetched again only within a bounded primary-key-based table-data flow. Unrecognized, unreadable, or oversized values remain text. See [image-preview limits](docs/verification/base64-images-alpha5.md).
@@ -127,6 +128,8 @@ Choose **New Table** from a database's context menu to open a dedicated **New Ta
 - AI formatting and optimization can work on a SQL selection, with syntax checks before and after generation. Review every suggestion before use.
 - Generate test data using local rules/templates or a configured AI service; preview before export or database insertion.
 - AI is optional. Normal database work does not require an AI service.
+- Open the Data Dictionary from the database overview, database/table context menus, or table toolbar. Collect selected table/view metadata, search fields, maintain local groups/descriptions, and export Markdown, HTML, or Excel without modifying database comments. See the [Data Dictionary guide (Chinese)](docs/dictionary.md).
+- Manage models in a configuration list with dialog editing, fetched model selection and manual fallback. Configure reasoning effort, temperature, Top P, and an output token cap up to 128000; actual support depends on the provider and model.
 
 ### Files and engine-specific tools
 
@@ -143,10 +146,19 @@ Choose **New Table** from a database's context menu to open a dedicated **New Ta
 | Engine | Main capabilities | Current limits |
 |---|---|---|
 | MySQL | Queries, data/schema editing, analysis, same-engine sync, SQL import/export, five object types | Import/object/full-export flows were tested on MySQL 8.4.6. Stored programs are edited as SQL definitions, not in a visual flow designer. |
+| MariaDB | Shared MySQL protocol; queries, data/schema editing, SQL import/export, version-aware types and metadata | Initial verification targets 11.8.9; JSON is a LONGTEXT alias. Special attributes are capability-gated; mixed MySQL/MariaDB sync is rejected. |
 | PostgreSQL | Queries, data/schema editing, analysis, same-engine sync | Some primary-key, index, and foreign-key rebuilds require manual SQL. |
 | SQLite | Local database files, queries, data and inline schema editing, analysis, same-engine sync | Column changes on Structure use transactional rebuilding; foreign-key editing, unusual column definitions, and schema-sync rebuilding still need manual handling. |
 | Redis | Keys, TTL, command console, test-data generation | Not included in relational schema/data sync. |
 | MongoDB | Collections/documents, aggregation, indexes, JSON/JSONL transfer, analysis | Not included in relational sync; import inserts only. |
+
+| Kafka | Topics/partitions, offset/time previews, test publishing, basic management and export | Native protocol; no consumer-group management, business offset commits or transaction-isolation controls in this release. |
+| RabbitMQ | VHosts/queues/exchanges, bindings, sampling, test publishing and export | Management API; requeue sampling can affect order and is blocked for read-only sessions. |
+| RocketMQ | Topics, routes/stats/consumers, message lookup, text publishing and export | Requires Dashboard 2.x; binary fidelity depends on its response format. Studio 3.x is not supported. |
+
+Kafka, RabbitMQ and RocketMQ have a shared object/message workspace, bounded reads, test publishing, diagnostics and JSON/JSONL export. RabbitMQ sampling requeues messages and requires explicit confirmation. See the [message system guide (Chinese)](docs/message-queues.md) for endpoints and limitations.
+
+Initial MariaDB support and the local Docker setup are documented in the [compatibility guide (Chinese)](docs/mariadb.md).
 
 The UI exposes operations according to engine, object type, and read-only state. Keep these boundaries in mind:
 

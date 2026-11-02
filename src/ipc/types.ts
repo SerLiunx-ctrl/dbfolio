@@ -1,7 +1,7 @@
-export type Engine = "mysql" | "postgres" | "sqlite" | "redis" | "mongodb";
+export type Engine = "mysql" | "postgres" | "sqlite" | "redis" | "mongodb" | "kafka" | "rabbitmq" | "rocketmq";
 
 export interface SshConfig { host:string; port:number; username:string; auth:'password'|'key'; privateKey?:string|null; fingerprint:string }
-export interface NetworkConfig { ssh?:SshConfig|null; caFile?:string|null; clientCert?:string|null; clientKey?:string|null; serverName?:string|null; connectTimeoutSecs?:number|null; queryTimeoutSecs?:number|null }
+export interface NetworkConfig { ssh?:SshConfig|null; caFile?:string|null; clientCert?:string|null; clientKey?:string|null; serverName?:string|null; connectTimeoutSecs?:number|null; queryTimeoutSecs?:number|null; saslMechanism?:string|null; httpPath?:string|null }
 export interface DiagnosticStep {key:string;label:string;status:'pending'|'running'|'ok'|'failed'|'skipped';message:string;durationMs:number}
 export interface SessionRecord {
   id: string;
@@ -265,6 +265,7 @@ export interface AppErrorPayload {
 }
 
 export interface TableSelection {
+  objectKind?: TableKind;
   sessionId: string;
   database: string;
   schema?: string | null;

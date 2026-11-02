@@ -27,67 +27,9 @@ const KEY: &str = "ai_providers_v1";
 static CONFIG_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 static REQUESTS: LazyLock<tokio::sync::Semaphore> =
     LazyLock::new(|| tokio::sync::Semaphore::new(2));
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct Provider {
-    pub id: String,
-    pub name: String,
-    pub base_url: String,
-    pub model: String,
-    #[serde(default = "token_parameter")]
-    pub token_parameter: String,
-    pub output_format: String,
-    pub timeout_seconds: u64,
-    pub max_tokens: u32,
-    #[serde(default)]
-    pub is_default: bool,
-    #[serde(default)]
-    pub has_key: bool,
-}
-fn token_parameter() -> String {
-    "max_tokens".into()
-}
-fn invalid(message: &str) -> AppError {
-    AppError::InvalidInput(message.into())
-}
-pub fn validate(p: &Provider) -> AppResult<()> {
-    uuid::Uuid::parse_str(&p.id).map_err(|_| invalid("AI 服务 ID 无效"))?;
-    if p.name.trim().is_empty() || p.name.len() > 120 || p.model.len() > 200 {
-        return Err(invalid("服务名称或模型 ID 无效"));
-    }
-    let url = reqwest::Url::parse(&p.base_url).map_err(|_| invalid("请输入完整的 API Base URL"))?;
-    if !matches!(url.scheme(), "http" | "https")
-        || url.host_str().is_none()
-        || !url.username().is_empty()
-        || url.password().is_some()
-        || url.query().is_some()
-        || url.fragment().is_some()
-    {
-        return Err(invalid(
-            "API 地址仅支持 HTTP/HTTPS，不得包含账号、密码、查询参数或片段",
-        ));
-    }
-    if p.base_url.len() > 2000
-        || p.base_url
-            .trim_end_matches('/')
-            .ends_with("/chat/completions")
-        || p.base_url.trim_end_matches('/').ends_with("/models")
-    {
-        return Err(invalid(
-            "请填写基础地址（通常以 /v1 结尾），不要包含 /models 或 /chat/completions",
-        ));
-    }
-    if !matches!(
-        p.token_parameter.as_str(),
-        "max_tokens" | "max_completion_tokens"
-    ) || !matches!(p.output_format.as_str(), "schema" | "json" | "text")
-        || !(5..=300).contains(&p.timeout_seconds)
-        || !(128..=32768).contains(&p.max_tokens)
-    {
-        return Err(invalid("输出格式、超时或输出上限无效"));
-    }
-    Ok(())
-}
+mod config;
+pub use config::{validate, Provider};
+fn invalid(message: &str) -> AppError { AppError::InvalidInput(message.into()) }
 fn secret(id: &str) -> AppResult<keyring::Entry> {
     Ok(keyring::Entry::new("data-workbench-ai", id)?)
 }
@@ -125,7 +67,13 @@ pub async fn save(
     mut p: Provider,
     key: Option<String>,
 ) -> AppResult<Vec<Provider>> {
+    p.name = p.name.trim().into();
+    p.base_url = p.base_url.trim().trim_end_matches('/').into();
+    p.model = p.model.trim().into();
     validate(&p)?;
+    if p.model.is_empty() {
+        return Err(invalid("请选择模型，获取不到列表时可手动填写模型 ID"));
+    }
     let _lock = CONFIG_LOCK.lock().await;
     let mut values = providers(state).await?;
     if !values.iter().any(|v| v.id == p.id) && values.len() >= 20 {
@@ -381,7 +329,7 @@ pub async fn models(p: &Provider, key: Option<String>) -> AppResult<Vec<String>>
     let mut ids: Vec<String> = data
         .iter()
         .filter_map(|v| v["id"].as_str())
-        .filter(|id| id.len() <= 200)
+        .filter(|id| !id.trim().is_empty() && id.len() <= 200)
         .take(5000)
         .map(str::to_owned)
         .collect();
@@ -503,8 +451,12 @@ fn completion_body(
     if prompt.len() > 128 * 1024 {
         return Err(invalid("AI 输入超过 128 KiB，请减少字段或提示词"));
     }
+    if p.model.trim().is_empty() {
+        return Err(invalid("请选择模型"));
+    }
     let mut body = json!({"model":p.model,"messages":[{"role":"system","content":system},{"role":"user","content":prompt}],"stream":false});
-    body[&p.token_parameter] = json!(p.max_tokens);
+    // Omit unset options so existing providers retain their server defaults.
+    p.apply_options(&mut body);
     match p.output_format.as_str() {
         "schema" => {
             body["response_format"] = if let Some(schema) = schema {
@@ -541,7 +493,35 @@ mod tests {
             max_tokens: 512,
             is_default: true,
             has_key: false,
+            reasoning_effort: None,
+            temperature: None,
+            top_p: None,
         }
+    }
+    #[test]
+    fn provider_options_and_legacy_defaults() {
+        let mut legacy = serde_json::to_value(provider()).unwrap();
+        for key in ["reasoningEffort", "temperature", "topP"] { legacy.as_object_mut().unwrap().remove(key); }
+        let mut p: Provider = serde_json::from_value(legacy).unwrap();
+        let original = completion_body(&p, "system", "prompt", None).unwrap();
+        for key in ["reasoning_effort", "temperature", "top_p"] { assert!(original.get(key).is_none()); }
+        p.max_tokens = 128000;
+        p.reasoning_effort = Some("high".into());
+        p.temperature = Some(0.0);
+        p.top_p = Some(1.0);
+        p.token_parameter = "max_completion_tokens".into();
+        assert!(validate(&p).is_ok());
+        let body = completion_body(&p, "system", "prompt", None).unwrap();
+        assert_eq!(body["max_completion_tokens"], 128000);
+        assert!(body.get("max_tokens").is_none());
+        assert_eq!(body["reasoning_effort"], "high");
+        assert_eq!(body["temperature"], 0.0);
+        assert_eq!(body["top_p"], 1.0);
+        p.max_tokens = 128001; assert!(validate(&p).is_err()); p.max_tokens = 128;
+        p.reasoning_effort = Some("unsupported".into()); assert!(validate(&p).is_err()); p.reasoning_effort = None;
+        p.temperature = Some(2.01); assert!(validate(&p).is_err()); p.temperature = Some(f64::NAN); assert!(validate(&p).is_err()); p.temperature = None;
+        p.top_p = Some(-0.1); assert!(validate(&p).is_err()); p.top_p = Some(1.01); assert!(validate(&p).is_err());
+        p.model.clear(); assert!(completion_body(&p, "system", "prompt", None).is_err());
     }
     #[test]
     fn urls_and_completion_validation() {
@@ -781,6 +761,9 @@ pub(crate) mod http_tests {
             max_tokens: 128,
             is_default: false,
             has_key: false,
+            reasoning_effort: None,
+            temperature: None,
+            top_p: None,
         }
     }
     #[tokio::test]

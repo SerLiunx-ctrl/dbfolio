@@ -22,3 +22,7 @@ pub mod query_ai;
 pub mod manual_transaction;
 
 pub mod config_transfer;
+
+pub mod dictionary;
+
+pub mod message_queue;

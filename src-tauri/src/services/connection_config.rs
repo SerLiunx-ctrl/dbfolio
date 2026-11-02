@@ -14,6 +14,8 @@ pub struct NetworkConfig {
     pub server_name: Option<String>,
     pub connect_timeout_secs: Option<u64>,
     pub query_timeout_secs: Option<u64>,
+    pub sasl_mechanism: Option<String>,
+    pub http_path: Option<String>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase", deny_unknown_fields)]
@@ -61,6 +63,15 @@ impl NetworkConfig {
             if !ssh.fingerprint.starts_with("SHA256:") || ssh.fingerprint.len() < 30 {
                 return Err(invalid("请先获取并核对 SSH 主机 SHA256 指纹"));
             }
+        }
+        if engine.is_message_queue() && (self.ssh.is_some() || self.server_name.is_some()) {
+            return Err(invalid("消息系统首版使用直连；请填写可访问的广播地址及与 TLS 证书匹配的主机名，暂不支持单端口 SSH 转发或覆盖服务器名"));
+        }
+        if let Some(mechanism)=&self.sasl_mechanism {
+            if engine!=Engine::Kafka || !["none","plain","scram256","scram512"].contains(&mechanism.as_str()){return Err(invalid("SASL 机制只适用于 Kafka，支持无认证、PLAIN、SCRAM-SHA-256/512"));}
+        }
+        if let Some(path)=&self.http_path {
+            if !matches!(engine,Engine::Rabbitmq|Engine::Rocketmq) || path.len()>512 || (!path.is_empty() && !path.starts_with('/')) || path.chars().any(|c|c.is_control()||matches!(c,'?'|'#'|'\\')) {return Err(invalid("管理接口路径前缀需以 / 开头，不能包含查询、片段或控制字符"));}
         }
         let uri = engine == Engine::Mongodb && host.is_some_and(|h| h.starts_with("mongodb"));
         if uri && self.client_key.is_some() {

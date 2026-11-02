@@ -35,6 +35,7 @@ fn expression(name: &str, kind: &str) -> String {
         "mediumblob",
         "longblob",
         "bit",
+        "vector",
     ]
     .contains(&k.as_str())
     {
@@ -60,7 +61,7 @@ fn expression(name: &str, kind: &str) -> String {
     format!("IF({c} IS NULL,'NULL',{body})")
 }
 fn header(database: &str, mode: &str, include: bool, sql_mode: &str) -> String {
-    let mut s=format!("-- DBFolio · MySQL SQL export\n-- 内容：{mode}；对象范围见导出选项。字符串内的动态 SQL 与外部库引用保持原样。\nSET @DW_OLD_SQL_MODE=@@SQL_MODE;\nSET SQL_MODE='{sql_mode}';\nSET @DW_OLD_FK=@@FOREIGN_KEY_CHECKS;\nSET FOREIGN_KEY_CHECKS=0;\nSET @DW_OLD_TIME_ZONE=@@TIME_ZONE;\nSET TIME_ZONE='+00:00';\nSET @DW_OLD_CLIENT=@@CHARACTER_SET_CLIENT;\nSET @DW_OLD_RESULTS=@@CHARACTER_SET_RESULTS;\nSET @DW_OLD_CONNECTION=@@COLLATION_CONNECTION;\nSET NAMES utf8mb4;\n");
+    let mut s=format!("-- DBFolio · MySQL / MariaDB SQL export\n-- 内容：{mode}；对象范围见导出选项。字符串内的动态 SQL 与外部库引用保持原样。\nSET @DW_OLD_SQL_MODE=@@SQL_MODE;\nSET SQL_MODE='{sql_mode}';\nSET @DW_OLD_FK=@@FOREIGN_KEY_CHECKS;\nSET FOREIGN_KEY_CHECKS=0;\nSET @DW_OLD_TIME_ZONE=@@TIME_ZONE;\nSET TIME_ZONE='+00:00';\nSET @DW_OLD_CLIENT=@@CHARACTER_SET_CLIENT;\nSET @DW_OLD_RESULTS=@@CHARACTER_SET_RESULTS;\nSET @DW_OLD_CONNECTION=@@COLLATION_CONNECTION;\nSET NAMES utf8mb4;\n");
     if include {
         s.push_str(&format!(
             "CREATE DATABASE IF NOT EXISTS {};\nUSE {};\n",

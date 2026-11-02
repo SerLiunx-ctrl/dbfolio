@@ -1,3 +1,4 @@
+import {objectCapabilities} from './objectCapabilities';
 import {TableViewTabs} from './TableViewTabs';
 import { openAnalysis } from "../analysis/AnalysisWorkspace";
 import { newPlan } from "../analysis/model";
@@ -132,6 +133,8 @@ export function TableWorkspace({ tab, active }: Props) {
     void load();
   }, [tab.id, load, tab.view]);
 
+  useEffect(()=>{if(detail)useTabStore.getState().setTableKind(tab.id,detail.kind);},[detail,tab.id,tab.objectKind]);
+
   const selectView = (next: TableView) => {
     setView(next);
     setVisited((current) => new Set(current).add(next));
@@ -148,6 +151,9 @@ export function TableWorkspace({ tab, active }: Props) {
     setVisited(current => new Set(current).add("structure"));
   }, [active, tab.columnFocus]);
 
+  const capabilities = detail ? objectCapabilities(detail) : null;
+  const currentView = (view === 'indexes' && !capabilities?.indexes || view === 'foreignKeys' && !capabilities?.foreignKeys) && detail ? 'structure' : view;
+  const objectTable = detail?.kind === 'table';
   const fullName = `${tab.database}${tab.schema ? `.${tab.schema}` : ""}.${tab.table}`;
 
   const openSelectQuery = () => {
@@ -167,7 +173,7 @@ export function TableWorkspace({ tab, active }: Props) {
         <span className={styles.title}>{fullName}</span>
         {detail && (
           <Tag size="small" appearance="brand">
-            {detail.kind === "view" ? "视图" : "表"}
+            {capabilities?.materialized ? "物化视图" : detail.kind === "view" ? "视图" : "表"}
           </Tag>
         )}
         <div className={styles.spacer} />
@@ -181,12 +187,13 @@ export function TableWorkspace({ tab, active }: Props) {
           新建查询
         </Button>
 
-        <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} onClick={()=>useTabStore.getState().openEr(tab.sessionId,tab.database,{table:tab.table,schema:tab.schema})}>查看关联</Button>
-          {session?.engine==='mysql'&&<Button size="small" appearance="subtle" onClick={()=>useTabStore.getState().openMysqlTool(tab.sessionId,tab.database,'objects',tab.table)}>触发器</Button>}
-        <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={!session} title="新建独立分析，预填当前表的 SQL，不使用当前数据页或筛选" onClick={()=>{if(!session)return;const plan=newPlan(tab.sessionId,tab.database);plan.metadataSource={table:tab.table,schema:tab.schema??""};plan.name=(tab.table+" 分析").slice(0,120);plan.query="SELECT * FROM "+qualifiedTableSql(session.engine,tab.database,tab.schema,tab.table)+";";openAnalysis(plan);}}>新建分析</Button>
-        <Button size="small" appearance="subtle" icon={<AddRegular/>} disabled={detail?.kind!=="table"} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</Button>
+        {objectTable&&<Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} onClick={()=>useTabStore.getState().openEr(tab.sessionId,tab.database,{table:tab.table,schema:tab.schema})}>查看关联</Button>}
+        <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} onClick={()=>useTabStore.getState().openDictionary(tab.sessionId,tab.database,{table:tab.table,schema:tab.schema})}>数据字典</Button>
+          {objectTable&&session?.engine==='mysql'&&<Button size="small" appearance="subtle" onClick={()=>useTabStore.getState().openMysqlTool(tab.sessionId,tab.database,'objects',tab.table)}>触发器</Button>}
+        <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={!session} title="新建独立分析，预填当前对象的 SQL，不使用当前数据页或筛选" onClick={()=>{if(!session)return;const plan=newPlan(tab.sessionId,tab.database);plan.metadataSource={table:tab.table,schema:tab.schema??""};plan.name=(tab.table+" 分析").slice(0,120);plan.query="SELECT * FROM "+qualifiedTableSql(session.engine,tab.database,tab.schema,tab.table)+";";openAnalysis(plan);}}>新建分析</Button>
+        {objectTable&&<Button size="small" appearance="subtle" icon={<AddRegular/>} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</Button>}
 
-        {view!=="info"&&<Button
+        {currentView!=="info"&&<Button
           appearance="subtle"
           size="small"
           icon={loading ? <Spinner size="tiny" /> : <ArrowClockwiseRegular />}
@@ -196,11 +203,11 @@ export function TableWorkspace({ tab, active }: Props) {
           刷新元数据
         </Button>}
       </div>
-      <TableViewTabs view={view} onSelect={selectView} counts={detail?{columns:detail.columns.length,indexes:detail.indexes.length,foreignKeys:detail.foreignKeys.length}:undefined}/>
+      {detail&&<TableViewTabs view={currentView} onSelect={selectView} indexes={capabilities?.indexes??false} foreignKeys={capabilities?.foreignKeys??false} counts={detail?{columns:detail.columns.length,indexes:detail.indexes.length,foreignKeys:detail.foreignKeys.length}:undefined}/>}
       <div className={styles.content}>
         {loading && !detail ? (
           <div className={styles.centered}>
-            <Spinner label="加载表信息…" />
+            <Spinner label="加载对象信息…" />
           </div>
         ) : error && !detail ? (
           <div className={styles.centered}>
@@ -212,11 +219,11 @@ export function TableWorkspace({ tab, active }: Props) {
             {visited.has("data") && (
               <div
                 className={`${styles.panel} dw-enter`}
-                style={{ display: view === "data" ? "flex" : "none" }}
+                style={{ display: currentView === "data" ? "flex" : "none" }}
               >
                 <TableDataPanel
                   tab={tab}
-                  active={active && view === "data"}
+                  active={active && currentView === "data"}
                   detail={detail}
                   engine={session.engine}
                   readOnly={session.readOnly}
@@ -224,14 +231,14 @@ export function TableWorkspace({ tab, active }: Props) {
                 />
               </div>
             )}
-            {visited.has("structure") && (
+            {(visited.has("structure")||currentView==="structure") && (
               <div
                 className={`${styles.panel} dw-enter`}
-                style={{ display: view === "structure" ? "flex" : "none" }}
+                style={{ display: currentView === "structure" ? "flex" : "none" }}
               >
                 <ColumnsPanel
                   columnFocus={columnFocus}
-                  active={active && view === "structure"}
+                  active={active && currentView === "structure"}
                   tab={tab}
                   detail={detail}
                   engine={session.engine}
@@ -241,10 +248,10 @@ export function TableWorkspace({ tab, active }: Props) {
                 />
               </div>
             )}
-            {visited.has("indexes") && (
+            {capabilities?.indexes && visited.has("indexes") && (
               <div
                 className={`${styles.panel} dw-enter`}
-                style={{ display: view === "indexes" ? "flex" : "none" }}
+                style={{ display: currentView === "indexes" ? "flex" : "none" }}
               >
                 <IndexesPanel
                   onColumnClick={locateColumn}
@@ -256,10 +263,10 @@ export function TableWorkspace({ tab, active }: Props) {
                 />
               </div>
             )}
-            {visited.has("foreignKeys") && (
+            {capabilities?.foreignKeys && visited.has("foreignKeys") && (
               <div
                 className={`${styles.panel} dw-enter`}
-                style={{ display: view === "foreignKeys" ? "flex" : "none" }}
+                style={{ display: currentView === "foreignKeys" ? "flex" : "none" }}
               >
                 <ForeignKeysPanel
                   onColumnClick={locateColumn}
@@ -274,7 +281,7 @@ export function TableWorkspace({ tab, active }: Props) {
             {visited.has("ddl") && (
               <div
                 className={`${styles.panel} dw-enter`}
-                style={{ display: view === "ddl" ? "flex" : "none" }}
+                style={{ display: currentView === "ddl" ? "flex" : "none" }}
               >
                 <DdlPanel detail={detail} engine={session.engine} onOpenQuery={sql=>{
                   openQuery(tab.sessionId,tab.database,id=>updateDraft(id,{sql,database:tab.database,sessionId:tab.sessionId,updatedAt:new Date().toISOString(),name:tab.table+" DDL"}));
@@ -284,9 +291,9 @@ export function TableWorkspace({ tab, active }: Props) {
             {visited.has("info") && (
               <div
                 className={`${styles.panel} dw-enter`}
-                style={{ display: view === "info" ? "flex" : "none" }}
+                style={{ display: currentView === "info" ? "flex" : "none" }}
               >
-                <InfoPanel tab={tab} onChanged={()=>void load()} />
+                <InfoPanel detail={detail} tab={tab} onChanged={()=>void load()} />
               </div>
             )}
           </>

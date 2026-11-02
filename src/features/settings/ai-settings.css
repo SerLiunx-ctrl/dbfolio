@@ -1,0 +1,19 @@
+.dw-ai-manager.dw-ai-settings{max-width:none;gap:8px}
+.dw-ai-list-heading{display:flex;align-items:center;gap:8px}.dw-ai-list-heading .gen-note{margin-left:auto}
+.dw-ai-table-scroll{overflow:auto;border:1px solid var(--colorNeutralStroke2);border-radius:4px}
+.dw-ai-table{width:100%;border-collapse:collapse;font-size:12px;text-align:left;white-space:nowrap}
+.dw-ai-table th{font-weight:600;background:var(--colorNeutralBackground3);color:var(--colorNeutralForeground2)}
+.dw-ai-table th,.dw-ai-table td{padding:7px 10px;border-bottom:1px solid var(--colorNeutralStroke2);vertical-align:middle}
+.dw-ai-table tbody tr:last-child td{border-bottom:0}.dw-ai-table tbody tr:hover{background:var(--colorNeutralBackground1Hover)}
+.dw-ai-table small{display:block;color:var(--colorNeutralForeground3);font-size:11px;line-height:18px;max-width:340px;overflow:hidden;text-overflow:ellipsis}
+.dw-ai-model{font-family:var(--fontFamilyMonospace);color:var(--colorBrandForeground1)}
+.dw-ai-default{display:inline-block;margin-left:6px;padding:0 5px;border-radius:3px;color:var(--colorBrandForeground1);background:var(--colorBrandBackground2);font-size:11px;line-height:18px}
+.dw-ai-row-actions{display:flex;gap:4px;align-items:center}.dw-ai-empty{text-align:center;padding:22px!important;color:var(--colorNeutralForeground3)}
+.dw-ai-editor{width:min(700px,calc(100vw - 32px))!important;max-width:700px!important;max-height:calc(100vh - 32px);box-sizing:border-box}
+.dw-ai-editor-content{overflow:auto;max-height:calc(100vh - 150px);min-height:0;padding-right:3px}
+.dw-ai-editor .gen-form{gap:10px}.dw-ai-editor h3{font-size:13px;margin:2px 0 0}
+.dw-ai-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;align-items:end}.dw-ai-fields>*{min-width:0}.dw-ai-wide{grid-column:1/-1}
+.dw-ai-key,.dw-ai-model-picker{display:flex;gap:6px;align-items:center}.dw-ai-key>.fui-Input,.dw-ai-model-picker>.fui-Input,.dw-ai-model-picker>select{flex:1;min-width:0}.dw-ai-key>button,.dw-ai-model-picker>button{flex-shrink:0}
+.dw-ai-editor .dw-native-select{box-sizing:border-box;min-width:0;width:100%;font-size:12px;line-height:20px;min-height:28px;padding:2px 24px 2px 6px}
+.dw-ai-editor [role=status],.dw-ai-editor .gen-error{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:540px){.dw-ai-fields{grid-template-columns:1fr}.dw-ai-wide{grid-column:auto}.dw-ai-editor{padding:14px!important}}

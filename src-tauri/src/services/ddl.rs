@@ -268,7 +268,7 @@ fn sql_type(engine: Engine, spec: &ColumnSpec) -> String {
             "blob" => "BLOB".into(),
             _ => spec.data_type.trim().to_string(),
         },
-        Engine::Redis | Engine::Mongodb => spec.data_type.trim().to_string(),
+        Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => spec.data_type.trim().to_string(),
     }
 }
 
@@ -405,7 +405,7 @@ fn move_column(
 ) -> AppResult<Vec<String>> {
     let engine = adapter.engine();
     match engine {
-        Engine::Redis | Engine::Mongodb => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
+        Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
         Engine::Postgres => Err(AppError::InvalidInput(
             "PostgreSQL 不支持调整列顺序（列顺序由创建时确定）".into(),
         )),
@@ -730,7 +730,7 @@ fn apply_spec_to_column(engine: Engine, old: &ColumnMeta, spec: &ColumnSpec) -> 
             Engine::Mysql => CanonicalType::from_mysql(&new_type),
             Engine::Postgres => CanonicalType::from_postgres(&new_type),
             Engine::Sqlite => CanonicalType::from_sqlite(&new_type),
-            Engine::Redis | Engine::Mongodb => CanonicalType::from_sqlite(&new_type),
+            Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => CanonicalType::from_sqlite(&new_type),
         },
         nullable: spec.nullable,
         default_value: spec.default_value.clone().filter(|v| !v.trim().is_empty()),
@@ -889,7 +889,7 @@ fn build_modify(
         .ok_or_else(|| AppError::NotFound(format!("列不存在: {}", spec.name)))?;
 
     match engine {
-        Engine::Redis | Engine::Mongodb => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
+        Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
         Engine::Mysql => Ok(vec![format!(
             "ALTER TABLE {} MODIFY COLUMN {}",
             target,
@@ -997,7 +997,7 @@ fn build_drop_column(
     }
 
     match engine {
-        Engine::Redis | Engine::Mongodb => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
+        Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
         Engine::Mysql | Engine::Postgres => Ok(vec![format!(
             "ALTER TABLE {} DROP COLUMN {}",
             target,
@@ -1038,12 +1038,13 @@ pub struct ColumnFlags {pub name:String,pub nullable:bool,pub unsigned:Option<bo
 fn mysql_column_flags(raw:&str,changes:&[ColumnFlags])->AppResult<Vec<String>> {
  use sqlparser::{parser::Parser,dialect::MySqlDialect,ast::{Statement,ColumnOption}};
  let fail=|e:String|AppError::InvalidInput(format!("无法安全修改列属性：{e}"));
- let mut parsed=Parser::parse_sql(&MySqlDialect{},raw).map_err(|e|fail(e.to_string()))?;
- let Some(Statement::CreateTable(create))=parsed.first_mut() else{return Err(fail("无法解析建表定义".into()));};
  let mut result=Vec::new();
  for change in changes {
+  let definition=super::mysql_schema::column_definition(raw,&change.name)?;
+  let mut parsed=Parser::parse_sql(&MySqlDialect{},&format!("CREATE TABLE x ({definition})")).map_err(|e|fail(format!("字段 {} 含暂不支持可视化编辑的服务器属性，请通过 SQL 修改：{e}",change.name)))?;
+  let Some(Statement::CreateTable(create))=parsed.first_mut() else{return Err(fail("无法解析列定义".into()));};
   let col=create.columns.iter_mut().find(|c|c.name.value==change.name).ok_or_else(||fail("列不存在".into()))?;
-  if let Some(name)=&change.new_name {super::column_edit::validate_column_name(Engine::Mysql,name)?;col.name=sqlparser::ast::Ident::with_quote('`',name);}
+  if let Some(name)=&change.new_name {super::column_edit::validate_column_name(Engine::Mysql,name)?;for option in &mut col.options {if let ColumnOption::Check(expr)=&mut option.option {*expr=super::mysql_schema::rename_check(expr,&change.name,name)?;}}col.name=sqlparser::ast::Ident::with_quote('`',name);}
   if let Some(ty)=&change.data_type {
    let p=Parser::parse_sql(&MySqlDialect{},&format!("CREATE TABLE x (c {ty})")).map_err(|e|fail(e.to_string()))?;
    if p.len()!=1{return Err(fail("类型包含额外语句".into()));}
@@ -1092,8 +1093,12 @@ fn mysql_column_flags(raw:&str,changes:&[ColumnFlags])->AppResult<Vec<String>> {
   // sqlparser 的 COMMENT Display 不转义引号/反斜杠；单独序列化并验证语义往返。
   let comments=col.options.iter().filter_map(|o|if let ColumnOption::Comment(text)=&o.option{Some((o.clone(),text.clone()))}else{None}).collect::<Vec<_>>();
   col.options.retain(|o|!matches!(o.option,ColumnOption::Comment(_)));
+  // MariaDB 要求列级 CHECK 位于 NULL/COMMENT 等列属性之后。
+  let checks=col.options.iter().filter(|o|matches!(o.option,ColumnOption::Check(_))).cloned().collect::<Vec<_>>();
+  col.options.retain(|o|!matches!(o.option,ColumnOption::Check(_)));
   let mut rendered=col.to_string();
   for (option,text) in comments {rendered.push_str(&format!(" COMMENT '{}'",escape(Engine::Mysql,&text)));col.options.push(option);}
+  for check in checks {rendered.push_str(&format!(" {}",check));col.options.push(check);}
   let check=Parser::parse_sql(&MySqlDialect{},&format!("CREATE TABLE x ({rendered})")).map_err(|e|fail(e.to_string()))?;
   if check.len()!=1{return Err(fail("列定义包含额外语句".into()));}
   if let Statement::CreateTable(t)=&check[0]{if t.columns.len()!=1||t.columns[0]!=*col{return Err(fail("列定义含无法安全往返保留的转义内容，请通过 SQL 修改".into()));}}
@@ -1273,7 +1278,7 @@ pub async fn preview(
             if columns.is_empty() {
                 return Err(AppError::InvalidInput("索引至少需要一列".into()));
             }
-            if adapter.engine() == Engine::Postgres {
+            if matches!(adapter.engine(),Engine::Postgres|Engine::Mysql) {
                 let meta = adapter.introspect_table(database, schema.as_deref(), table).await?;
                 let index = meta.indexes.iter().find(|index| &index.name == old_name)
                     .ok_or_else(|| AppError::InvalidInput("索引已不存在，请刷新结构".into()))?;
@@ -1413,7 +1418,7 @@ fn render_drop_index(
             Ok(format!("DROP INDEX {index_ref}"))
         }
         Engine::Sqlite => Ok(format!("DROP INDEX {}", adapter.quote_ident(name))),
-        Engine::Redis | Engine::Mongodb => Err(AppError::InvalidInput("非 SQL 引擎不支持索引操作".into())),
+        Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput("非 SQL 引擎不支持索引操作".into())),
     }
 }
 
@@ -1485,7 +1490,7 @@ fn render_drop_foreign_key(adapter: &dyn DbAdapter, target: &str, name: &str) ->
         Engine::Sqlite => Err(AppError::InvalidInput(
             "SQLite 不支持通过 ALTER 删除外键，需要重建表".into(),
         )),
-        Engine::Redis | Engine::Mongodb => Err(AppError::InvalidInput("非 SQL 引擎不支持外键操作".into())),
+        Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput("非 SQL 引擎不支持外键操作".into())),
     }
 }
 
@@ -1567,7 +1572,7 @@ pub async fn create_database(
             vec![statement]
         }
         Engine::Postgres => vec![format!("CREATE DATABASE {}", quote(adapter, name))],
-        Engine::Redis | Engine::Mongodb => {
+        Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => {
             return Err(AppError::InvalidInput(
                 "Redis 使用逻辑库（0-15），不支持创建数据库".into(),
             ));
@@ -1610,7 +1615,7 @@ pub async fn drop_database(
         Engine::Sqlite => Err(AppError::InvalidInput(
             "SQLite 不支持删除数据库，请直接删除数据库文件".into(),
         )),
-        Engine::Redis | Engine::Mongodb => Err(AppError::InvalidInput(
+        Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput(
             "Redis 使用逻辑库（0-15），不支持删除数据库".into(),
         )),
     }

@@ -345,7 +345,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         >
           刷新数据
         </Button>
-        <Button
+        {detail.kind === "table" && <><Button
           size="small"
           icon={<AddRegular />}
           disabled={!canEdit}
@@ -359,9 +359,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
               ? "标记删除选中行；点击提交后才会写入数据库，提交前可撤销"
               : readOnly
                 ? "只读会话不可编辑"
-                : detail.kind === "view"
-                  ? "视图不可编辑"
-                  : "无主键表不可编辑"
+                : "无主键表不可编辑"
           }
           relationship="label"
         >
@@ -373,11 +371,11 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
           >
             删除行
           </Button>
-        </Tooltip>
+        </Tooltip></>}
         <Button size="small" icon={<CopyRegular />} onClick={() => void copySelected()}>
           复制
         </Button>
-        <Tooltip
+        {detail.kind === "table" && <Tooltip
           content="从剪贴板粘贴（从当前单元格开始，可直接粘贴 Excel 内容）"
           relationship="label"
         >
@@ -389,7 +387,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
           >
             粘贴
           </Button>
-        </Tooltip>
+        </Tooltip>}
         <Popover
           open={filterOpen}
           onOpenChange={(_, data) => setFilterOpen(data.open)}
@@ -471,7 +469,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
             {changes.length} 项待提交
           </Tag>
         )}
-        <Button
+        {detail.kind === "table" && <><Button
           size="small"
           icon={<DismissRegular />}
           disabled={changes.length === 0 && !detailError}
@@ -487,7 +485,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
           onClick={() => setPreviewOpen(true)}
         >
           提交
-        </Button>
+        </Button></>}
       </div>
 
       <div style={{display:"flex",flex:1,minHeight:0,minWidth:0}}>

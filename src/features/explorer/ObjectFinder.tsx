@@ -35,7 +35,7 @@ export function ObjectFinder({ sessionId, redis, preferredDatabase }: {sessionId
   useEffect(() => { version.current++; setFields({}); setSearched(false); setBusy(false); return () => {version.current++;}; }, [database, query]);
   const open = (item: FavoriteObject) => {
     const tabs = useTabStore.getState();
-    if (item.kind === "table") tabs.openTable({sessionId, database: item.database, table: item.name, schema: item.schema});
+    if (item.kind === "table") tabs.openTable({sessionId, database: item.database, table: item.name, schema: item.schema,objectKind:tables[`tables:${sessionId}:${item.database}`]?.find(t=>t.name===item.name&&(t.schema??null)===(item.schema??null))?.kind});
     else {
       tabs.openRedis(sessionId, item.database, item.database);
       const tabId = useTabStore.getState().activeId;

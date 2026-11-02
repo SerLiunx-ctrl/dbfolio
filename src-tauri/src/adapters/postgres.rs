@@ -678,6 +678,13 @@ impl DbAdapter for PostgresAdapter {
             entry.ref_columns.push(text(row, "ref_column"));
         }
 
+        // PostgreSQL exposes view definitions directly; tables are reconstructed by the shared UI model.
+        let raw_ddl = if kind.as_ref().is_some_and(|row| text(row, "kind") == "view") {
+            let definition: Option<(String,String)> = sqlx::query_as("SELECT c.relkind::text, pg_get_viewdef(c.oid, true) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relname=$2 AND c.relkind IN ('v','m')")
+                .bind(schema).bind(table).fetch_optional(&pool).await?;
+            definition.map(|(kind,sql)| format!("-- 根据服务器视图查询定义重建\nCREATE {}VIEW {rel} AS\n{sql}", if kind=="m" {"MATERIALIZED "} else {""}))
+        } else { None };
+
         Ok(TableMeta {
             name: table.to_string(),
             schema: Some(schema.to_string()),
@@ -698,7 +705,7 @@ impl DbAdapter for PostgresAdapter {
                 .and_then(|row| i64_opt(row, "row_estimate"))
                 .filter(|v| *v >= 0)
                 .map(|v| v as u64),
-            raw_ddl: None,
+            raw_ddl,
         })
     }
 

@@ -32,3 +32,7 @@ pub mod sql_risk;
 pub mod connection_config;
 pub mod transport;
 #[cfg(test)] mod transport_tests;
+
+pub mod dictionary;
+
+pub mod mysql_schema;

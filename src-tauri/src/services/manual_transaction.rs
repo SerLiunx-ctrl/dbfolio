@@ -182,7 +182,12 @@ pub async fn execute_paged(
     let ctx = QueryContext::new();
     let started = Instant::now();
     let result =
-        crate::tasks::query(connected.adapter.as_ref(), &ctx, tx.run(&sql, rows, &ctx)).await;
+        crate::tasks::query(connected.adapter.as_ref(), &ctx, tx.run(&sql, rows, &ctx)).await.map(|mut outcome| {
+            if connected.adapter.engine()==Engine::Mysql && query::mysql_standalone_rows(&sql) {
+                outcome.rows=outcome.rows.into_iter().skip(offset as usize).take(limit.clamp(1,query::MAX_PAGE_SIZE) as usize).collect();
+            }
+            outcome
+        });
     let result = if crate::tasks::cancelled() {
         Err(AppError::Cancelled("事务查询已取消".into()))
     } else {

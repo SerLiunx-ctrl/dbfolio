@@ -199,6 +199,11 @@ pub fn trim_sql(sql: &str) -> String {
     sql.trim().trim_end_matches(';').trim_end().to_string()
 }
 
+/// MySQL 协议的元数据语句不能作为派生表；适配器流式截取分页。
+pub fn mysql_standalone_rows(sql:&str)->bool {
+    matches!(first_keyword(sql).as_str(),"SHOW"|"DESCRIBE"|"DESC"|"EXPLAIN")
+}
+
 pub fn wrap_pagination(
     adapter: &dyn DbAdapter,
     sql: &str,
@@ -207,6 +212,7 @@ pub fn wrap_pagination(
     sort: &[SortSpec],
 ) -> String {
     let trimmed = trim_sql(sql);
+    if adapter.engine()==crate::meta::Engine::Mysql && mysql_standalone_rows(&trimmed) {return trimmed;}
     let order_by = if sort.is_empty() {
         String::new()
     } else {

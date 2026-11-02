@@ -1,3 +1,5 @@
+import {objectCapabilities} from './objectCapabilities';
+import type {TableMeta} from '../../ipc/types';
 import {TableOptionsEditor} from "./TableOptionsEditor";
 import {
   Badge,
@@ -118,11 +120,12 @@ function Row({ label, children, mono }: RowProps) {
 }
 
 interface Props {
+  detail?: TableMeta;
   tab: TableTab;
   onChanged?:()=>void;
 }
 
-export function InfoPanel({ tab,onChanged }: Props) {
+export function InfoPanel({ tab,onChanged,detail }: Props) {
   const styles = useStyles();
   const notify = useNotify();
   const engine = useSessionStore(
@@ -165,19 +168,22 @@ export function InfoPanel({ tab,onChanged }: Props) {
   }
 
   const extra = info.extra;
+  const table = info.kind === 'table';
+  const materialized = detail ? objectCapabilities(detail).materialized : false;
+  const indexes = table || materialized || info.indexCount > 0;
   const isMysql = engine === "mysql";
   const isSqlite = engine === "sqlite";
   // 按引擎能力隐藏不适用的字段，避免显示误导性的占位符
   const showComment = engine === undefined || !isSqlite;
-  const showRowEstimate = engine === undefined || !isSqlite;
+  const showRowEstimate = table && (engine === undefined || !isSqlite);
   const showEngine = engine === undefined || !(engine === "postgres");
   const showCharset = isMysql;
   const showCollation = isMysql;
-  const showTimes = isMysql;
+  const showTimes = table && isMysql;
   const showSize =
     (extra.totalSize !== null && extra.totalSize !== undefined) ||
     (extra.dataSize !== null && extra.dataSize !== undefined);
-  const showStorage = showEngine || showCharset || showCollation || showSize;
+  const showStorage = table ? showEngine || showCharset || showCollation || showSize : materialized && showSize;
 
   const autoIncrementParts: string[] = [];
   if (info.autoIncrementColumn) {
@@ -219,7 +225,7 @@ export function InfoPanel({ tab,onChanged }: Props) {
           )}
           <Row label="类型">
             <Badge appearance="tint" color="brand" size="small">
-              {info.kind === "view" ? "视图" : "表"}
+              {materialized ? "物化视图" : info.kind === "view" ? "视图" : "表"}
             </Badge>
           </Row>
           {showComment && (
@@ -246,9 +252,9 @@ export function InfoPanel({ tab,onChanged }: Props) {
             结构
           </div>
           <Row label="列数">{info.columnCount}</Row>
-          <Row label="索引数">{info.indexCount}</Row>
-          <Row label="外键数">{info.foreignKeyCount}</Row>
-          <Row label="主键">
+          {indexes&&<Row label="索引数">{info.indexCount}</Row>}
+          {table&&<Row label="外键数">{info.foreignKeyCount}</Row>}
+          {table&&<><Row label="主键">
             {info.primaryKey.length > 0 ? (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <KeyRegular fontSize={12} />
@@ -264,7 +270,7 @@ export function InfoPanel({ tab,onChanged }: Props) {
             ) : (
               <span className={styles.muted}>—</span>
             )}
-          </Row>
+          </Row></>}
         </div>
 
         {showStorage && (
@@ -273,9 +279,9 @@ export function InfoPanel({ tab,onChanged }: Props) {
               <DatabaseRegular fontSize={14} />
               存储
             </div>
-            {showEngine && <Row label="引擎">{valueText(extra.engine)}</Row>}
-            {showCharset && <Row label="字符集">{valueText(extra.charset)}</Row>}
-            {showCollation && <Row label="排序规则">{valueText(extra.collation)}</Row>}
+            {table&&showEngine && <Row label="引擎">{valueText(extra.engine)}</Row>}
+            {table&&showCharset && <Row label="字符集">{valueText(extra.charset)}</Row>}
+            {table&&showCollation && <Row label="排序规则">{valueText(extra.collation)}</Row>}
             {showSize && (
               <Row label="磁盘大小">
                 {[

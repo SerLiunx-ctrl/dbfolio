@@ -1,0 +1,6 @@
+.dw-database-row .fui-TreeItemLayout__main{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dw-database-row .fui-TreeItemLayout__actions{margin-left:auto;padding-left:4px;flex-shrink:0}
+.dw-database-actions{display:inline-flex;align-items:center;justify-content:flex-end;gap:1px;flex-shrink:0}
+.dw-database-actions .fui-Button{width:22px;min-width:22px;height:24px;padding:2px;border:0;flex-shrink:0}
+.dw-database-actions .fui-Button svg{width:14px;height:14px}
+.dw-database-actions .fui-Button[aria-pressed=false]{color:var(--colorBrandForeground1);background:var(--colorBrandBackground2)}

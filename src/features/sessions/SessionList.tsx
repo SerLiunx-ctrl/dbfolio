@@ -47,7 +47,7 @@ import { useSettingsStore } from "../../stores/useSettingsStore";
 import { useTabStore } from "../../stores/useTabStore";
 import { sectionLabel } from "../redis/info-labels";
 import { InfoDialog } from "../info/InfoDialog";
-import { ENGINE_COLORS, ENGINE_LABELS } from "./engine";
+import { ENGINE_COLORS, serverEngineLabel } from "./engine";
 import { EngineIcon } from "./EngineIcon";
 
 const UNGROUPED = "__ungrouped__";
@@ -397,7 +397,7 @@ export function SessionList({ onNew, onEdit, onCopy, toolbarTarget }: Props) {
             <EnvironmentBadge sessionId={session.id} compact />
             {session.readOnly && <span className={styles.readOnly}>（只读）</span>}
           </span>
-          <span className={styles.meta} title={`${ENGINE_LABELS[session.engine]} · ${endpointLabel(session)} · ${busy ? "连接中" : connected ? "已连接" : "未连接"}`}>
+          <span className={styles.meta} title={`${serverEngineLabel(session.engine, statuses[session.id]?.serverVersion)} · ${endpointLabel(session)} · ${busy ? "连接中" : connected ? "已连接" : "未连接"}`}>
             {endpointLabel(session)}{busy ? " · 连接中…" : phases[session.id]?.error ? " · 连接失败" : ""}
           </span>
         </div>

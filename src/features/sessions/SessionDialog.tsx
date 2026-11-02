@@ -16,6 +16,7 @@ import {
   Option,
   Spinner,
   Switch,
+  Select,
   Textarea,
   makeStyles,
   tokens,
@@ -28,7 +29,7 @@ import { useNotify } from "../../app/toast";
 import { api } from "../../ipc";
 import type { Engine, SessionInput, SessionRecord, NetworkConfig, DiagnosticStep } from "../../ipc/types";
 import { useSessionStore } from "../../stores/useSessionStore";
-import { DEFAULT_PORTS, DEFAULT_USERNAMES, ENGINE_LABELS, ENGINE_OPTIONS } from "./engine";
+import { isMessageQueue, DEFAULT_PORTS, DEFAULT_USERNAMES, CONNECTION_ENGINE_LABELS, ENGINE_OPTIONS } from "./engine";
 
 const useStyles = makeStyles({
   form: {
@@ -205,12 +206,15 @@ export function SessionDialog({
   const handleEngineChange = (next: Engine) => {
     const previousDefault = DEFAULT_USERNAMES[engine];
     setEngine(next);
+    if(isMessageQueue(next)){setDatabase(next==='rabbitmq'?'/':'');setNetwork(v=>({...v,ssh:null,serverName:null,saslMechanism:next==='kafka'?(v.saslMechanism??'none'):null,httpPath:next==='kafka'?null:v.httpPath}));}
+    else {setNetwork(v=>({...v,saslMechanism:null,httpPath:null}));}
+
     if (!username.trim() || username === previousDefault) {
       setUsername(DEFAULT_USERNAMES[next] ?? "");
     }
     if (next === "sqlite") {
       setPort("");
-    } else if (!port) {
+    } else if (!port || port === String(DEFAULT_PORTS[engine])) {
       setPort(String(DEFAULT_PORTS[next] ?? ""));
     }
   };
@@ -234,9 +238,9 @@ export function SessionDialog({
       password: passwordValue,
       database: isSqlite || isRedis ? null : database.trim() || null,
       filePath: isSqlite ? filePath.trim() : null,
-      sslMode: isSqlite || isRedis ? null : sslMode,
+      sslMode: isSqlite || isRedis || isMessageQueue(engine) ? null : sslMode,
       redisDb: isRedis ? Number(redisDb || "0") : null,
-      tls: isRedis || engine === "mongodb" ? tls : null,
+      tls: isRedis || engine === "mongodb" || isMessageQueue(engine) ? tls : null,
       authSource: engine === "mongodb" ? authSource.trim() || null : null,
       readOnly,
       allowedDatabases: engine === "mysql" && restrictDatabases ? [...new Set(allowedDatabases.split(/\r?\n/).map(s=>s.trim()).filter(Boolean))] : null,
@@ -296,6 +300,7 @@ export function SessionDialog({
 
   const isSqlite = engine === "sqlite";
   const isRedis = engine === "redis";
+  const isMq = isMessageQueue(engine);
   const allowedNames=allowedDatabases.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   const scopeError=engine === "mysql" && restrictDatabases ? (!allowedNames.length ? "请至少填写一个允许的数据库" : database.trim() && !allowedNames.includes(database.trim()) ? "默认数据库必须在允许列表中，或清空默认数据库" : "") : "";
   const canSave = !scopeError &&
@@ -330,14 +335,14 @@ export function SessionDialog({
               <Field label="数据库类型" className="dw-span-full">
                 <Dropdown
                   selectedOptions={[engine]}
-                  value={ENGINE_LABELS[engine]}
+                  value={CONNECTION_ENGINE_LABELS[engine]}
                   onOptionSelect={(_, data) => {
                     if (data.optionValue) handleEngineChange(data.optionValue as Engine);
                   }}
                 >
                   {ENGINE_OPTIONS.map((option) => (
                     <Option key={option} value={option}>
-                      {ENGINE_LABELS[option]}
+                      {CONNECTION_ENGINE_LABELS[option]}
                     </Option>
                   ))}
                 </Dropdown>
@@ -363,7 +368,7 @@ export function SessionDialog({
                     <Field label={engine === "mongodb" ? "主机或连接 URI" : "主机"} required>
                       <Input value={host} onChange={(_, data) => setHost(data.value)} />
                     </Field>
-                    <Field label="端口">
+                    <Field label={engine==="rabbitmq"||engine==="rocketmq"?"管理接口端口":"端口"}>
                       <Input
                         value={port}
                         placeholder={String(DEFAULT_PORTS[engine] ?? "")}
@@ -388,7 +393,7 @@ export function SessionDialog({
                         />
                       </Field>
                     ) : (
-                      <Field label="默认数据库">
+                      <Field label={isMq?(engine==="rabbitmq"?"默认 VHost":"命名空间（留空使用集群）"):"默认数据库"}>
                         <Input
                           value={database}
                           placeholder="可留空"
@@ -422,7 +427,7 @@ export function SessionDialog({
                     />
                   )}
                   {engine === "mongodb" && <><Field label="认证库（authSource）"><Input value={authSource} onChange={(_,d)=>setAuthSource(d.value)} /></Field><Switch label="启用 TLS（SRV 默认启用）" checked={tls} onChange={(_,d)=>setTls(d.checked)} /><InfoHint label="MongoDB 地址说明">地址支持 mongodb:// 和 mongodb+srv://；账号密码请分别填写，不要放在 URI 中。URI 模式忽略端口字段。</InfoHint></>}
-                  {!isRedis && engine !== "mongodb" && (
+                  {!isRedis && engine !== "mongodb" && !isMq && (
                     <Field label="SSL 模式">
                       <Dropdown
                         selectedOptions={[sslMode]}
@@ -442,6 +447,11 @@ export function SessionDialog({
                 </>
               )}
 
+              {isMq&&<section className="dw-span-full" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                <Switch label="启用 TLS（验证证书与主机名）" checked={tls} onChange={(_,d)=>setTls(d.checked)}/>
+                {engine==='kafka'?<Field label="SASL 认证"><Select size="small" value={network.saslMechanism??'none'} onChange={(_,d)=>setNetwork(v=>({...v,saslMechanism:d.value}))}><option value="none">无认证</option><option value="plain">SASL PLAIN</option><option value="scram256">SCRAM-SHA-256</option><option value="scram512">SCRAM-SHA-512</option></Select></Field>:<Field label="管理接口路径前缀（可选）"><Input size="small" value={network.httpPath??''} placeholder="例如 /console" onChange={(_,d)=>setNetwork(v=>({...v,httpPath:d.value||null}))}/></Field>}
+                <small style={{gridColumn:'1/-1'}}>{engine==='kafka'?'使用原生 Kafka 协议，需能够访问 Broker 广播的所有地址；用户名与密码由所选 SASL 机制使用。':engine==='rabbitmq'?'连接 RabbitMQ Management HTTP API（默认 15672），需启用 management 插件；不是 AMQP 的 5672 端口。':'连接 RocketMQ Dashboard 2.x 管理接口（通常 8082），不是 NameServer 的 9876 端口；Dashboard 负责访问 Broker。'}</small>
+              </section>}
               <ConnectionSecurity engine={engine} value={network} onChange={setNetwork} sshPassword={sshPassword} onPassword={setSshPassword} sshPassphrase={sshPassphrase} onPassphrase={setSshPassphrase} disabled={testing||saving}/>
               <Field label="分组">
                 <Combobox

@@ -1,3 +1,7 @@
+import {loadExplorerVisibility,toggleExplorerViews,useExplorerVisibility,visibilityKey} from '../../stores/useExplorerVisibility';
+import './explorer-actions.css';
+import {MqExplorer} from '../message-queue/MqExplorer';
+import {isMessageQueue} from '../sessions/engine';
 import { MongoExplorer } from "../mongo/MongoExplorer";
 import { DockTitle } from "../../app/DockLayout";
 import { ConnectionNotice } from "../../app/ConnectionNotice";
@@ -23,6 +27,7 @@ import {
   DeleteRegular,
   EyeFilled,
   EyeRegular,
+  EyeOffRegular,
   InfoRegular,
   KeyMultipleRegular,
   SettingsRegular,
@@ -149,6 +154,8 @@ function SqlExplorerPanel() {
   const openQuery = useTabStore((s) => s.openQuery);
   const openRedis = useTabStore((s) => s.openRedis);
   const tabs = useTabStore((s) => s.tabs);
+  const hiddenViews=useExplorerVisibility(s=>s.hiddenViews),visibilityBusy=useExplorerVisibility(s=>s.busy);
+  useEffect(()=>{void loadExplorerVisibility().catch(error=>notify.error(error,"读取视图显隐设置失败"));},[notify]);
   const activeTab = useTabStore((s) => s.tabs.find((tab) => tab.id === s.activeId));
 
   const [searchDatabases, setSearchDatabases] = useState<Record<string, string>>({});
@@ -193,7 +200,7 @@ function SqlExplorerPanel() {
   const databasesLoading = session ? Boolean(loading[`db:${session.id}`]) : false;
 
   useEffect(() => {
-    if (!session || !connected) return;
+    if (!session || !connected || isMessageQueue(session.engine)) return;
     if (databases[session.id]) return;
     loadDatabases(session.id).catch((error) => notify.error(error, "加载数据库列表失败"));
   }, [session, connected, databases, loadDatabases, notify]);
@@ -220,6 +227,7 @@ function SqlExplorerPanel() {
         database,
         schema: table.schema ?? null,
         table: table.name,
+        objectKind: table.kind,
       });
     },
     [session, openTable],
@@ -242,6 +250,10 @@ function SqlExplorerPanel() {
     );
   };
 
+  const toggleViews = (database:string) => {
+    if(session)void toggleExplorerViews(session.id,database).catch(error=>notify.error(error,"保存视图显隐设置失败"));
+  };
+  if(session&&isMessageQueue(session.engine))return <MqExplorer key={session.id} sessionId={session.id}/>;
   return (
     <aside className={styles.panel}>
       <div className={styles.header}>
@@ -344,7 +356,12 @@ function SqlExplorerPanel() {
                   value={`db:${database.name}`}
                 >
                   <TreeItemLayout
-                    className={styles.treeItem}
+                    className={mergeClasses(styles.treeItem,"dw-database-row")}
+                    actions={{visible:true,children:<span className="dw-database-actions" role="group" aria-label={`${database.name} 快捷操作`} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onDoubleClick={event=>event.stopPropagation()} onKeyDown={event=>event.stopPropagation()}>
+                      <Button size="small" appearance="subtle" icon={hiddenViews[visibilityKey(session.id,database.name)]?<EyeOffRegular/>:<EyeRegular/>} aria-label={`${hiddenViews[visibilityKey(session.id,database.name)]?'显示':'隐藏'}视图 ${database.name}`} title={`${hiddenViews[visibilityKey(session.id,database.name)]?'显示':'隐藏'}本库视图（不关闭已打开页签）`} aria-pressed={!hiddenViews[visibilityKey(session.id,database.name)]} disabled={visibilityBusy} onClick={()=>toggleViews(database.name)}/>
+                      <Button size="small" appearance="subtle" icon={<ArrowClockwiseRegular/>} aria-label={`刷新对象 ${database.name}`} title="刷新对象" disabled={tablesLoading} onClick={()=>refreshTables(database.name)}/>
+                      <Button size="small" appearance="subtle" icon={<CodeRegular/>} aria-label={`新建查询 ${database.name}`} title="新建查询" onClick={()=>openQuery(session.id,database.name)}/>
+                    </span>}}
                     iconBefore={
                       <DatabaseRegular fontSize={16} className={styles.dbIcon} />
                     }
@@ -372,18 +389,18 @@ function SqlExplorerPanel() {
                         <TreeItemLayout>加载中…</TreeItemLayout>
                       </TreeItem>
                     )}
-                    {(tableList ?? []).map((table) => {
+                    {(tableList ?? []).filter(table=>!hiddenViews[visibilityKey(session.id,database.name)]||table.kind!=="view").map((table) => {
                       const isSelected =
                         activeTab?.kind === "table" &&
                         activeTab.sessionId === session.id &&
                         activeTab.database === database.name &&
-                        activeTab.table === table.name;
+                        activeTab.table === table.name && (activeTab.schema??null)===(table.schema??null);
                       const isOpen = tabs.some(
                         (tab) =>
                           tab.kind === "table" &&
                           tab.sessionId === session.id &&
                           tab.database === database.name &&
-                          tab.table === table.name,
+                          tab.table === table.name && (tab.schema??null)===(table.schema??null),
                       );
                       return (
                         <TreeItem
@@ -416,6 +433,7 @@ function SqlExplorerPanel() {
                               )
                             }
                             title={[
+                              table.schema?`${table.schema}.${table.name}`:table.name,
                               table.engine,
                               table.rowEstimate !== null && table.rowEstimate !== undefined
                                 ? `约 ${table.rowEstimate.toLocaleString()} 行`
@@ -538,7 +556,9 @@ function SqlExplorerPanel() {
                   >
                     新建查询
                   </MenuItem>
+                  <MenuItem icon={<EyeRegular/>} onClick={()=>{toggleViews(contextMenu.database);setContextMenu(null);}}>{session&&hiddenViews[visibilityKey(session.id,contextMenu.database)]?'显示视图':'隐藏视图'}</MenuItem>
                   <MenuItem icon={<TableRegular/>} onClick={()=>{if(session)useTabStore.getState().openEr(session.id,contextMenu.database);setContextMenu(null);}}>ER 关系图</MenuItem>
+                  <MenuItem icon={<TableRegular/>} onClick={()=>{if(session)useTabStore.getState().openDictionary(session.id,contextMenu.database);setContextMenu(null);}}>数据字典</MenuItem>
                   {!readOnly && (<MenuItem
                     icon={<AddRegular />}
                     onClick={() => {
@@ -591,8 +611,9 @@ function SqlExplorerPanel() {
                 </>
               ) : (
                 <>
-                  <MenuItem icon={<TableRegular/>} onClick={()=>{if(session&&contextMenu.table)useTabStore.getState().openEr(session.id,contextMenu.database,{table:contextMenu.table.name,schema:contextMenu.table.schema});setContextMenu(null);}}>查看关联</MenuItem>
-                  <MenuItem icon={<AddRegular />} disabled={contextMenu.table?.kind !== "table"} onClick={()=>{if(session&&contextMenu.table)window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:session.id,database:contextMenu.database,schema:contextMenu.table.schema??null,object:contextMenu.table.name}}));setContextMenu(null);}}>生成测试数据…</MenuItem>
+                  {contextMenu.table?.kind==="table"&&<MenuItem icon={<TableRegular/>} onClick={()=>{if(session&&contextMenu.table)useTabStore.getState().openEr(session.id,contextMenu.database,{table:contextMenu.table.name,schema:contextMenu.table.schema});setContextMenu(null);}}>查看关联</MenuItem>}
+                  <MenuItem icon={<TableRegular/>} onClick={()=>{if(session&&contextMenu.table)useTabStore.getState().openDictionary(session.id,contextMenu.database,{table:contextMenu.table.name,schema:contextMenu.table.schema});setContextMenu(null);}}>数据字典</MenuItem>
+                  {contextMenu.table?.kind==="table"&&<MenuItem icon={<AddRegular />} onClick={()=>{if(session&&contextMenu.table)window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:session.id,database:contextMenu.database,schema:contextMenu.table.schema??null,object:contextMenu.table.name}}));setContextMenu(null);}}>生成测试数据…</MenuItem>}
                   <MenuItem icon={<TableRegular />}
                     onClick={() => {
                       if (session && contextMenu.table) {
@@ -643,7 +664,7 @@ function SqlExplorerPanel() {
                       setContextMenu(null);
                     }}
                   >
-                    表信息
+                    {contextMenu.table?.kind==="view"?"视图信息":"表信息"}
                   </MenuItem>
                   <MenuItem
                     onClick={() => {
@@ -664,7 +685,7 @@ function SqlExplorerPanel() {
                   >
                     查看 DDL
                   </MenuItem>
-                  {!readOnly && (<MenuItem icon={<DeleteRegular />}
+                  {!readOnly && contextMenu.table?.kind === "table" && (<MenuItem icon={<DeleteRegular />}
                     onClick={() => {
                       setDropTable({
                         database: contextMenu.database,

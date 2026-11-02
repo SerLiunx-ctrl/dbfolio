@@ -213,6 +213,7 @@ async fn establish(
             return Err(crate::error::AppError::InvalidInput("TLS 模式无效".into()));
         }
     }
+    if input.engine.is_message_queue() && input.tls!=Some(true) && (input.network.ca_file.is_some()||input.network.client_cert.is_some()){return Err(crate::error::AppError::InvalidInput("配置证书前请启用 TLS".into()));}
     let has_cert = input.network.ca_file.is_some()
         || input.network.client_cert.is_some()
         || input.network.server_name.is_some();
@@ -250,6 +251,9 @@ async fn establish(
                     Engine::Mysql => 3306,
                     Engine::Postgres => 5432,
                     Engine::Redis => 6379,
+                    Engine::Kafka => 9092,
+                    Engine::Rabbitmq => 15672,
+                    Engine::Rocketmq => 8082,
                     _ => 27017,
                 }),
             ));

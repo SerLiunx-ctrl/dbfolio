@@ -1,3 +1,4 @@
+import {isMessageQueue} from './engine';
 import {useState} from 'react';
 import {Button,Checkbox,Field,Input,Select,Switch,tokens} from '@fluentui/react-components';
 import {open} from '@tauri-apps/plugin-dialog';
@@ -15,9 +16,9 @@ export function ConnectionSecurity({engine,value,onChange,sshPassword,onPassword
   <Field label="查询超时（秒）"><Input size="small" type="number" min={1} max={3600} value={String(value.queryTimeoutSecs??60)} onChange={(_,d)=>set({queryTimeoutSecs:Number(d.value)})}/></Field>
   {engine!=='sqlite'&&<>
    {path('CA 证书（PEM，可选）','caFile')}{path('客户端证书（PEM，可选）','clientCert')}{path('客户端私钥（PEM）','clientKey')}
-   <Field label="TLS 服务器名（默认数据库地址）"><Input size="small" value={value.serverName??''} onChange={(_,d)=>set({serverName:d.value||null})}/></Field>
+   {!isMessageQueue(engine)&&<Field label="TLS 服务器名（默认数据库地址）"><Input size="small" value={value.serverName??''} onChange={(_,d)=>set({serverName:d.value||null})}/></Field>}
    {engine==='mongodb'&&<div style={{gridColumn:'1/-1',color:tokens.colorNeutralForeground3}}>URI/SRV 仅直连；URI 客户端认证请在证书项选择含私钥的 PEM，私钥项留空。SSH 请填单个主机地址。</div>}
-   <Switch style={{gridColumn:'1/-1'}} label="通过 SSH 隧道连接" checked={!!ssh} onChange={(_,d)=>{setObserved(null);set({ssh:d.checked?{host:'',port:22,username:'',auth:'password',fingerprint:''}:null});}}/>
+   {!isMessageQueue(engine)&&<Switch style={{gridColumn:'1/-1'}} label="通过 SSH 隧道连接" checked={!!ssh} onChange={(_,d)=>{setObserved(null);set({ssh:d.checked?{host:'',port:22,username:'',auth:'password',fingerprint:''}:null});}}/>}
    {ssh&&<>
     <Field label="SSH 主机"><Input size="small" value={ssh.host} onChange={(_,d)=>patchSsh({host:d.value,fingerprint:''})}/></Field>
     <Field label="SSH 端口"><Input size="small" type="number" min={1} max={65535} value={String(ssh.port)} onChange={(_,d)=>patchSsh({port:Number(d.value),fingerprint:''})}/></Field>

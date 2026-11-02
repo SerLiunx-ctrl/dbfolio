@@ -1,4 +1,4 @@
-import { DatabaseRegular } from "@fluentui/react-icons";
+import { DatabaseRegular, MailRegular } from "@fluentui/react-icons";
 import type { Engine } from "../../ipc/types";
 
 interface BrandIcon {
@@ -46,6 +46,7 @@ interface Props {
 
 export function EngineIcon({ engine, size = 16, mono = false, style }: Props) {
   const icon = BRAND_ICONS[engine];
+  if (["kafka","rabbitmq","rocketmq"].includes(engine)) return <MailRegular aria-label={engine} fontSize={size} style={{color:mono?"currentColor":engine==="rabbitmq"?"#e87924":engine==="rocketmq"?"#cb3f66":"#687888",...style}}/>;
   if (!icon) {
     return <DatabaseRegular fontSize={size} style={style} />;
   }

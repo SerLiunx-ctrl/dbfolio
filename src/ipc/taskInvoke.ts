@@ -3,6 +3,8 @@ import { connectionBridge } from "./connectionBridge";
 import { errorText, updateTask, useTaskStore, isTaskActive, isBackgroundTask, type TaskKind, type TaskProgress } from "../stores/useTaskStore";
 
 const commands: Record<string, [TaskKind, string]> = {
+  mq_catalog:["查询","刷新消息对象"],mq_inspect:["查询","读取消息诊断"],mq_read:["查询","读取消息"],mq_mutate:["修改","消息系统操作"],mq_export:["导出","导出已加载消息"],
+  dictionary_collect:['元数据','采集数据字典'], dictionary_export:['导出','导出数据字典'],
   er_ai_suggest:['AI','ER 关联识别'],er_ai_verify:['AI','ER 采用前核对'],
   updater_download:['更新','下载软件更新'],
   sql_import_preview: ['导入','预检 SQL 文件'],sql_import_execute:['导入','导入 SQL 文件'],mysql_procedure_call:['修改','调用存储过程'],

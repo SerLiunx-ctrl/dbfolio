@@ -1,0 +1,28 @@
+name: dbfolio-mariadb
+services:
+  mariadb:
+    image: mariadb:11.8
+    container_name: dbfolio-mariadb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DBFOLIO_MARIADB_PORT:-13306}:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DBFOLIO_MARIADB_ROOT_PASSWORD:?请通过本地 env 文件提供 root 密码}
+      MARIADB_ROOT_HOST: localhost
+      MARIADB_DATABASE: dbfolio_compat
+      MARIADB_USER: dbfolio
+      MARIADB_PASSWORD: ${DBFOLIO_MARIADB_PASSWORD:?请通过本地 env 文件提供应用密码}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 15s
+    labels:
+      com.dbfolio.purpose: mariadb-compatibility
+volumes:
+  mariadb-data:
+    name: dbfolio-mariadb-data

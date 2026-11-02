@@ -11,6 +11,9 @@ pub enum Engine {
     Sqlite,
     Redis,
     Mongodb,
+    Kafka,
+    Rabbitmq,
+    Rocketmq,
 }
 
 impl Engine {
@@ -21,6 +24,9 @@ impl Engine {
             Engine::Sqlite => "sqlite",
             Engine::Redis => "redis",
             Engine::Mongodb => "mongodb",
+            Engine::Kafka => "kafka",
+            Engine::Rabbitmq => "rabbitmq",
+            Engine::Rocketmq => "rocketmq",
         }
     }
 
@@ -31,9 +37,14 @@ impl Engine {
             "sqlite" => Some(Engine::Sqlite),
             "redis" => Some(Engine::Redis),
             "mongodb" => Some(Engine::Mongodb),
+            "kafka" => Some(Engine::Kafka),
+            "rabbitmq" => Some(Engine::Rabbitmq),
+            "rocketmq" => Some(Engine::Rocketmq),
             _ => None,
         }
     }
+
+    pub fn is_message_queue(&self)->bool {matches!(self,Engine::Kafka|Engine::Rabbitmq|Engine::Rocketmq)}
 
     /// 是否属于 SQL 引擎族（同步、SQL 编辑器等仅适用于 SQL 族）
     pub fn is_sql(&self) -> bool {
@@ -418,6 +429,9 @@ impl CanonicalType {
             "tinyblob" | "blob" | "mediumblob" | "longblob" => {
                 CanonicalType::Binary { len: None }
             }
+            "uuid" => CanonicalType::Uuid,
+            "inet4" | "inet6" => CanonicalType::String { len: None },
+            "vector" => CanonicalType::Binary { len: None },
             "date" => CanonicalType::Date,
             "time" => CanonicalType::Time {
                 precision: first_u8(&args),

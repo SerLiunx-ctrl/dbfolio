@@ -1,6 +1,7 @@
 #[path = "mysql_export.rs"]
 mod export;
 use async_trait::async_trait;
+use futures_util::TryStreamExt;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use sqlx::mysql::{
     MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlQueryResult, MySqlRow, MySqlSslMode,
@@ -478,11 +479,10 @@ impl DbAdapter for MySqlAdapter {
             });
         }
 
-        let index_rows = sqlx::query(
-            "SELECT INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME, COLLATION, SUB_PART, INDEX_TYPE, INDEX_COMMENT \
-             FROM information_schema.STATISTICS \
-             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY INDEX_NAME, SEQ_IN_INDEX",
-        )
+        let version=self.server_version().await?;
+        let ignored_supported=version.to_ascii_lowercase().contains("mariadb") && crate::meta::data_types::version(&version).is_some_and(|v|v>=(10,6,0));
+        let index_query=format!("SELECT INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME, COLLATION, SUB_PART, INDEX_TYPE, INDEX_COMMENT, {} AS DW_IGNORED FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY INDEX_NAME, SEQ_IN_INDEX",if ignored_supported {"IGNORED"} else {"'NO'"});
+        let index_rows = sqlx::query(&index_query)
         .bind(database)
         .bind(table)
         .fetch_all(&pool)
@@ -497,7 +497,11 @@ impl DbAdapter for MySqlAdapter {
                 None => {
                     indexes.push(IndexMeta {
                         definition: None,
-                        edit_unsupported_reason: None,
+                        edit_unsupported_reason: if text(row,"DW_IGNORED").eq_ignore_ascii_case("YES") {
+                            Some("MariaDB IGNORED 索引请通过 SQL 管理，避免编辑时丢失忽略属性".into())
+                        } else if u32_opt(row,"SUB_PART").is_some() || !text(row,"INDEX_TYPE").eq_ignore_ascii_case("BTREE") || text_opt(row,"INDEX_COMMENT").is_some_and(|v|!v.is_empty()) {
+                            Some("此前缀、特殊方法或带注释索引请通过 SQL 管理，以完整保留属性".into())
+                        } else {None},
                         name: index_name.clone(),
                         columns: Vec::new(),
                         unique,
@@ -513,6 +517,12 @@ impl DbAdapter for MySqlAdapter {
                 desc: text(row, "COLLATION") == "D",
                 prefix_len: u32_opt(row, "SUB_PART"),
             });
+        }
+
+        for index in &mut indexes {
+            if index.edit_unsupported_reason.is_none() && index.columns.iter().any(|c|c.prefix_len.is_some()) {
+                index.edit_unsupported_reason=Some("前缀索引请通过 SQL 管理，以完整保留前缀长度".into());
+            }
         }
 
         if let Some(primary) = indexes.iter().find(|i| i.primary) { primary_key = primary.columns.iter().map(|c| c.name.clone()).collect(); }
@@ -665,8 +675,8 @@ impl DbAdapter for MySqlAdapter {
 
     async fn storage_engines(&self) -> AppResult<Vec<String>> {
         let pool=self.pool_for("").await?;
-        let rows=sqlx::query("SHOW ENGINES").fetch_all(&pool).await?;
-        Ok(rows.iter().filter(|r| matches!(text(r,"Support").as_str(),"YES"|"DEFAULT")).map(|r|text(r,"Engine")).collect())
+        let rows=sqlx::query("SELECT ENGINE AS DW_ENGINE, SUPPORT AS DW_SUPPORT FROM information_schema.ENGINES ORDER BY ENGINE").fetch_all(&pool).await?;
+        Ok(rows.iter().filter(|r| matches!(text(r,"DW_SUPPORT").as_str(),"YES"|"DEFAULT")).map(|r|text(r,"DW_ENGINE")).collect())
     }
     async fn charsets(&self) -> AppResult<Vec<CharsetMeta>> {
         let pool = self.pool_for("").await?;
@@ -740,8 +750,8 @@ impl DbAdapter for MySqlAdapter {
         &self,
         database: &str,
         sql: &str,
-        _offset: u64,
-        _limit: u32,
+        offset: u64,
+        limit: u32,
         ctx: &QueryContext,
     ) -> AppResult<QueryOutcome> {
         crate::services::database_access::sql(self.params.allowed_databases.as_deref(),database,sql)?;
@@ -765,7 +775,19 @@ impl DbAdapter for MySqlAdapter {
             })
             .unwrap_or_default();
 
-        let result = sqlx::query(sql).fetch_all(&mut *conn).await;
+        let result = if crate::services::query::mysql_standalone_rows(sql) {
+            async {
+                let mut stream=sqlx::query(sql).fetch(&mut *conn);
+                let mut rows=Vec::new();
+                let mut skipped=0u64;
+                while let Some(row)=stream.try_next().await? {
+                    if skipped<offset {skipped+=1;continue;}
+                    rows.push(row);
+                    if rows.len()>=limit.max(1) as usize {break;}
+                }
+                Ok::<_,sqlx::Error>(rows)
+            }.await
+        } else {sqlx::query(sql).fetch_all(&mut *conn).await};
         *ctx.conn_id.lock().await = None;
         let rows = result?;
         Ok(rows_to_outcome(rows, described))

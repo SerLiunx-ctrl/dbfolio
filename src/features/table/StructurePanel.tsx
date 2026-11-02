@@ -1,3 +1,4 @@
+import {ViewColumnsPanel} from './ViewColumnsPanel';
 import {ResizableSchemaTable as Table,ResizableHeaderCell as TableHeaderCell} from './ResizableSchemaTable';
 import Editor from "@monaco-editor/react";
 import { useEditorTheme } from "../../useEditorTheme";
@@ -140,7 +141,10 @@ interface AddDraft {
   key: 'none'|'primary'|'index'|'unique';
 }
 
-export function ColumnsPanel({
+export function ColumnsPanel(props: PanelProps) {
+  return props.detail.kind === 'view' ? <ViewColumnsPanel detail={props.detail} engine={props.engine} columnFocus={props.columnFocus} active={props.active??true}/> : <TableColumnsPanel {...props}/>;
+}
+function TableColumnsPanel({
   tab,
   detail,
   engine,
@@ -484,11 +488,11 @@ export function IndexesPanel({
           索引
         </div>
         <div className={styles.spacer} />
-        <span title={readOnly ? "当前会话为只读模式" : detail.kind !== "table" ? "视图不支持新建索引" : undefined}>
+        {detail.kind === "table" && <span title={readOnly ? "当前会话为只读模式" : undefined}>
           <Button disabled={!canEdit} size="small" icon={<AddRegular />} onClick={() => setIndexDialog({})}>
             新建索引
           </Button>
-        </span>
+        </span>}
       </div>
       {detail.indexes.length === 0 ? (
         <div className={styles.empty}>无索引</div>
@@ -758,12 +762,12 @@ export function DdlPanel({ detail, engine, onOpenQuery }: { detail: TableMeta; e
       </div>
       {ddl ? (
         <div className="dw-ddl-editor"><Editor language="sql" theme={theme.name} beforeMount={theme.beforeMount}
-          value={ddl} options={{ ariaLabel: "表 DDL（只读）", readOnly: true, domReadOnly: true,
+          value={ddl} options={{ ariaLabel: detail.kind==="view"?"视图 DDL（只读）":"表 DDL（只读）", readOnly: true, domReadOnly: true,
             minimap: { enabled: false }, fontSize: 13, lineNumbers: "on", scrollBeyondLastLine: false,
             automaticLayout: true, wordWrap: "on", tabSize: 2 }} /></div>
       ) : (
         <div className={styles.empty}>
-          当前视图定义无法从元数据重建（PostgreSQL 视图），可在「列 / 索引 / 外键」页签查看结构详情
+          服务器未返回视图定义，请确认查看定义的权限后刷新元数据；结果列信息可在「结构」页查看。
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+pub mod message_queue;
 pub mod key_value;
 pub mod mongodb;
 pub mod mysql;
@@ -104,6 +105,7 @@ pub enum RowChange {
 
 #[async_trait]
 pub trait DbAdapter: Send + Sync {
+    fn message_queue(&self)->Option<&message_queue::MessageQueueAdapter>{None}
     fn query_timeout_secs(&self)->u64 {60}
     /// Dedicated connection: session state from scripts must never return to a query pool.
     async fn mysql_connection(&self, _database: &str, _write: bool) -> AppResult<sqlx::MySqlConnection> {
@@ -205,6 +207,7 @@ pub async fn connect(params: &ConnectionParams) -> AppResult<std::sync::Arc<dyn 
         }
     }
     match params.engine {
+        Engine::Kafka|Engine::Rabbitmq|Engine::Rocketmq => Ok(std::sync::Arc::new(message_queue::MessageQueueAdapter::connect(params).await?)),
         Engine::Mysql => Ok(std::sync::Arc::new(
             mysql::MySqlAdapter::connect(params).await?,
         )),

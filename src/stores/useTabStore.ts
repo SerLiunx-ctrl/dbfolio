@@ -7,7 +7,7 @@ import type { Target } from "../features/generation/model";
 import { confirmEdits, useEditGuard } from "./useEditGuard";
 import { create } from "zustand";
 import { api } from "../ipc";
-import type { TableSelection } from "../ipc/types";
+import type { TableSelection, TableKind } from "../ipc/types";
 
 export interface QueryTab {
   id: string;
@@ -16,6 +16,7 @@ export interface QueryTab {
   database: string;
   title: string;
 }
+export interface DictionaryTab {id:string;kind:"dictionary";sessionId:string;database:string;title:string;focus?:{table:string;schema?:string|null;token:string}}
 export interface ErTab {id:string;kind:'er';sessionId:string;database:string;title:string;focus?:{table:string;schema?:string|null;token:string}}
 
 export type TableView =
@@ -27,6 +28,7 @@ export type TableView =
   | "info";
 
 export interface TableTab {
+  objectKind?: TableKind;
   id: string;
   kind: "table";
   sessionId: string;
@@ -38,6 +40,8 @@ export interface TableTab {
   pinned?: boolean;
   columnFocus?: { name: string; token: string };
 }
+
+export interface MessageQueueTab {id:string;kind:"messageQueue";sessionId:string;database:string;name:string;objectKind:string;title:string}
 
 export interface RedisTab {
   id: string;
@@ -54,7 +58,7 @@ export interface SyncTab {id:string;kind:"sync";sessionId:"";database:"";title:s
 export interface SqlExportTab {id:string;kind:"sqlExport";sessionId:"";database:"";title:string;draft?:Partial<SqlExportDraft>}
 export interface MysqlToolTab {id:string;kind:'mysqlTool';sessionId:string;database:string;title:string;mode:'import'|'objects';table?:string}
 export interface CreateTableTab {id:string;kind:"createTable";sessionId:string;database:string;title:string;draft:CreateTableState}
-export type WorkspaceTab = ErTab | CreateTableTab | MysqlToolTab | SqlExportTab | SyncTab | AnalysisTab | QueryTab | TableTab | RedisTab | MongoTab | GenerationTab;
+export type WorkspaceTab = MessageQueueTab | DictionaryTab | ErTab | CreateTableTab | MysqlToolTab | SqlExportTab | SyncTab | AnalysisTab | QueryTab | TableTab | RedisTab | MongoTab | GenerationTab;
 
 /** 置顶的表页签（按会话持久化，下次连接自动恢复） */
 export interface PinnedTab {
@@ -80,6 +84,9 @@ function nextId(prefix: string) {
 }
 
 interface TabState {
+  setTableKind: (id: string, kind: TableKind) => void;
+  openMessageQueue:(sessionId:string,scope:string,name?:string,objectKind?:string)=>void;
+  openDictionary:(sessionId:string,database:string,focus?:{table:string;schema?:string|null})=>void;
   openEr:(sessionId:string,database:string,focus?:{table:string;schema?:string|null})=>void;
   openCreateTable:(sessionId:string,database:string,engine:Engine)=>void;
   updateCreateTable:(id:string,draft:CreateTableState)=>void;
@@ -115,6 +122,9 @@ interface TabState {
 }
 
 export const useTabStore = create<TabState>((set, get) => ({
+  setTableKind:(id,objectKind)=>{if(get().tabs.some(t=>t.id===id&&t.kind==="table"&&t.objectKind!==objectKind))set({tabs:get().tabs.map(t=>t.id===id&&t.kind==="table"?{...t,objectKind}:t)});},
+  openMessageQueue:(sessionId,scope,name='',objectKind='topic')=>{const old=get().tabs.find(t=>t.kind==='messageQueue'&&t.sessionId===sessionId&&t.database===scope&&t.name===name&&t.objectKind===objectKind);if(old){set({activeId:old.id});}else{const tab:MessageQueueTab={id:nextId('mq'),kind:'messageQueue',sessionId,database:scope,name,objectKind,title:name||'消息系统'};set({tabs:[...get().tabs,tab],activeId:tab.id});}window.dispatchEvent(new Event('dw:show-workspace'));},
+  openDictionary:(sessionId,database,focus)=>{const old=get().tabs.find(t=>t.kind==='dictionary'&&t.sessionId===sessionId&&t.database===database);const nextFocus=focus?{...focus,token:nextId('dictionary-focus')}:undefined;if(old){set({activeId:old.id,...(nextFocus?{tabs:get().tabs.map(t=>t.id===old.id?{...t,focus:nextFocus}:t)}:{})});}else{const tab:DictionaryTab={id:nextId('dictionary'),kind:'dictionary',sessionId,database,title:'数据字典 · '+database,focus:nextFocus};set({tabs:[...get().tabs,tab],activeId:tab.id});}window.dispatchEvent(new Event('dw:show-workspace'));},
   openEr:(sessionId,database,focus)=>{const old=get().tabs.find(t=>t.kind==='er'&&t.sessionId===sessionId&&t.database===database);const nextFocus=focus?{...focus,token:nextId('er-focus')}:undefined;if(old){set({activeId:old.id,...(nextFocus?{tabs:get().tabs.map(t=>t.id===old.id?{...t,focus:nextFocus}:t)}:{})});return;}const tab:ErTab={id:nextId('er'),kind:'er',sessionId,database,title:'关系图 · '+database,focus:nextFocus};set({tabs:[...get().tabs,tab],activeId:tab.id});},
   openCreateTable:(sessionId,database,engine)=>{if(!['mysql','postgres','sqlite'].includes(engine))return;const id=nextId('create-table');set({tabs:[...get().tabs,{id,kind:'createTable',sessionId,database,title:'新建表*',draft:newTableState(engine)}],activeId:id});window.dispatchEvent(new Event('dw:show-workspace'));},
   updateCreateTable:(id,draft)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==='createTable'?{...t,draft}:t)}),
@@ -196,6 +206,7 @@ export const useTabStore = create<TabState>((set, get) => ({
       view,
       title: selection.table,
       pinned,
+      objectKind: selection.objectKind,
       columnFocus: focusColumn !== undefined ? { name: focusColumn, token: nextId("column-focus") } : undefined,
     };
     set({ tabs: [...get().tabs, tab], activeId: tab.id });

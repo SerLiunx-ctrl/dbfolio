@@ -80,6 +80,11 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::message_queue::mq_catalog,
+            commands::message_queue::mq_inspect,
+            commands::message_queue::mq_read,
+            commands::message_queue::mq_mutate,
+            commands::message_queue::mq_export,
             ui_activity::ui_inactive,
             commands::updater::updater_status,
             commands::updater::updater_ready,
@@ -153,6 +158,8 @@ pub fn run() {
             commands::analysis::analysis_export,
             commands::image::image_export,
             commands::er::er_export,
+            commands::dictionary::dictionary_collect,
+            commands::dictionary::dictionary_export,
             commands::er::er_ai_suggest,
             commands::er::er_ai_verify,
             commands::query::cell_full_value,

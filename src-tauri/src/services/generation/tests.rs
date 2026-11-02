@@ -390,6 +390,9 @@ async fn ai_fields_are_validated_frozen_and_do_not_write() {
         max_tokens: 512,
         is_default: true,
         has_key: false,
+            reasoning_effort: None,
+            temperature: None,
+            top_p: None,
     };
     state
         .local
@@ -450,6 +453,9 @@ async fn invalid_ai_content_never_falls_back_to_local_data() {
             max_tokens: 512,
             is_default: true,
             has_key: false,
+            reasoning_effort: None,
+            temperature: None,
+            top_p: None,
         };
         state
             .local
@@ -542,6 +548,9 @@ async fn streamed_generation_keeps_failed_row_and_validated_sample() {
         max_tokens: 512,
         is_default: true,
         has_key: false,
+            reasoning_effort: None,
+            temperature: None,
+            top_p: None,
     };
     state
         .local
@@ -740,6 +749,9 @@ async fn ai_rule_suggestions_validate_before_returning() {
         max_tokens: 512,
         is_default: true,
         has_key: false,
+            reasoning_effort: None,
+            temperature: None,
+            top_p: None,
     };
     state
         .local

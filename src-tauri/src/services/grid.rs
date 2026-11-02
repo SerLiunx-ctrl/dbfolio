@@ -24,6 +24,9 @@ async fn column_types(
         .adapter
         .introspect_table(&req.database, req.schema.as_deref(), &req.table)
         .await?;
+    if meta.kind != crate::meta::TableKind::Table {
+        return Err(AppError::ReadOnly("视图数据页仅支持浏览，请在查询页执行明确的 SQL 变更".into()));
+    }
     Ok(meta
         .columns
         .iter()

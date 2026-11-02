@@ -19,6 +19,11 @@ const columns: Record<string, { key: string; width: number; min: number }> = {
   "列": { key: "columns", width: 400, min: 44 }, "方法": { key: "method", width: 100, min: 44 },
   "引用": { key: "reference", width: 420, min: 44 }, "引用表": { key: "referenceTable", width: 220, min: 44 },
   "引用列": { key: "referenceColumns", width: 240, min: 44 },
+  "数量": {key:"count",width:90,min:44}, "状态": {key:"state",width:140,min:44},
+  "时间": {key:"timestamp",width:180,min:44}, "消息 ID": {key:"messageId",width:220,min:44},
+  "Key": {key:"messageKey",width:160,min:44}, "分区": {key:"partition",width:60,min:44},
+  "Offset": {key:"offset",width:180,min:44}, "大小": {key:"bytes",width:90,min:44},
+  "正文预览": {key:"body",width:360,min:44},
   "删除规则": { key: "onDelete", width: 120, min: 44 }, "更新规则": { key: "updateRule", width: 120, min: 44 },
 };
 type HeaderProps = TableHeaderCellProps & { columnKey?: string };
@@ -46,9 +51,9 @@ const ResizeContext = createContext<{
   adjust: (key: string, change: number | "reset") => void;
 } | null>(null);
 
-export function ResizableSchemaTable({ kind, engine, children, className, style, ...props }: TableProps & { kind: TableKind; engine: Engine }) {
+export function ResizableSchemaTable({ kind, engine, scopeId, children, className, style, ...props }: TableProps & { kind: TableKind; engine: Engine; scopeId?: string }) {
   const tableRef = useRef<HTMLTableElement>(null);
-  const scope = `dw.schemaWidths.v1.${engine}.${kind}`;
+  const scope = `dw.schemaWidths.v1.${engine}.${scopeId??kind}`;
   const specs = useMemo(() => headers(children, kind), [children, kind]);
   const [layout, setLayout] = useState<{ scope: string; widths: Widths | null }>({ scope, widths: widthCache.get(scope) ?? null });
   const widths = layout.scope === scope ? layout.widths : null;

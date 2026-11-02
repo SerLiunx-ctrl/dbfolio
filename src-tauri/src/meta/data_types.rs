@@ -36,6 +36,11 @@ pub fn builtin(engine:Engine,server_version:&str)->DataTypeCatalog{
         for n in ["time","datetime","timestamp"]{add(n,if temporal{"时间；可填 0～6 位小数秒"}else{"时间；仅秒精度"},"日期与时间",if temporal{"temporal"}else{"none"},"");}
         let maria=server_version.to_ascii_lowercase().contains("mariadb");
         if version(server_version).is_some_and(|v|v>=if maria{(10,2,7)}else{(5,7,8)}){add("json",if maria{"JSON 文档；MariaDB 文本别名"}else{"原生 JSON 文档；MySQL 5.7.8+"},"文档","none","");}
+        if maria {
+            for (n,d,min) in [("uuid","原生 UUID；MariaDB 10.7+",(10,7,0)),("inet6","IPv6 / IPv4 地址；MariaDB 10.5+",(10,5,0)),("inet4","IPv4 地址；MariaDB 10.10+",(10,10,0))] {
+                if version(server_version).is_some_and(|v|v>=min){add(n,d,"标识与网络","none","");}
+            }
+        }
         if version(server_version).is_some_and(|v|v>=if maria{(11,7,1)}else{(9,0,0)}){add("vector",if maria{"向量；MariaDB 11.7.1+"}else{"向量；MySQL 9.0+"},"向量","dimensions","3");}
         for (n,d,args,default) in [("binary","固定长度二进制","length","1"),("varbinary","可变长度二进制","length","255"),("bit","位串","length","1"),("tinyblob","短二进制数据","none",""),("blob","二进制数据","none",""),("mediumblob","中等长度二进制数据","none",""),("longblob","长二进制数据","none","")] {add(n,d,"二进制",args,default);}
         for n in ["geometry","point","linestring","polygon","multipoint","multilinestring","multipolygon","geometrycollection"]{add(n,"空间几何类型","空间","none","");}
@@ -46,7 +51,7 @@ pub fn builtin(engine:Engine,server_version:&str)->DataTypeCatalog{
 }
 pub fn validate_mysql_type(server_version:&str,raw:&str)->crate::error::AppResult<()>{
     let name=raw.trim().split(|c:char|!c.is_ascii_alphanumeric()).next().unwrap_or("").to_ascii_lowercase();
-    if name=="json"||name=="vector" {
+    if ["json","vector","uuid","inet6","inet4"].contains(&name.as_str()) {
         if !builtin(Engine::Mysql,server_version).types.iter().any(|t|t.name==name){return Err(crate::error::AppError::InvalidInput(format!("当前服务器版本 {server_version} 不支持可视化选择的 {name} 类型，请刷新类型或通过 SQL 核对服务器能力")));}
     }
     if ["time","datetime","timestamp"].contains(&name.as_str())&&raw.contains('(')&&!version(server_version).is_some_and(|v|v>=(5,6,4)){
@@ -71,6 +76,14 @@ pub fn pg_builtin(name:&str)->Option<DataTypeOption>{
 }
 #[cfg(test)]mod tests{
     use super::*;
+    #[test] fn mariadb_native_types_are_vendor_and_version_scoped() {
+        for (v,expected) in [("8.4.6",vec![]),("10.4.0-MariaDB",vec![]),("10.5.0-MariaDB",vec!["inet6"]),("10.7.0-MariaDB",vec!["uuid","inet6"]),("11.8.9-MariaDB",vec!["uuid","inet6","inet4"])] {
+            let types=builtin(Engine::Mysql,v).types;
+            for name in ["uuid","inet6","inet4"] {assert_eq!(types.iter().any(|t|t.name==name),expected.contains(&name),"{v} {name}");}
+        }
+        assert!(validate_mysql_type("8.4.6","INET6").is_err());
+        assert!(validate_mysql_type("11.8.9-MariaDB","UUID").is_ok());
+    }
     #[test]fn mysql_versions_do_not_offer_future_types(){
         for (v,json,vector) in [("5.6.51",false,false),("5.7.7",false,false),("5.7.8",true,false),("8.4.6",true,false),("9.0.0",true,true),("5.5.5-10.11.9-MariaDB",true,false),("11.7.1-MariaDB",true,true),("unknown",false,false)] {
             let types=builtin(Engine::Mysql,v).types;assert_eq!(types.iter().any(|t|t.name=="json"),json,"{v}");assert_eq!(types.iter().any(|t|t.name=="vector"),vector,"{v}");assert!(types.iter().all(|t|!t.description.is_empty()));

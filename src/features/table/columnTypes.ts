@@ -4,7 +4,7 @@ const FALLBACK_TYPES: Record<Engine, string[]> = {
   mysql: ["tinyint", "smallint", "mediumint", "int", "bigint", "boolean", "decimal", "float", "double", "varchar", "char", "text", "mediumtext", "longtext", "date", "time", "datetime", "timestamp", "json", "blob", "mediumblob", "longblob"],
   postgres: ["smallint", "integer", "bigint", "boolean", "numeric", "real", "double precision", "varchar", "char", "text", "date", "time", "timetz", "timestamp", "timestamptz", "interval", "json", "jsonb", "bytea", "uuid", "inet", "cidr", "macaddr"],
   sqlite: ["integer", "int", "bigint", "real", "numeric", "decimal", "text", "varchar", "char", "blob", "boolean", "date", "datetime", "timestamp", "any"],
-  mongodb: [], redis: [],
+  mongodb: [], redis: [], kafka: [], rabbitmq: [], rocketmq: [],
 };
 export const defaultColumnType = (engine: Engine) => engine === "sqlite" ? "text" : "varchar";
 export const hasLength = (type: string) => ["varchar", "char"].includes(type);

@@ -184,7 +184,7 @@ export function SyncWorkspace({tab,active=true}:{tab?:SyncTab;active?:boolean}) 
   const sessions = useSessionStore((s) => s.sessions);
   const statuses = useSessionStore((s) => s.statuses);
   const connectedSessions = sessions.filter(
-    (session) => statuses[session.id]?.connected && session.engine !== "redis" && session.engine !== "mongodb",
+    (session) => statuses[session.id]?.connected && ["mysql","postgres","sqlite"].includes(session.engine),
   );
 
   const [step, setStep] = useState(0);

@@ -42,6 +42,9 @@ pub async fn connect_pair(
             "首版仅支持同引擎同步（源与目标的数据库类型必须一致）".into(),
         ));
     }
+    if source_conn.adapter.engine()==Engine::Mysql && source_conn.server_version.to_ascii_lowercase().contains("mariadb") != target_conn.server_version.to_ascii_lowercase().contains("mariadb") {
+        return Err(AppError::InvalidInput("MySQL 与 MariaDB 的类型和 DDL 存在差异，当前仅支持同厂商同步，请选择同为 MySQL 或同为 MariaDB 的连接".into()));
+    }
     if source.session_id == target.session_id && source.database == target.database {
         return Err(AppError::InvalidInput("源与目标不能是同一个数据库".into()));
     }
@@ -928,7 +931,7 @@ async fn build_schema_script(
                                     ),
                                     sql: String::new(),
                                 }),
-                                Engine::Redis | Engine::Mongodb => {}
+                                Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => {}
                             }
                         }
                         "onlyTarget" => {

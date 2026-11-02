@@ -1,0 +1,98 @@
+name: dbfolio-message-queues
+services:
+  kafka-volume-init:
+    image: apache/kafka:4.3.1
+    user: "0"
+    entrypoint: ["sh", "-c", "chown 1000:1000 /data"]
+    volumes: [kafka-data:/data]
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: dbfolio-kafka
+    depends_on:
+      kafka-volume-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    ports: ["127.0.0.1:19092:19092"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:19092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://dbfolio-kafka:9092,EXTERNAL://127.0.0.1:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@dbfolio-kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+    volumes: [kafka-data:/tmp/kraft-combined-logs]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+    mem_limit: 1g
+  rabbitmq:
+    image: rabbitmq:4.2-management
+    container_name: dbfolio-rabbitmq
+    hostname: dbfolio-rabbitmq
+    restart: unless-stopped
+    ports: ["127.0.0.1:15673:15672", "127.0.0.1:5673:5672"]
+    environment:
+      RABBITMQ_DEFAULT_USER: dbfolio
+      RABBITMQ_DEFAULT_PASS: ${DBFOLIO_RABBITMQ_PASSWORD:?请提供本地测试密码}
+    volumes: [rabbitmq-data:/var/lib/rabbitmq]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    mem_limit: 768m
+  rocketmq-volume-init:
+    image: apache/rocketmq:5.3.3
+    user: "0"
+    entrypoint: ["sh", "-c", "chown 3000:3000 /data"]
+    volumes: [rocketmq-data:/data]
+  rocketmq-nameserver:
+    image: apache/rocketmq:5.3.3
+    container_name: dbfolio-rocketmq-nameserver
+    restart: unless-stopped
+    environment:
+      JAVA_OPT_EXT: -Xms128m -Xmx256m -Xmn64m
+    command: sh mqnamesrv
+    mem_limit: 512m
+  rocketmq-broker:
+    image: apache/rocketmq:5.3.3
+    container_name: dbfolio-rocketmq-broker
+    restart: unless-stopped
+    depends_on:
+      rocketmq-nameserver:
+        condition: service_started
+      rocketmq-volume-init:
+        condition: service_completed_successfully
+    environment:
+      JAVA_OPT_EXT: -Xms256m -Xmx512m -Xmn128m
+    volumes:
+      - ./rocketmq-broker.conf:/home/rocketmq/broker.conf:ro
+      - rocketmq-data:/home/rocketmq/store
+    command: sh mqbroker -n dbfolio-rocketmq-nameserver:9876 -c /home/rocketmq/broker.conf
+    mem_limit: 1g
+  rocketmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:2.1.0
+    container_name: dbfolio-rocketmq-dashboard
+    restart: unless-stopped
+    depends_on: [rocketmq-broker]
+    ports: ["127.0.0.1:18082:8082"]
+    environment:
+      JAVA_OPTS: -Xms128m -Xmx256m -Drocketmq.namesrv.addr=dbfolio-rocketmq-nameserver:9876 -Dserver.port=8082 -Drocketmq.config.loginRequired=false
+    mem_limit: 512m
+volumes:
+  kafka-data:
+    name: dbfolio-kafka-data
+  rabbitmq-data:
+    name: dbfolio-rabbitmq-data
+  rocketmq-data:
+    name: dbfolio-rocketmq-data

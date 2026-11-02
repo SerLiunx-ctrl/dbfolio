@@ -1,3 +1,6 @@
+import {isMessageQueue,ENGINE_LABELS} from './features/sessions/engine';
+import {MqWorkspace} from './features/message-queue/MqWorkspace';
+import {DictionaryWorkspace} from './features/dictionary/DictionaryWorkspace';
 import {useShortcut,useShortcutLabel} from './app/shortcuts';
 import {useShortcutStore} from './stores/useShortcutStore';
 import {SaveCommandBridge} from './app/SaveCommandBridge';
@@ -48,6 +51,8 @@ import {
   ChevronLeftRegular,
   CodeRegular,
   DatabaseRegular,
+  MailRegular,
+  EyeRegular,
   DismissRegular,
   DismissSquareRegular,
   DismissCircleRegular,
@@ -329,6 +334,8 @@ const WorkspaceContent = memo(function WorkspaceContent({tab,active}:{tab:Worksp
   if(tab.kind==="sqlExport")return <SqlExportWorkspace tab={tab}/>;
   if(tab.kind==="mysqlTool")return <MysqlToolsWorkspace tab={tab}/>;
   if(tab.kind==="sync")return <SyncWorkspace tab={tab} active={active}/>;
+  if(tab.kind==='messageQueue')return <MqWorkspace tab={tab} active={active&&!uiInactive}/>;
+  if(tab.kind==='dictionary')return <DictionaryWorkspace tab={tab} active={active&&!uiInactive}/>;
   if(tab.kind==='er')return <ErWorkspace tab={tab} active={active&&!uiInactive}/>;
   return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "createTable" ? <CreateTableWorkspace tab={tab}/> : tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab} active={active&&!uiInactive}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab} active={active&&!uiInactive}/>}</>;
 });
@@ -616,11 +623,11 @@ function AppShell() {
                     setTabMenu({ x: event.clientX, y: event.clientY, tabId: tab.id });
                   }}
                 >
-                {tab.kind === "er" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.kind === "sqlExport" ? (<ArrowExportRegular fontSize={14}/>) : tab.kind === "sync" ? (<ArrowSyncRegular fontSize={14}/>) : tab.kind === "query" ? (
+                {tab.kind === "dictionary" ? (<TableRegular fontSize={14}/>) : tab.kind === "er" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.kind === "sqlExport" ? (<ArrowExportRegular fontSize={14}/>) : tab.kind === "sync" ? (<ArrowSyncRegular fontSize={14}/>) : tab.kind === "query" ? (
                     <CodeRegular fontSize={14} />
                   ) : tab.kind === "redis" ? (
                     <DatabaseRegular fontSize={14} />
-                  ) : tab.kind === "mongo" ? (<DatabaseRegular fontSize={14}/>) : tab.kind === "generation" ? (<GenerationTabActivity tabId={tab.id}/>) : tab.kind === "analysis" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.kind === "table" && tab.pinned ? (
+                  ) : tab.kind === "messageQueue" ? (<MailRegular fontSize={14}/>) : tab.kind === "mongo" ? (<DatabaseRegular fontSize={14}/>) : tab.kind === "generation" ? (<GenerationTabActivity tabId={tab.id}/>) : tab.kind === "analysis" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.kind === "table" && tab.objectKind === "view" ? (<EyeRegular aria-label="视图" fontSize={14} style={{color:tokens.colorPalettePurpleForeground2}}/>) : tab.kind === "table" && tab.pinned ? (
                     <PinRegular fontSize={12} className={styles.tabPin} />
                   ) : (
                     <TableRegular fontSize={14} />
@@ -658,9 +665,7 @@ function AppShell() {
                   <>
                     <DatabaseRegular fontSize={44} className={styles.welcomeIcon} />
                     <div className={styles.welcomeTitle}>DBFolio</div>
-                    <div>双击左侧会话连接，展开数据库并双击数据表开始浏览</div>
-                    <div>或在数据库右键菜单中选择「新建查询」</div>
-                    <Button icon={<DataBarVerticalRegular/>} onClick={()=>window.dispatchEvent(new Event("dw:analysis"))}>数据分析：新建 / 打开方案</Button>
+                    {activeSession&&isMessageQueue(activeSession.engine)?<><div>{ENGINE_LABELS[activeSession.engine]} 已连接</div><div>从左侧消息概览或 Topic、队列、交换机列表打开工作区</div></>:<><div>双击左侧会话连接，展开数据库并双击数据表开始浏览</div><div>或在数据库右键菜单中选择「新建查询」</div><Button icon={<DataBarVerticalRegular/>} onClick={()=>window.dispatchEvent(new Event("dw:analysis"))}>数据分析：新建 / 打开方案</Button></>}
                   </>
                 )}
               </div>

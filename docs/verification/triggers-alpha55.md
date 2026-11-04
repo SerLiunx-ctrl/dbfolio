@@ -25,7 +25,7 @@
 - 真实 SQLite 界面通过：表工具栏闪电图标 → 独立触发器页 → 表单及 Monaco 输入 → SQL 预览与明确确认 → 保存/高亮定义 → 实际触发 → UI 删除。MySQL 专属测试库已删除、隔离 App/WebView 已关闭；真实配置只读复用，未修改原会话或凭据。
 - 原生结果：`.qa/triggers55-native-1793764077830/result.json`；同目录 `sqlite-ui-create-preview.png`、`sqlite-ui-definition.png`、`sqlite-ui-deleted.png`。早期测试输入定位到 Monaco native EditContext 后修正脚本，未为测试更改产品编辑器。
 - `npm run app:build` 通过：NSIS 安装包、完整便携目录、ZIP 和独立校验清单位于 `release/1.0.0-alpha.55/`。107 项 SHA256、105 个 ZIP 文件、101 个安装/便携资源一致性、真实 EXE 资源自检及前端启动、生产签名和篡改拒绝通过；未执行安装升级或发布索引。证据 `.qa/trigger55-build.log`、`.qa/trigger55-package.log`。
-- 已确认无编译进程并校验清理路径；清理 .qa 窄测试 target、WebView 缓存、解包副本 0.928 GiB，无跳过项；另清理构建残留 0.02 GiB。保留脚本/截图/结果/配置/备份与正式交付。target 5.16 GiB、C 盘剩余 278.36 GiB，.qa 约 65 MiB。证据 `.qa/trigger55-disk.json`、`.qa/cleanup-trigger55-artifacts-result.json`。
+- 已确认无编译进程并校验清理路径；清理 .qa 窄测试 target、WebView 缓存、解包副本 0.928 GiB，无跳过项；另清理构建残留 0.02 GiB。保留脚本/截图/结果/配置/备份与正式交付。target 5.16 GiB、C 盘剩余 278.36 GiB，.qa 约 65 MiB。证据 `.qa/trigger55-feature-cleanup-summary.json`（首次清理汇总）；后续发布清理另见发布验收。
 - MariaDB 复用 MySQL 连接及管理协议；已有 Docker Desktop/13306 服务本轮未运行，未宣称完成本次 MariaDB 实库验收。
 
 PostgreSQL 实库继续按用户既有决定待验收，本次不启动或创建该实例。路线图完成数保持 5/39，下一规划 R09，既有 R06/R07/R08 保留项不变。

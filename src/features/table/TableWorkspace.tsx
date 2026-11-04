@@ -10,7 +10,7 @@ import {
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { DataBarVerticalRegular, AddRegular, ArrowClockwiseRegular, CodeRegular } from "@fluentui/react-icons";
+import { DataBarVerticalRegular, AddRegular, ArrowClockwiseRegular, CodeRegular, FlashRegular } from "@fluentui/react-icons";
 import { updateDraft } from "../../stores/useWorkspace";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../ipc";
@@ -154,6 +154,7 @@ export function TableWorkspace({ tab, active }: Props) {
   const capabilities = detail ? objectCapabilities(detail) : null;
   const currentView = (view === 'indexes' && !capabilities?.indexes || view === 'foreignKeys' && !capabilities?.foreignKeys) && detail ? 'structure' : view;
   const objectTable = detail?.kind === 'table';
+  const supportsTriggers = !!detail && !capabilities?.materialized && (session?.engine === 'mysql' ? objectTable : session?.engine === 'postgres' || session?.engine === 'sqlite');
   const fullName = `${tab.database}${tab.schema ? `.${tab.schema}` : ""}.${tab.table}`;
 
   const openSelectQuery = () => {
@@ -189,7 +190,7 @@ export function TableWorkspace({ tab, active }: Props) {
 
         {objectTable&&<Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} onClick={()=>useTabStore.getState().openEr(tab.sessionId,tab.database,{table:tab.table,schema:tab.schema})}>查看关联</Button>}
         <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} onClick={()=>useTabStore.getState().openDictionary(tab.sessionId,tab.database,{table:tab.table,schema:tab.schema})}>数据字典</Button>
-          {objectTable&&session?.engine==='mysql'&&<Button size="small" appearance="subtle" onClick={()=>useTabStore.getState().openMysqlTool(tab.sessionId,tab.database,'objects',tab.table)}>触发器</Button>}
+        {supportsTriggers&&<Button size="small" appearance="subtle" icon={<FlashRegular/>} onClick={()=>useTabStore.getState().openTriggers(tab.sessionId,tab.database,tab.table,tab.schema)}>触发器</Button>}
         <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={!session} title="新建独立分析，预填当前对象的 SQL，不使用当前数据页或筛选" onClick={()=>{if(!session)return;const plan=newPlan(tab.sessionId,tab.database);plan.metadataSource={table:tab.table,schema:tab.schema??""};plan.name=(tab.table+" 分析").slice(0,120);plan.query="SELECT * FROM "+qualifiedTableSql(session.engine,tab.database,tab.schema,tab.table)+";";openAnalysis(plan);}}>新建分析</Button>
         {objectTable&&<Button size="small" appearance="subtle" icon={<AddRegular/>} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</Button>}
 

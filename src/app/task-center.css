@@ -12,3 +12,22 @@
 .dw-task-hover-footer{padding-top:8px;border-top:1px solid var(--colorNeutralStroke2)}
 .dw-tab-activity{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex-shrink:0;color:var(--colorBrandForeground1)}
 @media (prefers-reduced-motion:reduce){.dw-tab-activity *{animation:none!important}}
+
+.dw-task-center{width:min(760px,94vw)!important;max-width:94vw!important;max-height:calc(100dvh - 24px);padding:16px!important}
+.dw-task-center .fui-DialogBody{min-height:0;max-height:calc(100dvh - 58px);grid-template-rows:auto minmax(0,1fr) auto}
+.dw-task-center-content{min-height:0;max-height:65vh;overflow:auto;padding-right:3px}
+.dw-task-center-summary{display:flex;align-items:center;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;margin:4px 0;font-size:12px;color:var(--colorNeutralForeground3)}
+.dw-task-center-summary strong{color:var(--colorNeutralForeground1);font-variant-numeric:tabular-nums}
+.dw-task-center-hint{margin:4px 0 10px!important;font-size:12px;line-height:1.5;color:var(--colorNeutralForeground3)}
+.dw-task-center-empty{padding:24px 0;text-align:center;color:var(--colorNeutralForeground3)}
+.dw-task-card{display:flex;flex-direction:column;gap:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--colorNeutralStroke2);border-radius:6px;min-width:0}
+.dw-task-card:last-child{margin-bottom:0}.dw-task-card-header{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;min-width:0}
+.dw-task-card-title{flex:1;min-width:80px;overflow-wrap:anywhere;line-height:1.5}.dw-task-card-time{margin-left:auto;flex-shrink:0;color:var(--colorNeutralForeground3);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dw-task-card-context{color:var(--colorNeutralForeground3);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.dw-task-card-progress{display:flex;flex-direction:column;gap:6px;padding:2px 0 4px;min-width:0}.dw-task-card-progress-label{display:flex;justify-content:space-between;gap:4px 10px;flex-wrap:wrap;font-size:12px;color:var(--colorNeutralForeground3);font-variant-numeric:tabular-nums}
+.dw-task-card-progress-label>span:last-child{color:var(--colorBrandForeground1)}
+.dw-task-card-message{display:flex;flex-direction:column;gap:4px;max-height:140px;overflow:auto;overscroll-behavior:contain;overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.5;font-size:12px}
+.dw-task-card-error{color:var(--colorPaletteRedForeground1)}
+.dw-task-card-actions{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--colorNeutralStroke2)}
+.dw-task-card-controls{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.dw-task-card-actions .fui-Button{flex-shrink:0}
+.dw-task-center-actions{padding-top:10px;margin-top:10px;border-top:1px solid var(--colorNeutralStroke2);gap:8px}

@@ -4,7 +4,7 @@ import type { Engine } from "../../ipc/types";
 import { api } from "../../ipc";
 import "./resizable-schema-table.css";
 
-type TableKind = "structure" | "indexes" | "foreignKeys";
+type TableKind = "structure" | "indexes" | "foreignKeys" | "triggers";
 type Widths = Record<string, number>;
 // 仅按引擎和表格类别缓存少量界面偏好，切页时无需等待设置落盘。
 const widthCache = new Map<string, Widths>();

@@ -2,7 +2,7 @@ import { useTabStore } from "../stores/useTabStore";
 import { api } from "../ipc";
 import { useNotify } from "./toast";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, ProgressBar, Badge, Popover, PopoverTrigger, PopoverSurface, tokens } from "@fluentui/react-components";
+import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, ProgressBar, Badge, Popover, PopoverTrigger, PopoverSurface } from "@fluentui/react-components";
 import { TaskListSquareLtrRegular, StopRegular, DismissRegular, ArrowLeftRegular, CopyRegular } from "@fluentui/react-icons";
 import { cancelTask, isTaskActive, isBackgroundTask, useTaskStore } from "../stores/useTaskStore";
 import { useSessionStore } from "../stores/useSessionStore";
@@ -23,6 +23,8 @@ export function TaskCenter() {
   }, []);
   const [now, setNow] = useState(Date.now());
   const active = tasks.filter(isTaskActive);
+  const ordered = [...tasks].sort((a,b)=>Number(isTaskActive(b))-Number(isTaskActive(a)));
+  const finished = tasks.length-active.length;
   useEffect(() => {
     if ((!open && !hovered) || active.length === 0) return;
     setNow(Date.now());
@@ -57,34 +59,33 @@ export function TaskCenter() {
       </PopoverSurface>
     </Popover>
     <Dialog open={open} onOpenChange={(_, data) => setOpen(data.open)}>
-      <DialogSurface style={{ width: "min(760px, 94vw)", maxWidth: "94vw" }}>
+      <DialogSurface className="dw-task-center">
         <DialogBody>
           <DialogTitle>任务中心</DialogTitle>
-          <DialogContent style={{ maxHeight: "65vh", overflowY: "auto" }}>
-            <p>显示导入、导出、同步、生成、AI 等后台作业。取消仅停止后续处理，已提交数据不会回滚。</p>
-            {!tasks.length && <p>暂无任务</p>}
-            {open && tasks.map(task => <section key={task.id} style={{ padding: 12, marginBottom: 10, border: `1px solid ${tokens.colorNeutralStroke2}`, borderRadius: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <DialogContent className="dw-task-center-content">
+            <div className="dw-task-center-summary"><span>进行中 <strong>{active.length}</strong> · 已结束 <strong>{finished}</strong></span><span>导入、导出、同步、生成、AI 等后台作业</span></div>
+            <p className="dw-task-center-hint">取消仅停止后续处理，已提交数据不会回滚。</p>
+            {!tasks.length && <p className="dw-task-center-empty">暂无任务</p>}
+            {open && ordered.map(task => {const running=isTaskActive(task),progress=progressDisplay(task.progress?.processed,task.progress?.total);return <section key={task.id} className="dw-task-card" data-status={task.status} aria-label={task.label}>
+              <div className="dw-task-card-header">
                 <Badge appearance="tint" color={task.status === "error" ? "danger" : task.status === "success" ? "success" : "informative"}>{labels[task.status]}</Badge>
-                <strong style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{task.label}</strong>
-                <span>{(Math.max(0, (task.endedAt ?? now) - task.startedAt) / 1000).toFixed(1)} 秒</span>
-                {isTaskActive(task) && <Button size="small" icon={<StopRegular />} disabled={task.status === "cancelling"} onClick={() => void cancelTask(task.id)}>{task.status === "cancelling" ? "等待停止" : "取消"}</Button>}
+                <strong className="dw-task-card-title">{task.label}</strong>
+                <span className="dw-task-card-time" title="任务耗时">{(Math.max(0, (task.endedAt ?? now) - task.startedAt) / 1000).toFixed(1)} 秒</span>
               </div>
-              <div style={{ color: tokens.colorNeutralForeground3, margin: "6px 0" }}>{task.kind} · {task.sessionIds.map(id => sessions.find(s => s.id === id)?.name ?? "已删除会话").join(" → ")}</div>
-              {isTaskActive(task) && <ProgressBar aria-label={`${task.label}进度`} value={progressDisplay(task.progress?.processed,task.progress?.total).value} />}
-              {task.tabId && <Button size="small" icon={<ArrowLeftRegular/>} disabled={!tabs.some(t=>t.id===task.tabId)} onClick={()=>{const tab=tabs.find(t=>t.id===task.tabId);if(tab){if(tab.kind!=="sync"&&tab.kind!=="sqlExport")useSessionStore.getState().setActiveSession(tab.sessionId);useTabStore.getState().setActive(tab.id);window.dispatchEvent(new Event("dw:show-workspace"));setOpen(false);}}}>返回发起时页签</Button>}
-              {task.error && <Button size="small" icon={<CopyRegular/>} onClick={()=>void api.clipboardWriteText(task.label+"\n"+task.error).then(()=>notify.success("已复制失败详情")).catch(e=>notify.error(e))}>复制失败详情</Button>}
-              <div style={{ marginTop: 6, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>
+              <div className="dw-task-card-context">{task.kind} · {task.sessionIds.map(id => sessions.find(s => s.id === id)?.name ?? "已删除会话").join(" → ") || "应用任务"}</div>
+              {running && <div className="dw-task-card-progress"><div className="dw-task-card-progress-label"><span>{task.status==='cancelling'?'等待当前步骤停止':'任务进度'}</span><span>{progress.text}</span></div><ProgressBar aria-label={`${task.label}进度`} value={progress.value}/></div>}
+              {(task.progress?.message||task.result||task.error||task.cancelError)&&<div className="dw-task-card-message">
                 {task.progress?.message && <div>{task.progress.message}</div>}
                 {task.result && <div>{task.result}{task.progress?.cancelRequested && task.status === "success" ? "（取消生效前操作已完成）" : ""}</div>}
-                {task.error && <div style={{ color: task.status === "cancelled" ? tokens.colorNeutralForeground2 : tokens.colorPaletteRedForeground1 }}>{task.error}</div>}
-                {task.cancelError && <div>取消请求失败：{task.cancelError}，任务仍在运行。</div>}
-              </div>
-            </section>)}
+                {task.error && <div className={task.status === "cancelled" ? "" : "dw-task-card-error"}>{task.error}</div>}
+                {task.cancelError && <div className="dw-task-card-error">取消请求失败：{task.cancelError}，任务仍在运行。</div>}
+              </div>}
+              {(task.tabId||task.error||running)&&<div className="dw-task-card-actions">{task.tabId && <Button size="small" icon={<ArrowLeftRegular/>} disabled={!tabs.some(t=>t.id===task.tabId)} onClick={()=>{const tab=tabs.find(t=>t.id===task.tabId);if(tab){if(tab.kind!=="sync"&&tab.kind!=="sqlExport")useSessionStore.getState().setActiveSession(tab.sessionId);useTabStore.getState().setActive(tab.id);window.dispatchEvent(new Event("dw:show-workspace"));setOpen(false);}}}>返回发起时页签</Button>}<div className="dw-task-card-controls">{task.error && <Button size="small" icon={<CopyRegular/>} onClick={()=>void api.clipboardWriteText(task.label+"\n"+task.error).then(()=>notify.success("已复制失败详情")).catch(e=>notify.error(e))}>复制失败详情</Button>} {isTaskActive(task) && <Button size="small" icon={<StopRegular />} disabled={task.status === "cancelling"} onClick={() => void cancelTask(task.id)}>{task.status === "cancelling" ? "等待停止" : "取消"}</Button>}</div></div>}
+            </section>;})}
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => useTaskStore.setState(s => ({ tasks: s.tasks.filter(isTaskActive) }))}>清除已结束记录</Button>
-            <Button appearance="primary" icon={<DismissRegular />} onClick={() => setOpen(false)}>关闭</Button>
+          <DialogActions className="dw-task-center-actions">
+            <Button size="small" disabled={!finished} onClick={() => useTaskStore.setState(s => ({ tasks: s.tasks.filter(isTaskActive) }))}>清除已结束记录</Button>
+            <Button size="small" appearance="primary" icon={<DismissRegular />} onClick={() => setOpen(false)}>关闭</Button>
           </DialogActions>
         </DialogBody>
       </DialogSurface>

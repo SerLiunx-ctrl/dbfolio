@@ -28,6 +28,7 @@ import {
   EyeFilled,
   EyeRegular,
   EyeOffRegular,
+  FlashRegular,
   InfoRegular,
   KeyMultipleRegular,
   SettingsRegular,
@@ -559,6 +560,7 @@ function SqlExplorerPanel() {
                   <MenuItem icon={<EyeRegular/>} onClick={()=>{toggleViews(contextMenu.database);setContextMenu(null);}}>{session&&hiddenViews[visibilityKey(session.id,contextMenu.database)]?'显示视图':'隐藏视图'}</MenuItem>
                   <MenuItem icon={<TableRegular/>} onClick={()=>{if(session)useTabStore.getState().openEr(session.id,contextMenu.database);setContextMenu(null);}}>ER 关系图</MenuItem>
                   <MenuItem icon={<TableRegular/>} onClick={()=>{if(session)useTabStore.getState().openDictionary(session.id,contextMenu.database);setContextMenu(null);}}>数据字典</MenuItem>
+                  {session&&['mysql','postgres','sqlite'].includes(session.engine)&&<MenuItem icon={<FlashRegular/>} onClick={()=>{useTabStore.getState().openTriggers(session.id,contextMenu.database);setContextMenu(null);}}>触发器</MenuItem>}
                   {!readOnly && (<MenuItem
                     icon={<AddRegular />}
                     onClick={() => {
@@ -613,6 +615,7 @@ function SqlExplorerPanel() {
                 <>
                   {contextMenu.table?.kind==="table"&&<MenuItem icon={<TableRegular/>} onClick={()=>{if(session&&contextMenu.table)useTabStore.getState().openEr(session.id,contextMenu.database,{table:contextMenu.table.name,schema:contextMenu.table.schema});setContextMenu(null);}}>查看关联</MenuItem>}
                   <MenuItem icon={<TableRegular/>} onClick={()=>{if(session&&contextMenu.table)useTabStore.getState().openDictionary(session.id,contextMenu.database,{table:contextMenu.table.name,schema:contextMenu.table.schema});setContextMenu(null);}}>数据字典</MenuItem>
+                  {session&&['mysql','postgres','sqlite'].includes(session.engine)&&contextMenu.table?.kind==='table'&&<MenuItem icon={<FlashRegular/>} onClick={()=>{useTabStore.getState().openTriggers(session.id,contextMenu.database,contextMenu.table!.name,contextMenu.table!.schema);setContextMenu(null);}}>触发器</MenuItem>}
                   {contextMenu.table?.kind==="table"&&<MenuItem icon={<AddRegular />} onClick={()=>{if(session&&contextMenu.table)window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:session.id,database:contextMenu.database,schema:contextMenu.table.schema??null,object:contextMenu.table.name}}));setContextMenu(null);}}>生成测试数据…</MenuItem>}
                   <MenuItem icon={<TableRegular />}
                     onClick={() => {

@@ -5,6 +5,7 @@ import {useShortcut,useShortcutLabel} from './app/shortcuts';
 import {useShortcutStore} from './stores/useShortcutStore';
 import {SaveCommandBridge} from './app/SaveCommandBridge';
 import {ErWorkspace} from './features/er/ErWorkspace';
+import {TriggersWorkspace} from './features/triggers/TriggersWorkspace';
 import {useUiActivity,useUiActivityLifecycle} from './app/uiActivity';
 import { CreateTableWorkspace } from './features/table/CreateTableWorkspace';
 import {UpdateManager} from './features/updates/UpdateManager';
@@ -45,6 +46,7 @@ import {
 } from "@fluentui/react-components";
 import {
   DataBarVerticalRegular,
+  FlashRegular,
   ArrowLeftRegular,
   ArrowSyncRegular,
   ArrowExportRegular,
@@ -337,6 +339,7 @@ const WorkspaceContent = memo(function WorkspaceContent({tab,active}:{tab:Worksp
   if(tab.kind==='messageQueue')return <MqWorkspace tab={tab} active={active&&!uiInactive}/>;
   if(tab.kind==='dictionary')return <DictionaryWorkspace tab={tab} active={active&&!uiInactive}/>;
   if(tab.kind==='er')return <ErWorkspace tab={tab} active={active&&!uiInactive}/>;
+  if(tab.kind==='triggers')return <TriggersWorkspace tab={tab} active={active&&!uiInactive}/>;
   return <><ConnectionNotice sessionId={tab.sessionId}/>{tab.kind === "createTable" ? <CreateTableWorkspace tab={tab}/> : tab.kind === "analysis" ? <AnalysisWorkspace tab={tab}/> : tab.kind === "generation" ? <GenerationWorkspace tab={tab}/> : tab.kind === "query" ? <QueryWorkspace tab={tab} active={active&&!uiInactive}/> : tab.kind === "mongo" ? <MongoWorkspace tab={tab}/> : tab.kind === "redis" ? <RedisWorkspace tab={tab}/> : <TableWorkspace tab={tab} active={active&&!uiInactive}/>}</>;
 });
 function VisitedWorkspace({tab,active}:{tab:WorkspaceTab;active:boolean}) {
@@ -623,7 +626,7 @@ function AppShell() {
                     setTabMenu({ x: event.clientX, y: event.clientY, tabId: tab.id });
                   }}
                 >
-                {tab.kind === "dictionary" ? (<TableRegular fontSize={14}/>) : tab.kind === "er" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.kind === "sqlExport" ? (<ArrowExportRegular fontSize={14}/>) : tab.kind === "sync" ? (<ArrowSyncRegular fontSize={14}/>) : tab.kind === "query" ? (
+                {tab.kind === "triggers" ? (<FlashRegular aria-label="触发器" fontSize={14}/>) : tab.kind === "dictionary" ? (<TableRegular fontSize={14}/>) : tab.kind === "er" ? (<DataBarVerticalRegular fontSize={14}/>) : tab.kind === "sqlExport" ? (<ArrowExportRegular fontSize={14}/>) : tab.kind === "sync" ? (<ArrowSyncRegular fontSize={14}/>) : tab.kind === "query" ? (
                     <CodeRegular fontSize={14} />
                   ) : tab.kind === "redis" ? (
                     <DatabaseRegular fontSize={14} />

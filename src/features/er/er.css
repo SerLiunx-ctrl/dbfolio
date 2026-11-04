@@ -17,7 +17,7 @@
 .dw-er-ai{width:390px;max-width:48%;flex-shrink:0;display:flex;flex-direction:column;gap:7px;padding:8px;box-sizing:border-box;overflow:auto;border-left:1px solid var(--colorNeutralStroke2);background:var(--colorNeutralBackground1);overflow-wrap:anywhere}
 .dw-er-ai[hidden]{display:none}.dw-er-ai>header,.dw-er-ai-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.dw-er-ai>header{justify-content:space-between}.dw-er-ai strong{display:inline-flex;align-items:center;gap:4px}.dw-er-ai label .dw-er-ai-row>.fui-Select{flex:1;min-width:0}.dw-er-ai small,.dw-er-ai-origin small{display:block;color:var(--colorNeutralForeground3)}.dw-er-ai p{margin:2px 0}.dw-er-ai p[role=alert]{color:var(--colorPaletteRedForeground1)}.dw-er-ai-scope{display:flex;flex-direction:column;max-height:140px;overflow:auto}.dw-er-ai-candidates{display:flex;flex-direction:column;gap:7px}.dw-er-ai-candidate{padding:6px;border:1px solid var(--colorNeutralStroke2);border-radius:4px;background:var(--colorNeutralBackground2)}.dw-er-ai-confidence{font-size:11px;padding:1px 5px;border-radius:3px;background:var(--colorNeutralBackground3)}.dw-er-ai-confidence.high{color:var(--colorPaletteGreenForeground1)}.dw-er-ai-confidence.medium{color:var(--colorPaletteMarigoldForeground1)}.dw-er-ai-confidence.low{color:var(--colorNeutralForeground3)}.dw-er-ai details>summary{cursor:pointer}.dw-er-ai button{flex-shrink:0}.dw-er-ai-origin{border-bottom:1px solid var(--colorNeutralStroke2);padding-bottom:6px}
 
-.dw-er-zoom{display:flex;align-items:center;gap:2px;border:1px solid var(--colorNeutralStroke2);border-radius:4px}.dw-er-zoom .fui-Button{min-width:24px}.dw-er-zoom .fui-Select{width:76px}.dw-er-ai{gap:0;padding:0;overflow:hidden}.dw-er-ai-header{padding:5px 8px;border-bottom:1px solid var(--colorNeutralStroke2);background:var(--colorNeutralBackground1);flex-shrink:0;display:flex;flex-direction:column;align-items:stretch!important;gap:4px}.dw-er-ai-header>.dw-er-ai-row:first-child{justify-content:space-between}.dw-er-ai-content{flex:1;min-height:0;overflow:auto;padding:6px 8px;display:flex;flex-direction:column;gap:5px}.dw-er-ai-settings{display:block}.dw-er-ai-settings>summary{font-weight:600;padding:3px 0;margin-bottom:4px}.dw-er-ai-settings[open]>:not(summary){margin-bottom:5px}.dw-er-ai-scope{max-height:96px}.dw-er-ai-candidate{padding:4px 6px}.dw-er-ai-candidate p{margin:2px 0}.dw-er-ai-candidate small{line-height:16px}.dw-er-ai-candidates{gap:5px}.dw-er-ai-header .fui-Checkbox{min-height:26px}
+.dw-er-zoom{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:0}.dw-er-zoom .fui-Button{min-width:24px}.dw-er-zoom .fui-Select{width:76px}.dw-er-ai{gap:0;padding:0;overflow:hidden}.dw-er-ai-header{padding:5px 8px;border-bottom:1px solid var(--colorNeutralStroke2);background:var(--colorNeutralBackground1);flex-shrink:0;display:flex;flex-direction:column;align-items:stretch!important;gap:4px}.dw-er-ai-header>.dw-er-ai-row:first-child{justify-content:space-between}.dw-er-ai-content{flex:1;min-height:0;overflow:auto;padding:6px 8px;display:flex;flex-direction:column;gap:5px}.dw-er-ai-settings{display:block}.dw-er-ai-settings>summary{font-weight:600;padding:3px 0;margin-bottom:4px}.dw-er-ai-settings[open]>:not(summary){margin-bottom:5px}.dw-er-ai-scope{max-height:96px}.dw-er-ai-candidate{padding:4px 6px}.dw-er-ai-candidate p{margin:2px 0}.dw-er-ai-candidate small{line-height:16px}.dw-er-ai-candidates{gap:5px}.dw-er-ai-header .fui-Checkbox{min-height:26px}
 
 /* 详情附着于选中表卡片，不挤占画布宽度；字段仍保持原高度与连线锚点。 */
 .dw-er-card{overflow:visible}.dw-er-card>header{border-radius:4px 4px 0 0}
@@ -30,3 +30,22 @@
 .dw-er-detached-card{position:absolute;top:10px;left:10px;width:292px;max-width:calc(100% - 20px);z-index:4}.dw-er-detached-card>.dw-er-card-detail{position:relative;top:auto;left:auto;width:100%}
 
 .dw-er-card:has(.dw-er-card-detail){z-index:5}
+
+/* 控件之间留出明确间隙，不用额外外框套住已有边框的缩放选择器。 */
+.dw-er-toolbar,.dw-er-options{gap:6px;padding-block:6px}
+.dw-er-zoom>.fui-Button,.dw-er-zoom>.fui-Select{flex-shrink:0;margin:0}
+.dw-er-picker{min-height:0;overflow:hidden}
+.dw-er-picker>:not(.dw-er-picker-list){flex-shrink:0}
+.dw-er-picker-list{min-width:0;overflow-x:hidden;overflow-y:auto;gap:2px}
+.dw-er-picker-list .fui-Checkbox{width:100%;min-width:0;box-sizing:border-box}
+.dw-er-picker-list .fui-Checkbox__label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dw-er-picker-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding-top:8px;border-top:1px solid var(--colorNeutralStroke2)}
+.dw-er-picker-actions>.fui-Button{flex-shrink:0;margin:0}
+
+/* 详情悬挂于卡片下方，动画不改变字段行高与关联锚点。 */
+.dw-er-card-detail[data-state=open]{animation:dw-er-detail-open 160ms cubic-bezier(.2,0,0,1) both}
+.dw-er-card-detail[data-state=closing]{animation:dw-er-detail-close 160ms ease-in both;pointer-events:none}
+.dw-er-card:has(.dw-er-card-detail[data-state=open]){z-index:6}
+@keyframes dw-er-detail-open{from{opacity:0;transform:translateY(-5px);clip-path:inset(0 0 100% 0)}to{opacity:1;transform:translateY(0);clip-path:inset(0)}}
+@keyframes dw-er-detail-close{from{opacity:1;transform:translateY(0);clip-path:inset(0)}to{opacity:0;transform:translateY(-5px);clip-path:inset(0 0 100% 0)}}
+@media(prefers-reduced-motion:reduce){.dw-er-card-detail[data-state]{animation:none}}

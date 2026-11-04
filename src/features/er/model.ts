@@ -1,6 +1,6 @@
 import type {TableMeta, TableRef} from '../../ipc/types';
 
-export const MAX_TABLES=80, CARD_WIDTH=292, ROW_HEIGHT=25;
+export const CARD_WIDTH=292, ROW_HEIGHT=25;
 export type Point={x:number;y:number};
 export type ErTable={key:string;database:string;name:string;schema?:string|null;meta?:TableMeta;error?:string};
 export type Relation={id:string;name:string;from:string;to:string;columns:string[];refColumns:string[];manual:boolean;onDelete?:string;onUpdate?:string;source?:'ai';confidence?:'high'|'medium'|'low';reason?:string;warnings?:string[]};
@@ -8,14 +8,14 @@ export type Layout={version:1;positions:Record<string,Point>;visible:string[];ex
 export const tableKey=(database:string,schema:string|null|undefined,name:string)=>JSON.stringify([database,schema??null,name]);
 export const refTable=(database:string,t:TableRef):ErTable=>({key:tableKey(database,t.schema,t.name),database,schema:t.schema,name:t.name});
 export const emptyLayout=():Layout=>({version:1,positions:{},visible:[],expanded:[],manual:[],mode:'compact',comments:true,onlyRelated:false,view:{x:24,y:24,zoom:1}});
-const finite=(x:unknown)=>typeof x==='number'&&Number.isFinite(x)&&Math.abs(x)<=100000;
+const finite=(x:unknown)=>typeof x==='number'&&Number.isFinite(x);
 export function parseLayout(raw:string):Layout {
- const v=JSON.parse(raw);if(v?.version!==1||!Array.isArray(v.visible)||!Array.isArray(v.expanded)||!Array.isArray(v.manual)||v.manual.length>500)throw Error('关系图布局格式无效');
- const a=emptyLayout();a.visible=v.visible.filter((x:unknown)=>typeof x==='string').slice(0,MAX_TABLES);a.expanded=v.expanded.filter((x:unknown)=>typeof x==='string').slice(0,MAX_TABLES);
+ const v=JSON.parse(raw);if(v?.version!==1||!Array.isArray(v.visible)||!Array.isArray(v.expanded)||!Array.isArray(v.manual))throw Error('关系图布局格式无效');
+ const a=emptyLayout();a.visible=v.visible.filter((x:unknown)=>typeof x==='string');a.expanded=v.expanded.filter((x:unknown)=>typeof x==='string');
  for(const [key,p] of Object.entries(v.positions??{}) as [string,Point][])if(finite(p?.x)&&finite(p?.y))a.positions[key]={x:p.x,y:p.y};
  if(['compact','full','names'].includes(v.mode))a.mode=v.mode;a.comments=v.comments!==false;a.onlyRelated=v.onlyRelated===true;
  if(finite(v.view?.x)&&finite(v.view?.y)&&finite(v.view?.zoom))a.view={x:v.view.x,y:v.view.y,zoom:Math.min(4,Math.max(.05,v.view.zoom))};
- a.manual=v.manual.filter((r:Relation)=>r&&typeof r.id==='string'&&typeof r.name==='string'&&typeof r.from==='string'&&typeof r.to==='string'&&Array.isArray(r.columns)&&r.columns.length>0&&r.columns.length<=32&&r.columns.every(c=>typeof c==='string')&&Array.isArray(r.refColumns)&&r.refColumns.length===r.columns.length&&r.refColumns.every(c=>typeof c==='string')).map((r:Relation)=>({id:r.id,name:r.name,from:r.from,to:r.to,columns:r.columns,refColumns:r.refColumns,manual:true,...(r.source==='ai'?{source:'ai' as const,confidence:['high','medium','low'].includes(r.confidence??'')?r.confidence:undefined,reason:typeof r.reason==='string'?r.reason.slice(0,4000):undefined,warnings:Array.isArray(r.warnings)?r.warnings.filter(w=>typeof w==='string').slice(0,10).map(w=>w.slice(0,2000)):[]}: {})}));return a;
+ a.manual=v.manual.filter((r:Relation)=>r&&typeof r.id==='string'&&typeof r.name==='string'&&typeof r.from==='string'&&typeof r.to==='string'&&Array.isArray(r.columns)&&r.columns.length>0&&r.columns.every(c=>typeof c==='string')&&Array.isArray(r.refColumns)&&r.refColumns.length===r.columns.length&&r.refColumns.every(c=>typeof c==='string')).map((r:Relation)=>({id:r.id,name:r.name,from:r.from,to:r.to,columns:r.columns,refColumns:r.refColumns,manual:true,...(r.source==='ai'?{source:'ai' as const,confidence:['high','medium','low'].includes(r.confidence??'')?r.confidence:undefined,reason:typeof r.reason==='string'?r.reason:undefined,warnings:Array.isArray(r.warnings)?r.warnings.filter(w=>typeof w==='string'):[]}: {})}));return a;
 }
 export function relations(tables:ErTable[],manual:Relation[],caseInsensitive=false):Relation[]{
  const byKey=new Map(tables.map(t=>[t.key,t]));const result:Relation[]=[];
@@ -56,9 +56,9 @@ export function relationPath(e:Relation,tables:ErTable[],edges:Relation[],layout
 }
 export function validateManual(r:Relation,tables:ErTable[]){
  const a=tables.find(t=>t.key===r.from),b=tables.find(t=>t.key===r.to);
- if(!r.name.trim()||r.name.length>120)throw Error('请输入 1～120 字的关联名称');
+ if(!r.name.trim())throw Error('请输入关联名称');
  if(!a?.meta||!b?.meta)throw Error('请先加载关联两端的表');
- if(!r.columns.length||r.columns.length!==r.refColumns.length||r.columns.length>32)throw Error('请添加成对的关联字段');
+ if(!r.columns.length||r.columns.length!==r.refColumns.length)throw Error('请添加成对的关联字段');
  if(new Set(r.columns).size!==r.columns.length||new Set(r.refColumns).size!==r.refColumns.length)throw Error('关联字段不能重复');
  if(r.columns.some(c=>!a.meta!.columns.some(v=>v.name===c))||r.refColumns.some(c=>!b.meta!.columns.some(v=>v.name===c)))throw Error('关联字段已不存在，请重新选择');
 }

@@ -136,7 +136,8 @@ Choose **New Table** from a database's context menu to open a dedicated **New Ta
 - Import CSV/TSV text into relational tables. Export the current or all pages of table/query data as CSV, JSON, or Excel (`.xlsx`).
 - MySQL SQL-file import has its own tab with encoding selection, streaming preflight, database-switch/create/drop warnings, statement-by-statement execution, and a local report. It supports `DELIMITER` and stored programs. It stops on errors by default; cancellation takes effect between statements, and disconnected outcomes are marked for verification.
 - MySQL SQL export covers tables, views, procedures, functions, triggers, and events. Export structure, data, or both; configure database charset/collation, target mapping, `DEFINER` handling, a single file, split files, or ZIP. Import/export profiles are local and do not store passwords, file contents, or filter values.
-- Manage MySQL views, procedures, functions, triggers, and events with search, definition editing, change previews, create/alter/delete operations, dependency hints, view previews, and procedure parameters/results. The event scheduler status and table-trigger entry are shown.
+- Manage MySQL views, procedures, functions, and events with search, definition editing, change previews, create/alter/delete operations, dependency hints, view previews, and procedure parameters/results. The event scheduler status is shown.
+- A dedicated trigger workspace provides search, highlighted SQL definitions, creation, supported-definition editing, and deletion for MySQL/MariaDB, SQLite, and PostgreSQL, with SQL preview and confirmation. PostgreSQL uses existing trigger functions; complex definitions remain read-only. See the [trigger guide](docs/triggers.md) for live validation status.
 - Redis offers key scanning/search, common value/member editing, TTL, bulk deletion, and a command console.
 - MongoDB offers collection/document browsing and editing, collection statistics, indexes, field sampling, read-only aggregation, and Extended JSON array/JSON Lines transfer. Import inserts new documents only.
 
@@ -191,7 +192,7 @@ Configure an AI service in **File → Preferences** before using AI generation. 
 ### MySQL SQL files and database objects
 
 1. On a MySQL session, open **File → Import SQL File** (also available on a database's context menu). Choose the target, file, and encoding; run preflight; review scope; confirm; and choose a report directory.
-2. Use **File → MySQL Database Objects** or the database context menu to manage views, procedures, functions, triggers, and events. Edit one `CREATE` definition and review its diff. Do not include `DELIMITER` or extra statements in an object definition.
+2. Use **File → MySQL Database Objects** or the database context menu to manage views, procedures, functions, and events. Edit one `CREATE` definition and review its diff. Do not include `DELIMITER` or extra statements in an object definition. Triggers have a dedicated workspace, opened through the lightning **Triggers** table action, the database/table context menu, or the matching action in Database Objects.
 3. In **Export SQL File**, select a database or objects and their types. For another target database, set the restore mapping. Keeping `DEFINER` requires the target account and privileges. Extract ZIP exports and import split files in numeric order.
 4. Profiles are saved locally; recheck the target and object selection when reusing one. Invalid tables or filter columns block export.
 

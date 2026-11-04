@@ -14,6 +14,8 @@ pub mod transfer;
 pub mod ai;
 pub mod er_ai;
 pub mod er_ai_model;
+pub mod triggers;
+pub mod triggers_model;
 pub mod generation;
 
 pub mod readonly;

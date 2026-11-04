@@ -92,9 +92,6 @@ pub fn check(
     existing: &[Link],
     opaque: bool,
 ) -> Result<Checked, String> {
-    if values.len() > 100 {
-        return Err("候选超过 100 条，请缩小范围后重试".into());
-    }
     let mut seen: HashSet<_> = existing.iter().map(signature).collect();
     let mut result = Checked {
         candidates: vec![],
@@ -121,13 +118,10 @@ pub fn check(
         }
         let a = tables.iter().find(|t| t.key == c.from);
         let b = tables.iter().find(|t| t.key == c.to);
-        let valid = c.name.chars().count() <= 60
-            && !c.name.trim().is_empty()
+        let valid = !c.name.trim().is_empty()
             && !c.reason.trim().is_empty()
-            && c.reason.chars().count() <= 1000
             && ["high", "medium", "low"].contains(&c.confidence.as_str())
             && !c.columns.is_empty()
-            && c.columns.len() <= 32
             && c.columns.len() == c.ref_columns.len()
             && HashSet::<_>::from_iter(&c.columns).len() == c.columns.len()
             && HashSet::<_>::from_iter(&c.ref_columns).len() == c.ref_columns.len();
@@ -259,10 +253,31 @@ mod tests {
         ts[0].unique_keys.clear();
         let checked = check(vec![candidate()], &ts, &[], true).unwrap();
         assert_eq!(checked.candidates[0].warnings.len(), 3);
-        assert!(check(vec![candidate(); 101], &ts, &[], true).is_err());
+        let many = check(vec![candidate(); 101], &ts, &[], true).unwrap();
+        assert_eq!(many.candidates.len(), 1);
+        assert_eq!(many.duplicates, 100);
         assert!(
             serde_json::from_value::<Output>(json!({"relations":[],"sql":"select 1"})).is_err()
         );
         assert!(check(vec![], &ts, &[], true).unwrap().candidates.is_empty());
+    }
+
+    #[test]
+    fn accepts_large_scope_candidates_and_composite_keys_without_truncation() {
+        let mut ts = tables();
+        for t in &mut ts {
+            t.columns = (0..40).map(|i| Field {
+                name: format!("field{i}"), raw_type: "bigint".into(), kind: "int".into(),
+                nullable: true, comment: "完整注释".repeat(100),
+            }).collect();
+        }
+        ts.extend((2..205).map(|i| { let mut t=ts[0].clone();t.key=format!("table{i}");t.name=t.key.clone();t }).collect::<Vec<_>>());
+        let fields: Vec<_> = (0..40).map(|i| format!("field{i}")).collect();
+        let values = (1..205).map(|i| json!({"name":"关联名称".repeat(40),"from":format!("t{i}"),"to":"t0","columns":fields,"refColumns":fields,"confidence":"medium","reason":"完整关联依据".repeat(300)})).collect();
+        let checked=check(values,&ts,&[],true).unwrap();
+        assert_eq!(checked.candidates.len(),204);
+        assert_eq!(checked.rejected,0);
+        assert_eq!(checked.candidates[203].columns.len(),40);
+        assert_eq!(checked.candidates[203].reason,"完整关联依据".repeat(300));
     }
 }

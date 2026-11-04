@@ -97,15 +97,19 @@ export function ConfirmSqlDialog({
 
   useEffect(() => {
     if (!open) return;
+    let current = true;
     setConfirmed(false);setProductionText("");
+    setStatements([]);
     setLoading(true);
     loadPreview()
-      .then(setStatements)
+      .then(value => { if (current) setStatements(value); })
       .catch((error) => {
+        if (!current) return;
         notify.error(error, "生成预览失败");
         onClose();
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

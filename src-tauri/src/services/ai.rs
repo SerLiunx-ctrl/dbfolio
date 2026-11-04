@@ -408,6 +408,17 @@ pub async fn completion(
     let value = request(p, key, "chat/completions", Some(body)).await?;
     parse_completion(&value)
 }
+/// ER 显式选择的完整结构由模型上下文决定容量，不套用普通短提示的输入上限。
+/// 响应容量、超时、凭据处理和取消仍复用同一个网络客户端。
+pub async fn completion_with_full_context(
+    p: &Provider,
+    system: &str,
+    prompt: &str,
+) -> AppResult<AiResult> {
+    let body = completion_body_unbounded(p, system, prompt, None)?;
+    let value = request(p, None, "chat/completions", Some(body)).await?;
+    parse_completion(&value)
+}
 #[cfg(test)]
 pub async fn completion_streaming(
     p: &Provider,
@@ -451,6 +462,14 @@ fn completion_body(
     if prompt.len() > 128 * 1024 {
         return Err(invalid("AI 输入超过 128 KiB，请减少字段或提示词"));
     }
+    completion_body_unbounded(p, system, prompt, schema)
+}
+fn completion_body_unbounded(
+    p: &Provider,
+    system: &str,
+    prompt: &str,
+    schema: Option<Value>,
+) -> AppResult<Value> {
     if p.model.trim().is_empty() {
         return Err(invalid("请选择模型"));
     }

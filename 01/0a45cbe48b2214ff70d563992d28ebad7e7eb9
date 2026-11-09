@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "010a45cbe48b2214ff70d563992d28ebad7e7eb9",
+  "prompts": {},
+  "humans": {
+    "h_a7eb17fbaf9265": {
+      "author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

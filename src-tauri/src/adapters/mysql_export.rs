@@ -11,7 +11,12 @@ fn ident(s: &str) -> String {
 fn expression(name: &str, kind: &str) -> String {
     let c = ident(name);
     let k = kind.to_ascii_lowercase();
-    let body = if [
+    let body = if k == "float" {
+        // MySQL formats a FLOAT field with only FLT_DIG significant digits.
+        // Promote its already-stored value to a DOUBLE expression before text
+        // conversion; 0e0 works on both older MySQL and MariaDB servers.
+        format!("CAST(({c} + 0e0) AS CHAR)")
+    } else if [
         "tinyint",
         "smallint",
         "mediumint",
@@ -19,7 +24,6 @@ fn expression(name: &str, kind: &str) -> String {
         "bigint",
         "decimal",
         "numeric",
-        "float",
         "double",
         "real",
         "year",
@@ -27,6 +31,11 @@ fn expression(name: &str, kind: &str) -> String {
     .contains(&k.as_str())
     {
         format!("CAST({c} AS CHAR)")
+    } else if k == "bit" {
+        // HEX(BIT) uses numeric formatting (1 -> "1"), which can produce an
+        // invalid odd-length X'1' literal. BIN keeps all 64 bits on the server
+        // and produces a BIT literal independently of byte/hexadecimal padding.
+        format!("CONCAT('b',CHAR(39),BIN({c}),CHAR(39))")
     } else if [
         "binary",
         "varbinary",
@@ -34,7 +43,6 @@ fn expression(name: &str, kind: &str) -> String {
         "blob",
         "mediumblob",
         "longblob",
-        "bit",
         "vector",
     ]
     .contains(&k.as_str())
@@ -48,6 +56,7 @@ fn expression(name: &str, kind: &str) -> String {
         "multipoint",
         "multilinestring",
         "multipolygon",
+        "geomcollection",
         "geometrycollection",
     ]
     .contains(&k.as_str())
@@ -59,6 +68,24 @@ fn expression(name: &str, kind: &str) -> String {
         format!("CONCAT('CONVERT(X',CHAR(39),HEX(CONVERT({c} USING utf8mb4)),CHAR(39),' USING utf8mb4)')")
     };
     format!("IF({c} IS NULL,'NULL',{body})")
+}
+fn export_sql_mode(mode: &str) -> String {
+    // @@SQL_MODE contains expanded flags as well as named groups. Keeping a
+    // group such as TRADITIONAL / ANSI would re-enable flags removed below.
+    let mut flags = mode.split(',').filter(|flag| {
+        !flag.is_empty()
+            && !crate::services::mysql_script::nonstandard_quotes(flag)
+            && !matches!(*flag,
+                "NO_ZERO_DATE" | "NO_ZERO_IN_DATE" | "TRADITIONAL" | "ANSI"
+                | "DB2" | "MAXDB" | "MSSQL" | "ORACLE" | "POSTGRESQL")
+    }).collect::<Vec<_>>();
+    // Legacy rows/defaults may contain zero or invalid calendar dates even
+    // when the source's current mode is strict. Preserve their stored values
+    // without disabling unrelated strict checks or changing any global mode.
+    for required in ["NO_AUTO_VALUE_ON_ZERO", "ALLOW_INVALID_DATES"] {
+        if !flags.contains(&required) { flags.push(required); }
+    }
+    flags.join(",")
 }
 fn header(database: &str, mode: &str, include: bool, sql_mode: &str) -> String {
     let mut s=format!("-- DBFolio · MySQL / MariaDB SQL export\n-- 内容：{mode}；对象范围见导出选项。字符串内的动态 SQL 与外部库引用保持原样。\nSET @DW_OLD_SQL_MODE=@@SQL_MODE;\nSET SQL_MODE='{sql_mode}';\nSET @DW_OLD_FK=@@FOREIGN_KEY_CHECKS;\nSET FOREIGN_KEY_CHECKS=0;\nSET @DW_OLD_TIME_ZONE=@@TIME_ZONE;\nSET TIME_ZONE='+00:00';\nSET @DW_OLD_CLIENT=@@CHARACTER_SET_CLIENT;\nSET @DW_OLD_RESULTS=@@CHARACTER_SET_RESULTS;\nSET @DW_OLD_CONNECTION=@@COLLATION_CONNECTION;\nSET NAMES utf8mb4;\n");
@@ -183,20 +210,9 @@ pub(super) async fn export(
     {
         return Err(AppError::InvalidInput("无法识别源会话 SQL_MODE".into()));
     }
-    let sql_mode = if sql_mode.split(',').any(|v| v == "NO_AUTO_VALUE_ON_ZERO") {
-        sql_mode
-    } else if sql_mode.is_empty() {
-        "NO_AUTO_VALUE_ON_ZERO".into()
-    } else {
-        format!("{sql_mode},NO_AUTO_VALUE_ON_ZERO")
-    };
     // Shared filter literals use MySQL backslash escaping. Only adjust this owned
-    // read connection and use the same mode for SHOW CREATE and script replay.
-    let sql_mode = sql_mode
-        .split(',')
-        .filter(|v| !crate::services::mysql_script::nonstandard_quotes(v))
-        .collect::<Vec<_>>()
-        .join(",");
+    // read connection and use the same compatible mode for SHOW CREATE/replay.
+    let sql_mode = export_sql_mode(&sql_mode);
     conn.execute(format!("SET SESSION SQL_MODE='{sql_mode}'").as_str()).await?;
     let rows=sqlx::query("SELECT TABLE_NAME, ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME").bind(&req.database).fetch_all(&mut conn).await?;
     let available: HashMap<String, String> = rows
@@ -361,6 +377,8 @@ pub(super) async fn export(
                 crate::tasks::checkpoint()?;
                 let values = (0..columns.len())
                     .map(|i| row.try_get::<String, _>(i).or_else(|_|row.try_get::<Vec<u8>,_>(i).and_then(|bytes|String::from_utf8(bytes).map_err(|e|sqlx::Error::Decode(Box::new(e))))))
+                    .enumerate().map(|(i, value)| value.map_err(|e| AppError::InvalidInput(format!(
+                        "表 {table} 的字段 {}（{}）无法生成无损 SQL 值，未发布导出文件：{e}", columns[i].0, columns[i].1))))
                     .collect::<Result<Vec<_>, _>>()?;
                 batch.push(format!("({})", values.join(", ")), output)?;
                 count += 1;
@@ -456,6 +474,100 @@ mod tests {
         assert!(expression("bytes", "blob").contains("HEX(`bytes`)"));
         assert!(expression("a`b", "json").contains("`a``b`"));
         assert!(expression("point", "geometry").contains("ST_SRID"));
+        assert!(expression("collection", "geomcollection").contains("ST_AsWKB"));
+        assert_eq!(expression("collection", "geomcollection"), expression("collection", "geometrycollection"));
+    }
+    #[test]
+    fn replay_mode_preserves_legacy_dates_without_disabling_strict_checks() {
+        let original = "STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,TRADITIONAL,ANSI,ANSI_QUOTES,NO_BACKSLASH_ESCAPES";
+        let mode = export_sql_mode(original);
+        let flags = mode.split(',').collect::<Vec<_>>();
+        for required in ["STRICT_TRANS_TABLES", "STRICT_ALL_TABLES", "ERROR_FOR_DIVISION_BY_ZERO", "NO_ENGINE_SUBSTITUTION", "NO_AUTO_VALUE_ON_ZERO", "ALLOW_INVALID_DATES"] {
+            assert!(flags.contains(&required));
+        }
+        for removed in ["NO_ZERO_IN_DATE", "NO_ZERO_DATE", "TRADITIONAL", "ANSI", "ANSI_QUOTES", "NO_BACKSLASH_ESCAPES"] {
+            assert!(!flags.contains(&removed));
+        }
+        assert_eq!(export_sql_mode(&mode), mode);
+        assert!(header("legacy", "both", false, &mode).contains(&format!("SET SQL_MODE='{mode}'")));
+        assert!(FOOTER.contains("SET SQL_MODE=@DW_OLD_SQL_MODE"));
+    }
+    #[tokio::test]
+    #[ignore = "需要 DBFOLIO_TEST_MYSQL_URL 本机测试连接；仅创建随机 dbfolio_export56_ 测试库"]
+    async fn bit_and_binary_literals_roundtrip_on_server() {
+        use futures_util::FutureExt;
+        let url = std::env::var("DBFOLIO_TEST_MYSQL_URL")
+            .expect("请通过环境变量提供本机 MySQL 测试连接，不要将口令写入测试代码");
+        let options = MySqlConnectOptions::from_str(&url)
+            .expect("测试连接 URL 无效")
+            .database("mysql")
+            .disable_statement_logging();
+        assert!(matches!(options.get_host(), "127.0.0.1" | "localhost" | "::1"));
+        let mut conn = sqlx::MySqlConnection::connect_with(&options).await.unwrap();
+        let database = format!("dbfolio_export56_{}", uuid::Uuid::new_v4().simple());
+        conn.execute(format!("CREATE DATABASE {} CHARACTER SET utf8mb4", ident(&database)).as_str())
+            .await.unwrap();
+        let outcome = std::panic::AssertUnwindSafe(async {
+            conn.execute(format!("USE {}", ident(&database)).as_str()).await?;
+            conn.execute("SET SESSION SQL_MODE='STRICT_ALL_TABLES'").await?;
+            let fields = [
+                ("id", "int", "INT PRIMARY KEY"),
+                ("flag`中文", "bit", "BIT(1)"),
+                ("bits3", "bit", "BIT(3)"),
+                ("bits8", "bit", "BIT(8)"),
+                ("bits12", "bit", "BIT(12)"),
+                ("bits64", "bit", "BIT(64)"),
+                ("bytes", "blob", "BLOB"),
+                ("fixed", "binary", "BINARY(4)"),
+            ];
+            let definitions = fields.iter().map(|(name, _, kind)| format!("{} {kind}", ident(name)))
+                .collect::<Vec<_>>().join(",");
+            conn.execute(format!("CREATE TABLE original ({definitions})").as_str()).await?;
+            conn.execute("CREATE TABLE restored LIKE original").await?;
+            // Zero/odd hexadecimal lengths used to generate invalid X'0'/X'1'/X'5'/X'FFF'.
+            // Cover byte-aligned bits, the unsigned 64-bit boundary, NULL and raw binary too.
+            conn.execute("INSERT INTO original VALUES
+                (0,0,0,0,0,0,X'',X''),
+                (1,1,1,1,1,1,X'00FF',X'00FF'),
+                (2,1,5,5,5,5,X'004127FF',X'004127FF'),
+                (3,1,7,255,4095,18446744073709551615,NULL,NULL),
+                (4,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+                (5,0,0,16,256,9223372036854775808,X'FF00',X'FF00')").await?;
+            let sql = format!("SELECT {} FROM original ORDER BY id", fields.iter()
+                .map(|(name, kind, _)| expression(name, kind)).collect::<Vec<_>>().join(","));
+            let rows = sqlx::query(&sql).fetch_all(&mut conn).await?;
+            let mut encoded = Vec::new();
+            for row in rows {
+                let literals = (0..fields.len()).map(|i| {
+                    row.try_get::<String, _>(i).or_else(|_| row.try_get::<Vec<u8>, _>(i)
+                        .and_then(|bytes| String::from_utf8(bytes).map_err(|e| sqlx::Error::Decode(Box::new(e)))))
+                }).collect::<Result<Vec<_>, _>>()?;
+                encoded.push(literals.clone());
+                conn.execute(format!("INSERT INTO restored VALUES({})", literals.join(",")).as_str()).await?;
+            }
+            assert_eq!(encoded[0][1], "b'0'");
+            assert_eq!(encoded[2][2], "b'101'");
+            assert_eq!(encoded[3][5], format!("b'{}'", "1".repeat(64)));
+            assert_eq!(encoded[4][1], "NULL");
+            assert_eq!(encoded[0][6], "X''");
+            assert_eq!(encoded[1][6], "X'00FF'");
+            let equal = fields.iter().map(|(name, _, _)| format!("a.{} <=> b.{}", ident(name), ident(name)))
+                .collect::<Vec<_>>().join(" AND ");
+            let mismatches: i64 = sqlx::query_scalar(&format!(
+                "SELECT COUNT(*) FROM original a JOIN restored b USING(id) WHERE NOT ({equal})"))
+                .fetch_one(&mut conn).await?;
+            assert_eq!(mismatches, 0, "按服务器值精确比较 BIT 和二进制往返结果");
+            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM restored").fetch_one(&mut conn).await?;
+            assert_eq!(count, 6);
+            Ok::<(), sqlx::Error>(())
+        }).catch_unwind().await;
+        // No persistent source/target or user configuration is touched, including on test failure.
+        let cleanup = conn.execute(format!("DROP DATABASE {}", ident(&database)).as_str()).await;
+        let close = conn.close().await;
+        match outcome {
+            Ok(value) => { value.unwrap(); cleanup.unwrap(); close.unwrap(); }
+            Err(panic) => std::panic::resume_unwind(panic),
+        }
     }
     #[test]
     fn file_publish_and_batches() {

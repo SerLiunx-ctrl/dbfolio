@@ -1,0 +1,68 @@
+src-tauri/Cargo.toml
+  s_f823aea5f80980::t_b1ba29418a639c 3
+docs/sql-export.md
+  s_f823aea5f80980::t_0bfa053547a994 1-23
+src-tauri/src/adapters/mysql_export.rs
+  s_f823aea5f80980::t_649f038adb6477 59,72-89,479,494
+  s_f823aea5f80980::t_a5b0f24abc6254 14-19,34
+  s_f823aea5f80980::t_7394847c2bb899 35-38
+  s_f823aea5f80980::t_be6518f0bb856b 214-215,380-381,477-478,480-493,495-570
+scripts/check-sql-export-types-native.cjs
+  s_f823aea5f80980::t_b51c4259decda7 31,85,87-88,92,133,141
+  s_f823aea5f80980::t_9ea9a4ed404f74 37,39,86,89-91,131
+  s_f823aea5f80980::t_78a70cdbf37bb6 15-24,27-30,32,36,38,40-41,61,63,66-70,93,96,100-102,129-130,132,135,137,139-140,142,153
+  s_f823aea5f80980::t_8c4e1558f396f2 10,48,147,151-152
+  s_f823aea5f80980::t_9cc5b484fe993b 13-14,25-26,34-35,124-126,128
+  s_f823aea5f80980::t_665d7c939be1b1 60,62,64-65,71-75,80-84,127,134
+  s_f823aea5f80980::t_f8a1d569be73fe 8,11,33,76-79,99,107-114,136,138
+  s_f823aea5f80980::t_366930b08a4d11 1-7,9,12,42-47,49-59,94-95,97-98,103-106,115-123,143-146,148-150,154-155
+docs/releases/1.0.0-alpha.56.md
+  s_f823aea5f80980::t_660c5d2eda6c5f 9-10,18-19,21
+  s_f823aea5f80980::t_666fe72263706f 1-8,11-17,20
+docs/verification/sql-export-types-alpha56.md
+  s_f823aea5f80980::t_0bfa053547a994 1-2,4-21,28-34
+  s_f823aea5f80980::t_08ff5e2ec3ea41 3,22-27
+docs/verification/release-alpha56.md
+  s_f823aea5f80980::t_660c5d2eda6c5f 1-11
+package.json
+  s_f823aea5f80980::t_b1ba29418a639c 4
+docs/design.md
+  s_f823aea5f80980::t_660c5d2eda6c5f 6-7
+  s_f823aea5f80980::t_62861087cdf8ba 5,937-949,3120-3123
+docs/roadmap.md
+  s_f823aea5f80980::t_e730e70b627e63 3
+  s_f823aea5f80980::t_78a58633e69888 9-12
+src-tauri/tauri.conf.json
+  s_f823aea5f80980::t_b1ba29418a639c 4
+README.en.md
+  s_f823aea5f80980::t_775d9daa211f23 139
+README.md
+  s_f823aea5f80980::t_b28f35b7bec5b2 144
+package-lock.json
+  s_f823aea5f80980::t_3835656e6d8c2c 3,9
+src-tauri/Cargo.lock
+  s_f823aea5f80980::t_2c7482e913cc5a 1305
+src/app/releaseInfo.ts
+  s_f823aea5f80980::t_6ee939e949429e 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "77052afbc33ecd740e98d5e876484a87bfb5ba03",
+  "prompts": {},
+  "humans": {
+    "h_a7eb17fbaf9265": {
+      "author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

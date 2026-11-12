@@ -1,0 +1,35 @@
+docs/verification/release-alpha60.md
+  s_f823aea5f80980::t_2189e73f2b1960 17
+  s_f823aea5f80980::t_816fe44a3c10f5 10-16,18
+docs/design.md
+  s_f823aea5f80980::t_816fe44a3c10f5 7,937,3176
+  s_f823aea5f80980::t_2189e73f2b1960 939,3177
+  s_f823aea5f80980::t_e1d5fa6c8c687b 938
+docs/roadmap.md
+  s_f823aea5f80980::t_2189e73f2b1960 3
+  s_f823aea5f80980::t_816fe44a3c10f5 10,20-22
+updates/preview.json
+  s_f823aea5f80980::t_816fe44a3c10f5 2-4,7-9
+  s_f823aea5f80980::t_1ed457f170ba55 12-14,17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "795acb929b22e3437dae0402c5a7bb9cd5afdbbf",
+  "prompts": {},
+  "humans": {
+    "h_a7eb17fbaf9265": {
+      "author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

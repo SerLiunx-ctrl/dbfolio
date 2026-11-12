@@ -3,9 +3,10 @@ import { api } from "../../ipc";
 import { useSessionStore } from "../../stores/useSessionStore";
 import { currentStatement, tableReferences, sqlTokens } from "./sqlText";
 import type { TableRef } from "../../ipc/types";
+import { SQL_LANGUAGES } from "../../sqlLanguage";
 export function registerSqlCompletion(editor:Monaco.editor.IStandaloneCodeEditor, monaco:typeof Monaco, context:()=>{sessionId:string;database:string}) {
  let cache:{key:string;time:number;tables:TableRef[]}|null=null;
- return monaco.languages.registerCompletionItemProvider("sql",{
+ const provider:Monaco.languages.CompletionItemProvider={
  triggerCharacters:["."],
  provideCompletionItems:async(model,position,_,token)=>{
  if(model!==editor.getModel())return {suggestions:[]};
@@ -44,13 +45,13 @@ export function registerSqlCompletion(editor:Monaco.editor.IStandaloneCodeEditor
  const refs=tableReferences(sql,engine);
  const matched=qualifier?refs.filter(r=>r.alias===qualifier||r.name===qualifier):refs;
  let database=ctx.database;
- if(qualifier&&!matched.length&&engine==="mysql"){
+ if(qualifier&&!matched.length&&(engine==="mysql"||engine==="dameng")){
    const dbs=await api.listDatabases(ctx.sessionId);
    if(dbs.some(d=>d.name===qualifier)){database=qualifier;tables=await api.listTables(ctx.sessionId,database);}
  }
  const suggestions:Monaco.languages.CompletionItem[]=[];
  if(!qualifier||!matched.length){
-   tables.filter(t=>!qualifier||(engine==="mysql"&&database===qualifier)||database!==ctx.database||t.schema===qualifier).forEach(t=>suggestions.push({label:t.name,filterText:filterText(t.name),kind:monaco.languages.CompletionItemKind.Class,insertText:qualifier?quote(t.name):t.schema?quote(t.schema)+"."+quote(t.name):quote(t.name),detail:t.schema??t.comment??t.kind,range}));
+   tables.filter(t=>!qualifier||((engine==="mysql"||engine==="dameng")&&database===qualifier)||database!==ctx.database||t.schema===qualifier).forEach(t=>suggestions.push({label:t.name,filterText:filterText(t.name),kind:monaco.languages.CompletionItemKind.Class,insertText:qualifier?quote(t.name):t.schema?quote(t.schema)+"."+quote(t.name):quote(t.name),detail:t.schema??t.comment??t.kind,range}));
  }
  if(!qualifier){
    for(const schema of new Set(tables.map(t=>t.schema).filter((s):s is string=>!!s)))suggestions.push({label:schema,filterText:filterText(schema),kind:monaco.languages.CompletionItemKind.Module,insertText:quote(schema),range});
@@ -66,5 +67,7 @@ export function registerSqlCompletion(editor:Monaco.editor.IStandaloneCodeEditor
  return {suggestions};
  }catch{return {suggestions:[]};}
  }
- });
+ };
+ const registrations=SQL_LANGUAGES.map(language=>monaco.languages.registerCompletionItemProvider(language,provider));
+ return {dispose:()=>registrations.forEach(registration=>registration.dispose())};
 }

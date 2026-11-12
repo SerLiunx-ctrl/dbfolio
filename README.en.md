@@ -8,7 +8,7 @@
 
 DBFolio is a Windows desktop database workbench for managing connections, writing SQL, editing data and table structures, comparing and synchronizing databases, and exploring or exporting results in one place.
 
-Built with **Tauri 2, React, TypeScript, and Rust**, it supports **MySQL, MariaDB, PostgreSQL, SQLite, Redis, MongoDB, Kafka, RabbitMQ, and RocketMQ** and is released under the **MIT License**.
+Built with **Tauri 2, React, TypeScript, and Rust**, it supports **MySQL, MariaDB, PostgreSQL, SQLite, Dameng DM8, Redis, MongoDB, Kafka, RabbitMQ, and RocketMQ** and is released under the **MIT License**.
 
 > DBFolio is under active development, with Windows as its primary development and validation platform. The engines share interaction patterns, but their supported operations and maturity differ. Read the [capabilities and limitations](#support) before writing, synchronizing, or exporting important data.
 
@@ -67,7 +67,7 @@ Server, client, memory, and other Redis metrics are grouped for scanning. Switch
 
 AI can suggest potential business relationships from selected schema metadata. Review column pairs, model-assessed confidence and rationale; adoption revalidates the schema and creates local annotations without reading rows or creating foreign keys.
 
-Open shared MySQL, PostgreSQL, and SQLite diagrams from database overviews/context menus or the table toolbar. Drag, zoom, search, jump to structure columns, annotate business relations, save layouts, and export SVG, PNG, or Mermaid. Large catalogs load metadata by selected scope; partial diagrams do not guarantee complete incoming relationships. Annotations do not create database foreign keys. See the [diagram guide (Chinese)](docs/er.md).
+Open shared MySQL, PostgreSQL, SQLite, and DM8 diagrams from database overviews/context menus or the table toolbar. Drag, zoom, search, jump to structure columns, annotate business relations, save layouts, and export SVG, PNG, or Mermaid. Large catalogs load metadata by selected scope; partial diagrams do not guarantee complete incoming relationships. Annotations do not create database foreign keys. See the [diagram guide (Chinese)](docs/er.md).
 
 ### Session management
 
@@ -92,18 +92,18 @@ SSH passwords and private-key passphrases are stored in Windows Credential Manag
 
 ### Creating relational tables
 
-Choose **New Table** from a database's context menu to open a dedicated **New Table*** tab. Enter the name, comment, and supported table options on the Info page. Add and edit columns in place on Structure; stage indexes and foreign keys in their own pages; inspect the generated SQL on DDL. Saving creates the table and turns the draft tab into its normal table view, including Data. Failed saves retain the draft. MySQL, PostgreSQL, and SQLite are supported. Unsaved drafts can be discarded, and closing one prompts for handling.
+Choose **New Table** from a database's context menu to open a dedicated **New Table*** tab. Enter the name, comment, and supported table options on the Info page. Add and edit columns in place on Structure; stage indexes and foreign keys in their own pages; inspect the generated SQL on DDL. Saving creates the table and turns the draft tab into its normal table view, including Data. Failed saves retain the draft. MySQL, PostgreSQL, SQLite, and DM8 are supported. Unsaved drafts can be discarded, and closing one prompts for handling.
 
 ### Queries and data editing
 
 - The SQL editor has highlighting, formatting, table/column completion, current-statement or selection execution, results, history, and execution plans.
-- Open and save SQL files and keep local drafts. MySQL, PostgreSQL, and SQLite query tabs support manual transactions for supported single statements and DML.
+- Open and save SQL files and keep local drafts. MySQL, PostgreSQL, SQLite, and DM8 query tabs support manual transactions for supported single statements and DML.
 - Select multiple MySQL statements to execute them sequentially on an isolated connection. Fixed SQL strings and current-database metadata `IF(EXISTS(...), SQL, SQL)` migration patterns are supported with all branches checked before execution. Errors stop remaining statements; completed writes/DDL are not automatically rolled back. Script results show only the bounded final result and cannot be paged or re-executed for export. Arbitrary expressions, server settings and transaction control are unsupported.
 - Database overviews list tables and views with estimated rows, sizes, engines, and comments. Table data supports pagination, sorting, and combined filters. The maximum page size is configurable from 1 to 5,000 rows (default 200); suggested filter values come only from **currently loaded rows**.
 - Add, change, or delete grid rows, review the before/after values and SQL, then submit selected staged rows. Results that cannot be located reliably, such as those without a suitable primary key, remain read-only.
 - Views have distinct workspace icons and show applicable information, read-only result columns, and DDL. Ordinary views hide indexes, foreign keys, and grid writes. Right-aligned database-row buttons toggle views, refresh objects, and open queries. Visibility is saved per session/database without closing open tabs.
 - Table data and query results provide a cell inspector docked at the bottom or right, plus column search, visibility, pinning, reordering, and saved layouts. Inspector edits join the same staged changes; copy and paste follow the visible column order.
-- Inspect table information, columns, indexes, foreign keys, and DDL. MySQL, PostgreSQL, and SQLite share double-click inline editing and Save/Discard behavior for column names, types, length/set, nullability, and defaults. Comments, auto-increment, unsigned values, and `ON UPDATE` follow engine capabilities. SQLite uses transactional table rebuilding when needed, preserving dependencies and rolling back on failure. MySQL table properties offer server-supported engine, charset, and collation choices.
+- Inspect table information, columns, indexes, foreign keys, and DDL. MySQL, PostgreSQL, SQLite, and DM8 share double-click inline editing and Save/Discard behavior for column names, types, length/set, nullability, and defaults. Comments, auto-increment, unsigned values, and `ON UPDATE` follow engine capabilities. SQLite uses transactional table rebuilding when needed, preserving dependencies and rolling back on failure. MySQL table properties offer server-supported engine, charset, and collation choices.
 - Recognizable Base64 bitmap strings may show a thumbnail; open the full image or source text, switch to native size, or export the original bytes. Truncated values are fetched again only within a bounded primary-key-based table-data flow. Unrecognized, unreadable, or oversized values remain text. See [image-preview limits](docs/verification/base64-images-alpha5.md).
 - Save a snapshot of the current result for comparison with a later result. Configure business relationships between fields to jump to related records.
 
@@ -149,6 +149,7 @@ Choose **New Table** from a database's context menu to open a dedicated **New Ta
 |---|---|---|
 | MySQL | Queries, data/schema editing, analysis, same-engine sync, SQL import/export, five object types | Import/object/full-export flows were tested on MySQL 8.4.6. Stored programs are edited as SQL definitions, not in a visual flow designer. |
 | MariaDB | Shared MySQL protocol; queries, data/schema editing, SQL import/export, version-aware types and metadata | Initial verification targets 11.8.9; JSON is a LONGTEXT alias. Special attributes are capability-gated; mixed MySQL/MariaDB sync is rejected. |
+| Dameng DM8 | Native connections, schemas/tables/views, queries and manual transactions, data/column/index/foreign-key editing, ER and dictionary | Tested on local 8.1.4.80. DDL can commit implicitly. Initial scope excludes sync, trigger management, data generation, execution plans, and SQL dump generation. SQL script import is supported. [Connection guide (Chinese)](docs/dameng.md). |
 | PostgreSQL | Queries, data/schema editing, analysis, same-engine sync | Some primary-key, index, and foreign-key rebuilds require manual SQL. |
 | SQLite | Local database files, queries, data and inline schema editing, analysis, same-engine sync | Column changes on Structure use transactional rebuilding; foreign-key editing, unusual column definitions, and schema-sync rebuilding still need manual handling. |
 | Redis | Keys, TTL, command console, test-data generation | Not included in relational schema/data sync. |
@@ -189,6 +190,8 @@ Download the Windows installer (`setup.exe`) or portable ZIP (`portable.zip`) fr
 5. For charts, plot the current query result or create an analysis. For synchronization, use **Tools → Data Sync**, choose two sessions of the same engine, and verify the plan.
 
 Configure an AI service in **File → Preferences** before using AI generation. Generated SQL needs human review and explicit execution.
+
+DM8 SQL imports share the preflight and report workflow, recognizing DIsql client directives, schema switching, and complete trigger blocks. Query scripts use a dedicated connection. See the [DM8 guide (Chinese)](docs/dameng.md).
 
 ### MySQL SQL files and database objects
 

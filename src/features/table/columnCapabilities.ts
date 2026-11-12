@@ -5,9 +5,9 @@ export function columnCapabilities(engine: Engine) {
     unsigned: engine === 'mysql',
     onUpdate: engine === 'mysql',
     comment: engine !== 'sqlite',
-    identityEditable: engine !== 'postgres',
+    identityEditable: !['postgres','dameng'].includes(engine),
     insertPosition: engine === 'mysql',
-    reorder: engine !== 'postgres',
+    reorder: !['postgres','dameng'].includes(engine),
   };
 }
 

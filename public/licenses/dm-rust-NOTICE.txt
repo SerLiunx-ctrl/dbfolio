@@ -1,0 +1,4 @@
+dm-rust 0.1.1
+Source: https://github.com/daxiangme/dm-rust
+License: Apache-2.0 (see dm-rust-APACHE-2.0.txt)
+DBFolio uses this unmodified dependency for native DM8 connections.

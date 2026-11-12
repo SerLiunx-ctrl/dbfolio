@@ -2,6 +2,7 @@ import {loadExplorerVisibility,toggleExplorerViews,useExplorerVisibility,visibil
 import './explorer-actions.css';
 import {MqExplorer} from '../message-queue/MqExplorer';
 import {isMessageQueue} from '../sessions/engine';
+import {supportsSqlImport} from '../mysql/sqlImportCapabilities';
 import { MongoExplorer } from "../mongo/MongoExplorer";
 import { DockTitle } from "../../app/DockLayout";
 import { ConnectionNotice } from "../../app/ConnectionNotice";
@@ -265,7 +266,7 @@ function SqlExplorerPanel() {
             size="small"
             icon={<AddRegular />}
             disabled={readOnly}
-            title={readOnly ? "只读会话不能新建数据库" : "新建数据库"}
+            title={session.engine==="dameng"?(readOnly?"只读会话不能新建模式":"新建模式"):readOnly?"只读会话不能新建数据库":"新建数据库"}
             onClick={() => setCreateDatabase(true)}
           />
         )}
@@ -505,7 +506,8 @@ function SqlExplorerPanel() {
           <ContextMenuSurface
             className={`${styles.contextMenu} dw-context-menu`} x={contextMenu.x} y={contextMenu.y}>
             <MenuList>
-              {session?.engine==='mysql'&&contextMenu.kind==='database'&&<><MenuItem onClick={()=>{useTabStore.getState().openMysqlTool(session.id,contextMenu.database,'import');setContextMenu(null);}}>导入 SQL 文件…</MenuItem><MenuItem onClick={()=>{useTabStore.getState().openMysqlTool(session.id,contextMenu.database,'objects');setContextMenu(null);}}>管理数据库对象…</MenuItem></>}
+              {session&&supportsSqlImport(session.engine)&&contextMenu.kind==='database'&&<MenuItem onClick={()=>{useTabStore.getState().openMysqlTool(session.id,contextMenu.database,'import');setContextMenu(null);}}>导入 SQL 文件…</MenuItem>}
+              {session?.engine==='mysql'&&contextMenu.kind==='database'&&<MenuItem onClick={()=>{useTabStore.getState().openMysqlTool(session.id,contextMenu.database,'objects');setContextMenu(null);}}>管理数据库对象…</MenuItem>}
               {session?.engine==="mysql" && (contextMenu.kind==="database" || contextMenu.table?.kind==="table") && <MenuItem icon={<ArrowExportRegular />} onClick={()=>{useTabStore.getState().openSqlExport({sessionId:session.id,database:contextMenu.database,tables:contextMenu.table?[contextMenu.table.name]:[],allTables:contextMenu.kind==="database"});window.dispatchEvent(new Event("dw:show-workspace"));setContextMenu(null);}}>导出 SQL 文件…</MenuItem>}
               {contextMenu.kind === "database" && session?.engine === "redis" ? (
                 <>
@@ -597,17 +599,13 @@ function SqlExplorerPanel() {
                           setContextMenu(null);
                           setCreateDatabase(true);
                         }}
-                      >
-                        新建数据库
-                      </MenuItem>)}
+                      >{session?.engine==="dameng"?"新建模式":"新建数据库"}</MenuItem>)}
                       {!readOnly && (<MenuItem icon={<DeleteRegular />}
                         onClick={() => {
                           setDropDatabase(contextMenu.database);
                           setContextMenu(null);
                         }}
-                      >
-                        删除数据库
-                      </MenuItem>)}
+                      >{session?.engine==="dameng"?"删除模式":"删除数据库"}</MenuItem>)}
                     </>
                   )}
                 </>
@@ -729,19 +727,19 @@ function SqlExplorerPanel() {
       {session && dropDatabase && (
         <ConfirmSqlDialog
           open
-          title={`删除数据库 · ${dropDatabase}`}
+          title={`删除${session.engine==="dameng"?"模式":"数据库"} · ${dropDatabase}`}
           sessionId={session.id}
-          warning={`将删除数据库 ${dropDatabase} 及其中的所有对象与数据，且不可恢复。`}
+          warning={session.engine==="dameng"?`将删除模式 ${dropDatabase}；非空模式需先处理其对象，默认不级联删除。`:`将删除数据库 ${dropDatabase} 及其中的所有对象与数据，且不可恢复。`}
           loadPreview={() =>
             Promise.resolve([
               session.engine === "mysql"
                 ? `DROP DATABASE \`${dropDatabase}\``
-                : `DROP DATABASE "${dropDatabase}"`,
+                : `DROP ${session.engine === "dameng" ? "SCHEMA" : "DATABASE"} "${dropDatabase.replace(/"/g, '""')}"`,
             ])
           }
           onApply={async () => {
             await api.ddlDropDatabase(session.id, dropDatabase, true);
-            notify.success("数据库已删除", dropDatabase);
+            notify.success(session.engine === "dameng" ? "模式已删除" : "数据库已删除", dropDatabase);
           }}
           onClose={() => setDropDatabase(null)}
           onDone={() => {

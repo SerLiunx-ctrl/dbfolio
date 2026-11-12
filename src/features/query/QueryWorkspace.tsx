@@ -19,6 +19,7 @@ import { currentStatement, namedParameters, fillParameters, formatSql } from "./
 import {ExplainView} from "./ExplainView";
 import { rememberSqlFile } from "../../stores/useLibrary";
 import { registerSqlCompletion } from "./sqlCompletion";
+import { sqlLanguage } from "../../sqlLanguage";
 import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plugin-dialog";
 import { useTabStore } from "../../stores/useTabStore";
 import { confirmEdits, usePendingEdit } from "../../stores/useEditGuard";
@@ -207,6 +208,7 @@ export function QueryWorkspace({ tab, active }: Props) {
     finally{fileLock.current=false;setFileBusy(false);}
   };
   const [result, setResult] = useState<QueryOutcome | null>(null);
+  const [elapsed, setElapsed] = useState<number | null>(null);
   const [lastSql, setLastSql] = useState("");
   const [resultDatabase,setResultDatabase]=useState(database);
   const [offset, setOffset] = useState(0);
@@ -248,6 +250,16 @@ export function QueryWorkspace({ tab, active }: Props) {
   const executionLock=useRef(false);
   const transaction=useManualTransaction(tab.id,tab.sessionId,database,()=>executionLock.current||running);
   const [resultTransaction,setResultTransaction]=useState<string|null>(null);
+  const clearResult = useCallback(() => {
+    setResult(null);
+    setResultTransaction(null);
+    setLastSql("");
+    setLastForce(false);
+    setSort([]);
+    setOffset(0);
+    setElapsed(null);
+    setExportOpen(false);
+  }, []);
   const executeQuery = useCallback(
     async (text: string, force: boolean, sortSpecs: SortSpec[]) => {
       if(executionLock.current||transaction.busy||transaction.lost)return;executionLock.current=true;
@@ -272,6 +284,7 @@ export function QueryWorkspace({ tab, active }: Props) {
         setOffset(0);
         setElapsed(Math.round(performance.now() - started));
       } catch (err) {
+        clearResult();
         const payload = normalizeError(err);
         if (payload.code === "E_DANGEROUS") {
           setDangerConfirmation("");
@@ -287,7 +300,7 @@ export function QueryWorkspace({ tab, active }: Props) {
         executionLock.current=false;setRunning(false);
       }
     },
-    [database, tab.id, tab.sessionId, pageSize, transaction.transaction, transaction.busy, transaction.lost],
+    [database, tab.id, tab.sessionId, pageSize, transaction.transaction, transaction.busy, transaction.lost, clearResult],
   );
 
   const run = useCallback(
@@ -351,8 +364,6 @@ export function QueryWorkspace({ tab, active }: Props) {
       setExplainLoading(false);
     }
   };
-
-  const [elapsed, setElapsed] = useState<number | null>(null);
 
   const formatEditor = () => {
     const editor=editorRef.current,model=editor?.getModel();if(!editor||!model)return;
@@ -423,6 +434,7 @@ export function QueryWorkspace({ tab, active }: Props) {
     if (executionLock.current || result?.scriptStatements || !result?.columns.length || !lastSql || transaction.busy || transaction.lost || (transaction.transaction && transaction.transaction.database !== resultDatabase) || (resultTransaction!==null && resultTransaction!==transaction.transaction?.id)) return;
     executionLock.current = true;
     setRunning(true);
+    setError(null);
     const started = performance.now();
     try {
       const outcome = transaction.transaction ? await transaction.execute(lastSql,true,nextOffset,sort,limit) : await api.queryFetchPage(
@@ -440,7 +452,9 @@ export function QueryWorkspace({ tab, active }: Props) {
       setPageSize(limit);
       setElapsed(Math.round(performance.now() - started));
     } catch (err) {
-      notify.error(err, "加载失败");
+      clearResult();
+      setFailedSql(lastSql);
+      setError(normalizeError(err).message);
     } finally {
       executionLock.current = false;
       setRunning(false);
@@ -534,14 +548,14 @@ export function QueryWorkspace({ tab, active }: Props) {
             </MenuList>
           </MenuPopover>
         </Menu>
-        <Button
+        {targetSession?.engine!=="dameng"&&<Button
           size="small"
           icon={explainLoading ? <Spinner size="tiny" /> : undefined}
           disabled={explainLoading||!!transaction.transaction}
           onClick={() => void runExplain()}
         >
           执行计划
-        </Button>
+        </Button>}
         <div className={styles.spacer} />
         {running && <Spinner size="tiny" label="执行中…" />}
       </div>
@@ -553,7 +567,7 @@ export function QueryWorkspace({ tab, active }: Props) {
       </header>
 <div className="dw-sql-editor-body">
         {active && <Editor
-          language="sql"
+          language={sqlLanguage(targetSession?.engine)}
           theme={editorTheme.name} beforeMount={editorTheme.beforeMount}
           value={sql}
           onChange={(value) => setSql(value ?? "")}
@@ -572,6 +586,9 @@ export function QueryWorkspace({ tab, active }: Props) {
       </div></div><div hidden={!smartOpen} className="dw-smart-side">{smartOpen!==null&&<SmartSqlPanel visible={!!smartOpen} key={tab.sessionId+database} sessionId={tab.sessionId} database={database} tabId={tab.id} sql={sql} executionError={error&&failedSql===sql?error:""} disabled={fileBusy} onClose={()=>setSmartOpen(false)} onAppend={text=>setSql(v=>appendGeneratedSql(v,text))} />}</div></SqlSplit></ResizableSqlArea>
 
       {error && <div className={styles.error}>{error}</div>}
+      {!!result?.notices?.length && <div role="status" style={{padding:"4px 10px",fontSize:12,lineHeight:"18px",maxHeight:90,overflow:"auto",borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,color:tokens.colorNeutralForeground2}}>
+        {result.notices.map((notice,index)=><div key={index}>{notice}</div>)}
+      </div>}
 
       <div className={styles.resultWrap}>
         <div className={styles.resultToolbar}>

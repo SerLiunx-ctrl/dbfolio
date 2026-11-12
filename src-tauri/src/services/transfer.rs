@@ -309,7 +309,7 @@ pub async fn export(state: &AppState, req: &ExportRequest) -> AppResult<ExportRe
         let wrapped =
             query::wrap_pagination(adapter.as_ref(), &req.sql, offset, take, &req.sort);
         let ctx = QueryContext::new();
-        let outcome = crate::tasks::query(adapter.as_ref(), &ctx, adapter.query_page(&req.database, &wrapped, offset, take, &ctx)).await?;
+        let outcome = crate::tasks::query(adapter.as_ref(), &ctx, adapter.query_export_page(&req.database, &wrapped, offset, take, &ctx)).await?;
 
         if outcome.columns.is_empty() && outcome.rows.is_empty() {
             break;

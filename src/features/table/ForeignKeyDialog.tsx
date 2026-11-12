@@ -101,7 +101,7 @@ export function ForeignKeyDialog({
     setName(initial?.name ?? "");
     setLocalColumns(initial?.columns ?? []);
     setRefTable(initial?.refTable ?? "");
-    setRefSchema(initial?.refSchema ?? (engine === "postgres" ? schema ?? "public" : null));
+    setRefSchema(initial?.refSchema ?? (engine === "postgres" ? schema ?? "public" : engine === "dameng" ? schema ?? database : null));
     setRefColumns(initial?.refColumns ?? []);
     setOnDelete(initial?.onDelete ?? "NO ACTION");
     setOnUpdate(initial?.onUpdate ?? "NO ACTION");
@@ -282,6 +282,7 @@ export function ForeignKeyDialog({
               </div>
             ) : (
               <div className={styles.sqlList}>
+                {engine === "dameng" && <span>达梦 DDL 可能隐式提交；失败后请刷新核对已执行结果。</span>}
                 {statements.map((statement, index) => (
                   <pre key={index} className={styles.sql}>
                     {statement}

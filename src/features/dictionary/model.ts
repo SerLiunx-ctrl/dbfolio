@@ -1,4 +1,4 @@
-import {generateDdl} from '../table/ddl';
+import {ddlContent} from '../table/ddlContent';
 import type { Engine, TableMeta, TableRef } from '../../ipc/types';
 export interface DictionaryItem { name:string;schema:string|null;meta:TableMeta|null;error:string|null }
 export interface Snapshot { engine:Engine;database:string;serverVersion:string;collectedAt:string;items:DictionaryItem[] }
@@ -22,6 +22,6 @@ export function matches(item:DictionaryItem,notes:Notes,search:string,group:stri
 }
 export function exportDocument(snapshot:Snapshot,items:DictionaryItem[],notes:Notes){
  if(!items.length)throw Error('当前范围没有对象');if(items.some(i=>!i.meta||i.error))throw Error('导出范围包含采集失败的对象，请重试或调整导出范围');
- return{version:1,engine:snapshot.engine,database:snapshot.database,serverVersion:snapshot.serverVersion,collectedAt:snapshot.collectedAt,entries:items.map(item=>{const note=noteFor(notes,item);return{definition:item.meta!.rawDdl??(item.meta!.kind==='table'?'-- 根据元数据重建，仅供结构说明参考；不保证包含服务器全部属性。\n'+generateDdl(snapshot.engine,item.meta!):null),meta:item.meta!,group:note.group,note:note.note,columnNotes:Object.fromEntries(item.meta!.columns.map(c=>[c.name,columnNote(note,c.name)]))};})};
+ return{version:1,engine:snapshot.engine,database:snapshot.database,serverVersion:snapshot.serverVersion,collectedAt:snapshot.collectedAt,entries:items.map(item=>{const note=noteFor(notes,item),ddl=ddlContent(snapshot.engine,item.meta!);return{definition:ddl.sql&&snapshot.engine!=='dameng'&&!item.meta!.rawDdl?.trim()?'-- 根据元数据重建，仅供结构说明参考；不保证包含服务器全部属性。\n'+ddl.sql:ddl.sql,meta:item.meta!,group:note.group,note:note.note,columnNotes:Object.fromEntries(item.meta!.columns.map(c=>[c.name,columnNote(note,c.name)]))};})};
 }
 export const references=(catalog:TableRef[],keys:string[])=>catalog.filter(v=>keys.includes(objectKey(v))).map(v=>({name:v.name,schema:v.schema??null}));

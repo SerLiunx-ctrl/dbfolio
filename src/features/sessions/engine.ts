@@ -5,6 +5,7 @@ export const ENGINE_LABELS: Record<Engine, string> = {
   mysql: "MySQL",
   postgres: "PostgreSQL",
   sqlite: "SQLite",
+  dameng: "达梦 DM8",
   redis: "Redis",
   mongodb: "MongoDB",
   kafka: "Kafka",
@@ -16,6 +17,7 @@ export const ENGINE_COLORS: Record<Engine, string> = {
   mysql: engineIconColor("mysql"),
   postgres: engineIconColor("postgres"),
   sqlite: engineIconColor("sqlite"),
+  dameng: "#1676bd",
   redis: engineIconColor("redis"),
   mongodb: "#479c50",
   kafka: "#687888",
@@ -23,11 +25,12 @@ export const ENGINE_COLORS: Record<Engine, string> = {
   rocketmq: "#cb3f66",
 };
 
-export const ENGINE_OPTIONS: Engine[] = ["mysql", "postgres", "sqlite", "redis", "mongodb", "kafka", "rabbitmq", "rocketmq"];
+export const ENGINE_OPTIONS: Engine[] = ["mysql", "postgres", "sqlite", "dameng", "redis", "mongodb", "kafka", "rabbitmq", "rocketmq"];
 
 export const DEFAULT_PORTS: Partial<Record<Engine, number>> = {
   mysql: 3306,
   postgres: 5432,
+  dameng: 5236,
   redis: 6379,
   mongodb: 27017,
   kafka: 9092,
@@ -38,6 +41,7 @@ export const DEFAULT_PORTS: Partial<Record<Engine, number>> = {
 export const DEFAULT_USERNAMES: Partial<Record<Engine, string>> = {
   mysql: "root",
   postgres: "postgres",
+  dameng: "SYSDBA",
 };
 
 /** 连接协议保持 mysql，服务器名称在连接后按真实版本识别。 */
@@ -47,3 +51,4 @@ export function serverEngineLabel(engine: Engine, serverVersion?: string | null)
 }
 
 export const isMessageQueue=(engine:Engine)=>["kafka","rabbitmq","rocketmq"].includes(engine);
+export const isSqlEngine=(engine:Engine)=>["mysql","postgres","sqlite","dameng"].includes(engine);

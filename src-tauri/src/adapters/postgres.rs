@@ -706,6 +706,7 @@ impl DbAdapter for PostgresAdapter {
                 .filter(|v| *v >= 0)
                 .map(|v| v as u64),
             raw_ddl,
+            ddl_warnings: vec![],
         })
     }
 

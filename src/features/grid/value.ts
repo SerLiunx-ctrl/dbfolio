@@ -18,6 +18,9 @@ export function qualifiedTableSql(
   if (engine === "postgres") {
     return `${quoteIdent(engine, schema ?? "public")}.${quoteIdent(engine, table)}`;
   }
+  if (engine === "dameng") {
+    return `${quoteIdent(engine, schema || database)}.${quoteIdent(engine, table)}`;
+  }
   return quoteIdent(engine, table);
 }
 
@@ -41,6 +44,10 @@ function previewExpression(engine: string, column: ColumnMeta): string {
   const alias = quoteIdent(engine, column.name);
   if (engine === "mysql") {
     return `LEFT(${ident}, ${PREVIEW_CHARS_FETCH}) AS ${alias}`;
+  }
+  if (engine === "dameng" && column.canonical.kind === "binary") {
+    // DM SUBSTR(BLOB) converts to text; DBMS_LOB.SUBSTR retains raw bytes.
+    return `DBMS_LOB.SUBSTR(${ident}, ${PREVIEW_BYTES + 1}, 1) AS ${alias}`;
   }
   if (engine === "postgres") {
     if (column.canonical.kind === "binary") {

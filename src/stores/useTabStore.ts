@@ -134,7 +134,7 @@ export const useTabStore = create<TabState>((set, get) => ({
     else{const tab:TriggerTab={id:nextId('triggers'),kind:'triggers',sessionId,database,table,schema,title:'触发器 · '+database+(table?'.'+(schema?schema+'.':'')+table:'')};set({tabs:[...get().tabs,tab],activeId:tab.id});}
     window.dispatchEvent(new Event('dw:show-workspace'));
   },
-  openCreateTable:(sessionId,database,engine)=>{if(!['mysql','postgres','sqlite'].includes(engine))return;const id=nextId('create-table');set({tabs:[...get().tabs,{id,kind:'createTable',sessionId,database,title:'新建表*',draft:newTableState(engine)}],activeId:id});window.dispatchEvent(new Event('dw:show-workspace'));},
+  openCreateTable:(sessionId,database,engine)=>{if(!['mysql','postgres','sqlite','dameng'].includes(engine))return;const id=nextId('create-table');set({tabs:[...get().tabs,{id,kind:'createTable',sessionId,database,title:'新建表*',draft:newTableState(engine)}],activeId:id});window.dispatchEvent(new Event('dw:show-workspace'));},
   updateCreateTable:(id,draft)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==='createTable'?{...t,draft}:t)}),
   finishCreateTable:(id,table,schema)=>set({tabs:get().tabs.map(t=>t.id===id&&t.kind==='createTable'?{id:t.id,kind:'table',sessionId:t.sessionId,database:t.database,table,schema,title:table,view:'info'}:t)}),
   openMysqlTool:(sessionId,database,mode,table)=>{const id=nextId('mysql-tool');set({tabs:[...get().tabs,{id,kind:'mysqlTool',sessionId,database,mode,table,title:mode==='import'?'SQL 导入':'数据库对象'+(database?' · '+database:'')}],activeId:id});window.dispatchEvent(new Event('dw:show-workspace'));},

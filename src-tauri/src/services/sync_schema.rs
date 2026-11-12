@@ -1182,7 +1182,7 @@ mod tests {
         }
     }
     fn meta(name: &str, db: &str, ty: &str) -> TableMeta {
-        TableMeta{name:name.into(),schema:Some(db.into()),kind:TableKind::Table,columns:vec![ColumnMeta{name:"id".into(),ordinal:1,raw_type:ty.into(),canonical:CanonicalType::from_mysql(ty),nullable:false,default_value:None,auto_increment:false,unsigned:false,charset:None,collation:None,comment:None}],primary_key:vec!["id".into()],indexes:vec![],foreign_keys:vec![],comment:None,row_estimate:None,raw_ddl:Some(format!("CREATE TABLE `{name}` (\n  `id` {ty} NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB"))}
+        TableMeta{name:name.into(),schema:Some(db.into()),kind:TableKind::Table,columns:vec![ColumnMeta{name:"id".into(),ordinal:1,raw_type:ty.into(),canonical:CanonicalType::from_mysql(ty),nullable:false,default_value:None,auto_increment:false,unsigned:false,charset:None,collation:None,comment:None}],primary_key:vec!["id".into()],indexes:vec![],foreign_keys:vec![],comment:None,row_estimate:None,raw_ddl:Some(format!("CREATE TABLE `{name}` (\n  `id` {ty} NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB")),ddl_warnings:vec![]}
     }
     fn fk(db: &str) -> ForeignKeyMeta {
         ForeignKeyMeta {

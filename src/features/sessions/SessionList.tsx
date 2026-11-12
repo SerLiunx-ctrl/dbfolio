@@ -301,7 +301,7 @@ export function SessionList({ onNew, onEdit, onCopy, toolbarTarget }: Props) {
         if (activeSessionId === session.id) setActiveSession(null);
       } else {
         await connect(session.id);
-        if (["mysql","postgres","sqlite"].includes(session.engine)) { await loadPinnedTabs(session.id); restorePinnedTabs(session.id); }
+        if (["mysql","postgres","sqlite","dameng"].includes(session.engine)) { await loadPinnedTabs(session.id); restorePinnedTabs(session.id); }
         setActiveSession(session.id);
       }
     } catch (error) {

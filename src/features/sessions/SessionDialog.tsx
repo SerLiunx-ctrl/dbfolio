@@ -238,7 +238,7 @@ export function SessionDialog({
       password: passwordValue,
       database: isSqlite || isRedis ? null : database.trim() || null,
       filePath: isSqlite ? filePath.trim() : null,
-      sslMode: isSqlite || isRedis || isMessageQueue(engine) ? null : sslMode,
+      sslMode: isSqlite || isRedis || engine === "dameng" || isMessageQueue(engine) ? null : sslMode,
       redisDb: isRedis ? Number(redisDb || "0") : null,
       tls: isRedis || engine === "mongodb" || isMessageQueue(engine) ? tls : null,
       authSource: engine === "mongodb" ? authSource.trim() || null : null,
@@ -393,7 +393,7 @@ export function SessionDialog({
                         />
                       </Field>
                     ) : (
-                      <Field label={isMq?(engine==="rabbitmq"?"默认 VHost":"命名空间（留空使用集群）"):"默认数据库"}>
+                      <Field label={isMq?(engine==="rabbitmq"?"默认 VHost":"命名空间（留空使用集群）"):engine==="dameng"?"默认模式（可留空）":"默认数据库"}>
                         <Input
                           value={database}
                           placeholder="可留空"
@@ -427,7 +427,7 @@ export function SessionDialog({
                     />
                   )}
                   {engine === "mongodb" && <><Field label="认证库（authSource）"><Input value={authSource} onChange={(_,d)=>setAuthSource(d.value)} /></Field><Switch label="启用 TLS（SRV 默认启用）" checked={tls} onChange={(_,d)=>setTls(d.checked)} /><InfoHint label="MongoDB 地址说明">地址支持 mongodb:// 和 mongodb+srv://；账号密码请分别填写，不要放在 URI 中。URI 模式忽略端口字段。</InfoHint></>}
-                  {!isRedis && engine !== "mongodb" && !isMq && (
+                  {!isRedis && engine !== "mongodb" && engine !== "dameng" && !isMq && (
                     <Field label="SSL 模式">
                       <Dropdown
                         selectedOptions={[sslMode]}

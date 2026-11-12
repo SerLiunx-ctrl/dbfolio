@@ -91,7 +91,7 @@ export function CreateDatabaseDialog({
         engine === "mysql" ? charset || null : null,
         engine === "mysql" ? collation || null : null,
       );
-      notify.success("数据库已创建", name.trim());
+      notify.success(engine==="dameng"?"模式已创建":"数据库已创建", name.trim());
       reset();
       onClose();
       onDone();
@@ -124,9 +124,9 @@ export function CreateDatabaseDialog({
     >
       <DialogSurface style={{ maxWidth: "520px" }}>
         <DialogBody>
-          <DialogTitle>新建数据库</DialogTitle>
+          <DialogTitle>{engine==="dameng"?"新建模式":"新建数据库"}</DialogTitle>
           <DialogContent>
-            <Field label="数据库名称" required>
+            <Field label={engine==="dameng"?"模式名称":"数据库名称"} required>
               <Input
                 value={name}
                 placeholder="例如 app_dev"

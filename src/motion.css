@@ -28,13 +28,14 @@
 .dw-session-group-body[data-expanded="true"] {grid-template-rows:1fr}
 .dw-session-group-clip {min-height:0;overflow:hidden}
 :root[data-motion="full"] .dw-session-group-body {transition:grid-template-rows 320ms cubic-bezier(.22,.7,.25,1)}
+/* Fluent 通知的不可见计时器依赖 animationend；动效偏好只关闭视觉动画，不能停掉通知超时。 */
 /* 减弱模式不动画布局尺寸，分隔条始终直接跟手。 */
-:root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
+:root[data-motion="reduced"] *:not([data-timer-status]), :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
  animation:none!important;transition-property:color,background-color,border-color,opacity!important;transition-duration:80ms!important;transition-delay:0s!important;scroll-behavior:auto!important;
 }
 :root[data-motion="reduced"] :is(.fui-MenuPopover,.dw-context-menu,.fui-DialogSurface,.dw-task-hover,.dw-smart-side) {animation:dw-motion-fade 80ms linear!important}
-:root[data-motion="off"] *, :root[data-motion="off"] *::before, :root[data-motion="off"] *::after {animation:none!important;transition:none!important;scroll-behavior:auto!important}
+:root[data-motion="off"] *:not([data-timer-status]), :root[data-motion="off"] *::before, :root[data-motion="off"] *::after {animation:none!important;transition:none!important;scroll-behavior:auto!important}
 /* 设置尚未加载时也尊重系统偏好，防止启动时闪过位移动画。 */
 @media(prefers-reduced-motion:reduce) {
- :root:not([data-motion]) *, :root:not([data-motion]) *::before, :root:not([data-motion]) *::after {animation:none!important;transition:none!important}
+ :root:not([data-motion]) *:not([data-timer-status]), :root:not([data-motion]) *::before, :root:not([data-motion]) *::after {animation:none!important;transition:none!important}
 }

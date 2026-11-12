@@ -54,7 +54,8 @@ import { useTabStore, type TableTab } from "../../stores/useTabStore";
 import { ConfirmSqlDialog } from "./ConfirmSqlDialog";
 import { ForeignKeyDialog } from "./ForeignKeyDialog";
 import { IndexDialog } from "./IndexDialog";
-import { generateDdl } from "./ddl";
+import { ddlContent } from "./ddlContent";
+import { ensureSqlLanguage, sqlLanguage } from "../../sqlLanguage";
 
 const useStyles = makeStyles({
   wrap: {
@@ -297,7 +298,7 @@ function TableColumnsPanel({
         <TableBody>{rows}</TableBody>
       </Table>
 
-      <ConfirmSqlDialog open={flagsOpen} title={draft?"添加列":"保存列属性"} sessionId={tab.sessionId} tabId={tab.id} warning={engine==="sqlite"?"SQLite 修改类型、默认值或可空性时会在事务内重建表；保留原约束、索引和触发器，数据不兼容时整批回滚。":"类型或可空性变更可能因现有数据不兼容而失败，并可能重建或锁定表。"} loadPreview={()=>api.ddlPreview(tab.sessionId,tab.database,draft?addSpec():flagSpec)} onApply={draft?saveAdd:saveFlags} onClose={()=>setFlagsOpen(false)} onDone={()=>setFlagsOpen(false)}/>
+      <ConfirmSqlDialog open={flagsOpen} title={draft?"添加列":"保存列属性"} sessionId={tab.sessionId} tabId={tab.id} warning={engine==="sqlite"?"SQLite 修改类型、默认值或可空性时会在事务内重建表；保留原约束、索引和触发器，数据不兼容时整批回滚。":engine==="dameng"?"达梦 DDL 可能隐式提交；多条变更中途失败时，已执行部分可能保留，请刷新核对。":"类型或可空性变更可能因现有数据不兼容而失败，并可能重建或锁定表。"} loadPreview={()=>api.ddlPreview(tab.sessionId,tab.database,draft?addSpec():flagSpec)} onApply={draft?saveAdd:saveFlags} onClose={()=>setFlagsOpen(false)} onDone={()=>setFlagsOpen(false)}/>
       {rowMenu && (
         <ContextMenuPortal>
           <div
@@ -348,7 +349,7 @@ function TableColumnsPanel({
                       dirtyFlags||flagsBusy||!!draft||!supportsMove ||
                       detail.columns.findIndex((item) => item.name === rowMenu.column.name) === 0
                     }
-                    title={supportsMove ? undefined : "PostgreSQL 不支持调整列顺序"}
+                    title={supportsMove ? undefined : "该数据库不支持调整列顺序"}
                     onClick={() => {
                       void moveColumn(rowMenu.column, -1);
                       setRowMenu(null);
@@ -363,7 +364,7 @@ function TableColumnsPanel({
                       detail.columns.findIndex((item) => item.name === rowMenu.column.name) ===
                         detail.columns.length - 1
                     }
-                    title={supportsMove ? undefined : "PostgreSQL 不支持调整列顺序"}
+                    title={supportsMove ? undefined : "该数据库不支持调整列顺序"}
                     onClick={() => {
                       void moveColumn(rowMenu.column, 1);
                       setRowMenu(null);
@@ -751,7 +752,7 @@ export function DdlPanel({ detail, engine, onOpenQuery }: { detail: TableMeta; e
   const styles = useStyles();
   const notify = useNotify();
   const theme = useEditorTheme();
-  const ddl = detail.rawDdl ?? (detail.kind === "table" ? generateDdl(engine, detail) : null);
+  const {sql: ddl, warnings} = ddlContent(engine, detail);
   return (
     <div className={`${styles.wrap} dw-ddl-panel`}>
       <div className={styles.toolbar}>
@@ -760,14 +761,17 @@ export function DdlPanel({ detail, engine, onOpenQuery }: { detail: TableMeta; e
         <Button size="small" icon={<CopyRegular/>} disabled={!ddl} onClick={()=>{if(ddl)void api.clipboardWriteText(ddl).then(()=>notify.success("DDL 已复制")).catch(e=>notify.error(e,"复制失败"));}}>复制 DDL</Button>
         {onOpenQuery && <Button size="small" icon={<CodeRegular/>} disabled={!ddl} onClick={()=>{if(ddl)onOpenQuery(ddl);}}>在查询页打开</Button>}
       </div>
+      {!!warnings.length && <div role="alert" style={{fontSize:12,lineHeight:"18px",padding:"4px 8px",marginBottom:8,maxHeight:90,overflow:"auto",border:`1px solid ${tokens.colorPaletteDarkOrangeBorder2}`,borderRadius:4,color:tokens.colorPaletteDarkOrangeForeground1}}>
+        {warnings.map((message,index)=><div key={index}>{message}</div>)}
+      </div>}
       {ddl ? (
-        <div className="dw-ddl-editor"><Editor language="sql" theme={theme.name} beforeMount={theme.beforeMount}
+        <div className="dw-ddl-editor"><Editor language={sqlLanguage(engine)} theme={theme.name} beforeMount={m=>{ensureSqlLanguage(m,engine);theme.beforeMount(m);}}
           value={ddl} options={{ ariaLabel: detail.kind==="view"?"视图 DDL（只读）":"表 DDL（只读）", readOnly: true, domReadOnly: true,
             minimap: { enabled: false }, fontSize: 13, lineNumbers: "on", scrollBeyondLastLine: false,
             automaticLayout: true, wordWrap: "on", tabSize: 2 }} /></div>
       ) : (
         <div className={styles.empty}>
-          服务器未返回视图定义，请确认查看定义的权限后刷新元数据；结果列信息可在「结构」页查看。
+          {engine === "dameng" ? "服务器未返回原生 DDL，已停用通用重建；可在「结构」页查看元数据。" : "服务器未返回视图定义，请确认查看定义的权限后刷新元数据；结果列信息可在「结构」页查看。"}
         </div>
       )}
     </div>

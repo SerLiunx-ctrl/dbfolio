@@ -9,6 +9,7 @@ pub enum Engine {
     Mysql,
     Postgres,
     Sqlite,
+    Dameng,
     Redis,
     Mongodb,
     Kafka,
@@ -22,6 +23,7 @@ impl Engine {
             Engine::Mysql => "mysql",
             Engine::Postgres => "postgres",
             Engine::Sqlite => "sqlite",
+            Engine::Dameng => "dameng",
             Engine::Redis => "redis",
             Engine::Mongodb => "mongodb",
             Engine::Kafka => "kafka",
@@ -35,6 +37,7 @@ impl Engine {
             "mysql" => Some(Engine::Mysql),
             "postgres" | "postgresql" | "pgsql" => Some(Engine::Postgres),
             "sqlite" => Some(Engine::Sqlite),
+            "dameng" | "dm8" | "dm" => Some(Engine::Dameng),
             "redis" => Some(Engine::Redis),
             "mongodb" => Some(Engine::Mongodb),
             "kafka" => Some(Engine::Kafka),
@@ -48,7 +51,7 @@ impl Engine {
 
     /// 是否属于 SQL 引擎族（同步、SQL 编辑器等仅适用于 SQL 族）
     pub fn is_sql(&self) -> bool {
-        matches!(self, Engine::Mysql | Engine::Postgres | Engine::Sqlite)
+        matches!(self, Engine::Mysql | Engine::Postgres | Engine::Sqlite | Engine::Dameng)
     }
 }
 
@@ -147,6 +150,9 @@ pub struct TableMeta {
     pub comment: Option<String>,
     pub row_estimate: Option<u64>,
     pub raw_ddl: Option<String>,
+    /// 原生 DDL 不可读或仅返回部分依赖时的诊断，不用通用 SQL 冒充完整定义。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ddl_warnings: Vec<String>,
 }
 
 /// 引擎特有补充信息（MySQL 引擎/字符集/自增值/时间，SQLite 自增值等）

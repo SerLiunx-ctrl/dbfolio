@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
+const grammar={exports:{}};
+new Function('module',fs.readFileSync('node_modules/monaco-editor/esm/vs/languages/definitions/sql/sql.js','utf8').replace('export { conf, language };','module.exports={conf,language};'))(grammar);
+const original=grammar.exports.language,before=JSON.stringify(original),moduleFixture={exports:{}};
+new Function('module','exports','require',ts.transpileModule(fs.readFileSync('src/sqlLanguage.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(moduleFixture,moduleFixture.exports,()=>grammar.exports);
+const {sqlLanguage,damengSqlLanguage,ensureSqlLanguage}=moduleFixture.exports;
+for(const engine of ['mysql','postgres','sqlite',undefined])assert.equal(sqlLanguage(engine),'sql');
+assert.equal(sqlLanguage('dameng'),'dameng-sql');
+const dm=damengSqlLanguage();
+assert.equal(JSON.stringify(original),before,'达梦扩展不得修改原 SQL 语言对象');
+for(const word of ['CLOB','BLOB','VARCHAR2'])assert(dm.typeKeywords.includes(word));
+for(const word of ['IDENTITY','CLUSTER','STORAGE','CLUSTERBTR'])assert(dm.damengKeywords.includes(word));
+for(const rule of ['strings','string','comments','comment','complexIdentifiers','quotedIdentifier'])assert.equal(dm.tokenizer[rule],original.tokenizer[rule],rule);
+let registered=0;const fake={languages:{register:()=>registered++,setLanguageConfiguration:()=>{},setMonarchTokensProvider:()=>{}}};
+ensureSqlLanguage(fake,'mysql');assert.equal(registered,0);ensureSqlLanguage(fake,'dameng');ensureSqlLanguage(fake);assert.equal(registered,1);
+console.log('PASS 达梦语言词表、原 SQL 规则不变、字符串/注释/标识符复用、幂等注册');

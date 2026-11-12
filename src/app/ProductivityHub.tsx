@@ -34,7 +34,7 @@ export function ProductivityHub(){
     if(hit&&Date.now()-hit.at<60000){setIndex(hit.tables);setError(hit.error);setLoading(false);return;}
     const id=++version.current;setIndex([]);setLoading(true);setError("");
     void (async()=>{const found:IndexedTable[]=[],errors:string[]=[];const state=useSessionStore.getState();
-      for(const session of state.sessions.filter(s=>["mysql","postgres","sqlite"].includes(s.engine)&&state.statuses[s.id]&&(!scope||scope===s.id))){
+      for(const session of state.sessions.filter(s=>["mysql","postgres","sqlite","dameng"].includes(s.engine)&&state.statuses[s.id]&&(!scope||scope===s.id))){
         if(id!==version.current)return;
         try{const dbs=await api.listDatabases(session.id);for(let i=0;i<dbs.length;i+=2){if(id!==version.current)return;await Promise.all(dbs.slice(i,i+2).map(async db=>{try{const tables=await api.listTables(session.id,db.name);found.push(...tables.map(table=>({sessionId:session.id,database:db.name,table})));}catch{errors.push(`${session.name}/${db.name}`);}}));}}
         catch{errors.push(session.name);}
@@ -75,7 +75,7 @@ export function ProductivityHub(){
     <HistoryCenter open={history} onClose={()=>setHistory(false)}/>
     <Dialog open={quick} onOpenChange={(_,d)=>{if(!d.open&&!opening)setQuick(false);}}><DialogSurface style={{maxWidth:850,width:"92vw"}}><DialogBody><DialogTitle>快速打开</DialogTitle><DialogContent>
       <Input aria-label="搜索快速打开项目" aria-controls="dw-quick-results" aria-activedescendant={items[selected]?"dw-quick-option-"+selected:undefined} autoFocus style={{width:"100%"}} placeholder="搜索表、收藏、文件、页签；输入 > 搜索应用命令" value={text} onChange={(_,d)=>setText(d.value)} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();setSelected(n=>Math.min(items.length-1,n+1));}if(e.key==="ArrowUp"){e.preventDefault();setSelected(n=>Math.max(0,n-1));}if(e.key==="Enter"&&items[selected]){e.preventDefault();void choose(items[selected]);}}}/>
-      {!commandMode&&<label>对象加载范围 <select className="dw-native-select" value={scope} onChange={e=>setScope(e.target.value)}><option value="">全部已连接会话</option>{sessions.filter(s=>["mysql","postgres","sqlite"].includes(s.engine)).map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
+      {!commandMode&&<label>对象加载范围 <select className="dw-native-select" value={scope} onChange={e=>setScope(e.target.value)}><option value="">全部已连接会话</option>{sessions.filter(s=>["mysql","postgres","sqlite","dameng"].includes(s.engine)).map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
       {!commandMode&&searchObjects&&<Button size="small" disabled={loading} onClick={()=>{cache.current.clear();setRefreshIndex(n=>n+1);}}>刷新对象索引</Button>}
       {!text.trim()&&<InfoHint label="搜索范围说明">输入关键词后加载数据库对象；页签、收藏与文件立即可用。输入 &gt; 切换到应用命令。</InfoHint>}
       {loading&&<Spinner size="tiny" label="加载表和视图；本地页签、收藏与文件可先打开"/>}{error&&<p role="alert">{error}</p>}

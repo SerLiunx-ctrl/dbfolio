@@ -38,3 +38,6 @@ pub mod transport;
 pub mod dictionary;
 
 pub mod mysql_schema;
+pub mod dameng_schema;
+pub mod dameng_script;
+pub mod dameng_import;

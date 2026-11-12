@@ -32,7 +32,7 @@ export function HistoryCenter({open,onClose}:{open:boolean;onClose:()=>void}) {
     <DialogTitle>查询历史中心</DialogTitle><DialogContent style={{maxHeight:"70vh",overflowY:"auto"}}>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
         <Field label="搜索 SQL"><Input value={text} onChange={(_,d)=>setText(d.value)} /></Field>
-        <Field label="连接"><select className="dw-native-select" value={sessionId} onChange={e=>setSessionId(e.target.value)}><option value="">全部连接</option>{sessions.filter(s=>["mysql","postgres","sqlite"].includes(s.engine)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+        <Field label="连接"><select className="dw-native-select" value={sessionId} onChange={e=>setSessionId(e.target.value)}><option value="">全部连接</option>{sessions.filter(s=>["mysql","postgres","sqlite","dameng"].includes(s.engine)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
         <Field label="数据库（完整名称）"><Input value={database} onChange={(_,d)=>setDatabase(d.value)} /></Field>
         <Field label="开始日期（UTC）"><Input type="date" value={from} onChange={(_,d)=>setFrom(d.value)} /></Field>
         <Field label="结束日期（UTC）"><Input type="date" value={to} onChange={(_,d)=>setTo(d.value)} /></Field>

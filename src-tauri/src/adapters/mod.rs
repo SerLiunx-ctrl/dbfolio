@@ -5,6 +5,7 @@ pub mod mysql;
 pub mod postgres;
 pub mod redis;
 pub mod sqlite;
+pub mod dameng;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -52,6 +53,8 @@ pub struct ColumnInfo {
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryOutcome {
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub notices: Option<Vec<String>>,
     pub columns: Vec<ColumnInfo>,
     pub rows: Vec<Vec<DbValue>>,
     pub affected: Option<u64>,
@@ -111,6 +114,7 @@ pub trait DbAdapter: Send + Sync {
     async fn mysql_connection(&self, _database: &str, _write: bool) -> AppResult<sqlx::MySqlConnection> {
         Err(AppError::InvalidInput("此功能仅支持 MySQL".into()))
     }
+    async fn dameng_connection(&self,_database:&str,_write:bool)->AppResult<dm_rust::Connection>{Err(AppError::InvalidInput("此功能仅支持达梦".into()))}
     async fn export_sql(&self, _request: &crate::services::sql_export::SqlExportRequest) -> AppResult<crate::services::sql_export::SqlExportResult> { Err(AppError::InvalidInput("SQL 文件导出目前仅支持 MySQL".into())) }
     fn engine(&self) -> Engine;
 
@@ -173,6 +177,13 @@ pub trait DbAdapter: Send + Sync {
         ctx: &QueryContext,
     ) -> AppResult<QueryOutcome>;
 
+    /// File exports must never silently serialize a truncated grid preview.
+    async fn query_export_page(&self,database:&str,sql:&str,offset:u64,limit:u32,ctx:&QueryContext)->AppResult<QueryOutcome>{
+        let result=self.query_page(database,sql,offset,limit,ctx).await?;
+        if result.rows.iter().flatten().any(|v|matches!(v,DbValue::Truncated(_))){return Err(AppError::InvalidInput("导出结果包含截断预览值，已停止保存以避免数据不完整；请缩小列范围，或使用该引擎的完整 SQL 导出".into()));}
+        Ok(result)
+    }
+
     /// 执行不返回结果集的语句，返回受影响行数。
     async fn execute_affected(&self, database: &str, sql: &str) -> AppResult<QueryOutcome>;
 
@@ -207,6 +218,7 @@ pub async fn connect(params: &ConnectionParams) -> AppResult<std::sync::Arc<dyn 
         }
     }
     match params.engine {
+        Engine::Dameng => Ok(std::sync::Arc::new(dameng::DamengAdapter::connect(params).await?)),
         Engine::Kafka|Engine::Rabbitmq|Engine::Rocketmq => Ok(std::sync::Arc::new(message_queue::MessageQueueAdapter::connect(params).await?)),
         Engine::Mysql => Ok(std::sync::Arc::new(
             mysql::MySqlAdapter::connect(params).await?,
@@ -280,6 +292,7 @@ pub fn render_literal(engine: Engine, value: &DbValue) -> String {
             let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
             match engine {
                 Engine::Postgres => format!("decode('{hex}', 'hex')"),
+                Engine::Dameng => format!("HEXTORAW('{hex}')"),
                 _ => format!("X'{hex}'"),
             }
         }
@@ -365,7 +378,7 @@ pub fn build_change_statements(
     let table_ref = match schema.filter(|s| !s.is_empty()) {
         Some(s) => format!("{}.{}", quote(s), quote(table)),
         None => {
-            if engine == Engine::Mysql && !database.is_empty() {
+            if matches!(engine,Engine::Mysql|Engine::Dameng) && !database.is_empty() {
                 format!("{}.{}", quote(database), quote(table))
             } else {
                 quote(table)
@@ -521,7 +534,7 @@ pub fn build_cell_update(
     let table_ref = match schema.filter(|s| !s.is_empty()) {
         Some(s) => format!("{}.{}", quote(s), quote(table)),
         None => {
-            if engine == Engine::Mysql && !database.is_empty() {
+            if matches!(engine,Engine::Mysql|Engine::Dameng) && !database.is_empty() {
                 format!("{}.{}", quote(database), quote(table))
             } else {
                 quote(table)

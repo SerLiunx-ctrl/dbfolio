@@ -37,6 +37,7 @@ pub async fn connect_pair(
             "同步仅支持 SQL 引擎（MySQL / PostgreSQL / SQLite）".into(),
         ));
     }
+    if source_conn.adapter.engine()==Engine::Dameng || target_conn.adapter.engine()==Engine::Dameng {return Err(AppError::InvalidInput("达梦首版暂不支持结构或数据同步".into()));}
     if source_conn.adapter.engine() != target_conn.adapter.engine() {
         return Err(AppError::InvalidInput(
             "首版仅支持同引擎同步（源与目标的数据库类型必须一致）".into(),
@@ -833,6 +834,7 @@ async fn build_schema_script(
                                 .find(|item| item.name == diff.name)
                                 .expect("column exists");
                             match pair.engine {
+ Engine::Dameng=>return Err(AppError::InvalidInput("达梦首版暂不支持结构同步".into())),
                                 Engine::Mysql => statements.push(SyncStatement {
                                     table: table.clone(),
                                     kind: "modifyColumn".into(),

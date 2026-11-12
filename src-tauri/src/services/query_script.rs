@@ -226,6 +226,53 @@ impl Reader {
     }
 }
 
+// Inspect only the DDL header. A column/table named `event`, a function call, or
+// a quoted identifier is not a stored program or another dynamic SQL statement.
+fn program_header(sql: &str) -> AppResult<bool> {
+    let tokens = Reader::new(sql)?.tokens;
+    let word = |at: usize| match tokens.get(at) {
+        Some(Token::Word(w)) if w.quote_style.is_none() => Some(w.value.to_ascii_uppercase()),
+        _ => None,
+    };
+    if !matches!(word(0).as_deref(), Some("CREATE" | "ALTER" | "DROP")) {
+        return Ok(false);
+    }
+    let mut at = 1;
+    loop {
+        match word(at).as_deref() {
+            Some("OR") if word(at + 1).as_deref() == Some("REPLACE") => at += 2,
+            Some("TEMPORARY" | "UNIQUE" | "FULLTEXT" | "SPATIAL" | "AGGREGATE") => at += 1,
+            Some("ALGORITHM") => {
+                at += 1;
+                if tokens.get(at) == Some(&Token::Eq) {
+                    at += 1;
+                }
+                at += 1;
+            }
+            Some("SQL") if word(at + 1).as_deref() == Some("SECURITY") => at += 3,
+            Some("DEFINER") => {
+                at += 1;
+                if tokens.get(at) == Some(&Token::Eq) {
+                    at += 1;
+                }
+                // DEFINER accounts may themselves be quoted/reserved words.
+                // CURRENT_USER() and user@host are both header values.
+                at += 1;
+                if tokens.get(at) == Some(&Token::LParen)
+                    && tokens.get(at + 1) == Some(&Token::RParen)
+                {
+                    at += 2;
+                }
+                if tokens.get(at) == Some(&Token::AtSign) {
+                    at += 2;
+                }
+            }
+            Some("PROCEDURE" | "FUNCTION" | "TRIGGER" | "EVENT") => return Ok(true),
+            _ => return Ok(false),
+        }
+    }
+}
+
 fn validate_sql(
     sql: &str,
     database: &str,
@@ -247,18 +294,7 @@ fn validate_sql(
     {
         return Err(invalid("查询脚本仅支持查询、数据及表结构语句；事务控制、USE、服务器设置和存储程序请使用对应入口"));
     }
-    if mysql_script::words(&statement.sql).iter().any(|w| {
-        [
-            "PROCEDURE",
-            "FUNCTION",
-            "TRIGGER",
-            "EVENT",
-            "PREPARE",
-            "EXECUTE",
-        ]
-        .iter()
-        .any(|k| w.eq_ignore_ascii_case(k))
-    }) {
+    if program_header(&statement.sql)? {
         return Err(invalid(
             "查询脚本不支持存储程序定义或嵌套动态执行，请使用数据库对象管理或 SQL 文件导入",
         ));
@@ -527,6 +563,39 @@ mod tests {
         )
         .unwrap()
         .is_none());
+    }
+    #[test]
+    fn program_detection_only_uses_statement_headers() {
+        for sql in [
+            "CREATE TABLE t (`event` INT, `function` INT, `trigger` INT, `procedure` INT, `prepare` INT, `execute` INT)",
+            "SELECT `event`, `function`, `trigger`, `prepare`, `execute` FROM t",
+            "ALTER TABLE t ADD `procedure` INT",
+            "UPDATE t SET `execute`=1 WHERE `event`=2",
+            "DROP TABLE `trigger`",
+            "CREATE DEFINER='function'@'event' VIEW v AS SELECT `trigger` FROM t",
+            "CREATE ALGORITHM=MERGE DEFINER=CURRENT_USER SQL SECURITY INVOKER VIEW v AS SELECT 1",
+        ] {
+            assert!(!program_header(sql).unwrap(), "{sql}");
+            assert!(validate_sql(sql, "test_db", None, false, true).is_ok(), "{sql}");
+            if !sql.contains(" VIEW ") {
+                assert!(checked(&format!("{sql}; SELECT 1"), false, true).is_ok(), "{sql}");
+            }
+        }
+        for sql in [
+            "CREATE PROCEDURE p() SELECT 1",
+            "CREATE FUNCTION f() RETURNS INT RETURN 1",
+            "CREATE DEFINER='root'@'localhost' TRIGGER tr BEFORE INSERT ON t FOR EACH ROW SET @x=1",
+            "CREATE DEFINER=CURRENT_USER() EVENT ev ON SCHEDULE EVERY 1 DAY DO SELECT 1",
+            "ALTER DEFINER=`function`@`event` EVENT ev ENABLE",
+            "DROP PROCEDURE IF EXISTS p",
+        ] {
+            assert!(program_header(sql).unwrap(), "{sql}");
+            assert!(checked(&format!("{sql}; SELECT 1"), false, true).is_err(), "{sql}");
+        }
+        for sql in ["PREPARE x FROM @sql", "EXECUTE x", "DEALLOCATE PREPARE x"] {
+            assert!(validate_sql(sql, "test_db", None, false, true).is_err(), "{sql}");
+        }
+        assert!(checked("SET @x='EXECUTE nested'; PREPARE x FROM @x; EXECUTE x", false, true).is_err());
     }
     #[test]
     fn blocks_scope_bypasses_and_unsupported_expressions() {

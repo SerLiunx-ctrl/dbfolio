@@ -47,7 +47,7 @@ import {
   EditableDataGrid,
   type EditableDataGridHandle,
 } from "../grid/EditableDataGrid";
-import { buildTableSelect } from "../grid/value";
+import { buildTableSelect, qualifiedTableSql } from "../grid/value";
 import { ExportDialog } from "../transfer/ExportDialog";
 import { ImportDialog } from "../transfer/ImportDialog";
 import { DataChangePreview } from "./DataChangePreview";
@@ -538,7 +538,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         open={exportOpen}
         sessionId={tab.sessionId}
         database={tab.database}
-        sql={sql}
+        sql={`SELECT * FROM ${qualifiedTableSql(engine,tab.database,tab.schema,tab.table)}${whereClause}`}
         sort={sort}
         pageSize={pageSize}
         pageOffset={offset}

@@ -15,7 +15,7 @@ export function ConnectionSecurity({engine,value,onChange,sshPassword,onPassword
   <Field label="连接超时（秒）"><Input size="small" type="number" min={1} max={120} value={String(value.connectTimeoutSecs??15)} onChange={(_,d)=>set({connectTimeoutSecs:Number(d.value)})}/></Field>
   <Field label="查询超时（秒）"><Input size="small" type="number" min={1} max={3600} value={String(value.queryTimeoutSecs??60)} onChange={(_,d)=>set({queryTimeoutSecs:Number(d.value)})}/></Field>
   {engine!=='sqlite'&&<>
-   {path('CA 证书（PEM，可选）','caFile')}{path('客户端证书（PEM，可选）','clientCert')}{path('客户端私钥（PEM）','clientKey')}
+   {path('CA 证书（PEM，可选）','caFile')}{engine!=='dameng'&&<>{path('客户端证书（PEM，可选）','clientCert')}{path('客户端私钥（PEM）','clientKey')}</>}{engine==='dameng'&&<div style={{gridColumn:'1/-1',color:tokens.colorNeutralForeground3}}>达梦默认模式留空时使用登录用户模式；实例名不填入模式栏。TLS 按服务器配置协商，首版不支持客户端证书认证。</div>}
    {!isMessageQueue(engine)&&<Field label="TLS 服务器名（默认数据库地址）"><Input size="small" value={value.serverName??''} onChange={(_,d)=>set({serverName:d.value||null})}/></Field>}
    {engine==='mongodb'&&<div style={{gridColumn:'1/-1',color:tokens.colorNeutralForeground3}}>URI/SRV 仅直连；URI 客户端认证请在证书项选择含私钥的 PEM，私钥项留空。SSH 请填单个主机地址。</div>}
    {!isMessageQueue(engine)&&<Switch style={{gridColumn:'1/-1'}} label="通过 SSH 隧道连接" checked={!!ssh} onChange={(_,d)=>{setObserved(null);set({ssh:d.checked?{host:'',port:22,username:'',auth:'password',fingerprint:''}:null});}}/>}

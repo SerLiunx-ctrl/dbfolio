@@ -9,7 +9,7 @@ export function generateDdl(engine: Engine, detail: TableMeta): string {
   if(detail.kind==="view")return detail.rawDdl?.trim()||"-- 服务器未返回视图定义，无法仅根据结果列重建。";
   const q = (name: string) => quoteIdent(engine, name);
   const schemaPrefix =
-    engine === "postgres" && detail.schema ? `${q(detail.schema)}.` : "";
+    (engine === "postgres" || engine === "dameng") && detail.schema ? `${q(detail.schema)}.` : "";
   const tableRef = `${schemaPrefix}${q(detail.name)}`;
   const pkSet = new Set(detail.primaryKey);
   const sqliteSinglePk = engine === "sqlite" && detail.primaryKey.length === 1;

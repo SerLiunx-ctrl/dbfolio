@@ -1,4 +1,4 @@
-export type Engine = "mysql" | "postgres" | "sqlite" | "redis" | "mongodb" | "kafka" | "rabbitmq" | "rocketmq";
+export type Engine = "mysql" | "postgres" | "sqlite" | "dameng" | "redis" | "mongodb" | "kafka" | "rabbitmq" | "rocketmq";
 
 export interface SshConfig { host:string; port:number; username:string; auth:'password'|'key'; privateKey?:string|null; fingerprint:string }
 export interface NetworkConfig { ssh?:SshConfig|null; caFile?:string|null; clientCert?:string|null; clientKey?:string|null; serverName?:string|null; connectTimeoutSecs?:number|null; queryTimeoutSecs?:number|null; saslMechanism?:string|null; httpPath?:string|null }
@@ -216,6 +216,8 @@ export interface TableMeta {
   comment?: string | null;
   rowEstimate?: number | null;
   rawDdl?: string | null;
+  /** 原生 DDL 读取失败或依赖定义不完整时的诊断。 */
+  ddlWarnings?: string[];
 }
 
 export interface TableExtraInfo {
@@ -301,6 +303,7 @@ export interface QueryOutcome {
   rows: DbValue[][];
   affected: number | null;
   scriptStatements?: number;
+  notices?: string[];
 }
 
 export interface SortSpec {

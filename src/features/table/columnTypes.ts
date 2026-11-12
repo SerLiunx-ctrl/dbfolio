@@ -4,6 +4,7 @@ const FALLBACK_TYPES: Record<Engine, string[]> = {
   mysql: ["tinyint", "smallint", "mediumint", "int", "bigint", "boolean", "decimal", "float", "double", "varchar", "char", "text", "mediumtext", "longtext", "date", "time", "datetime", "timestamp", "json", "blob", "mediumblob", "longblob"],
   postgres: ["smallint", "integer", "bigint", "boolean", "numeric", "real", "double precision", "varchar", "char", "text", "date", "time", "timetz", "timestamp", "timestamptz", "interval", "json", "jsonb", "bytea", "uuid", "inet", "cidr", "macaddr"],
   sqlite: ["integer", "int", "bigint", "real", "numeric", "decimal", "text", "varchar", "char", "blob", "boolean", "date", "datetime", "timestamp", "any"],
+  dameng: ["tinyint","smallint","int","bigint","bit","decimal","real","double","varchar","char","clob","date","time","timestamp","binary","varbinary","blob"],
   mongodb: [], redis: [], kafka: [], rabbitmq: [], rocketmq: [],
 };
 export const defaultColumnType = (engine: Engine) => engine === "sqlite" ? "text" : "varchar";
@@ -13,7 +14,7 @@ export const hasTimePrecision = (engine: Engine, type: string) => engine !== "sq
 export const supportsIdentity = (engine: Engine, type: string) => (engine === "sqlite" ? ["integer"] : engine === "postgres" ? ["smallint", "integer", "bigint"] : ["tinyint", "smallint", "mediumint", "int", "integer", "bigint"]).includes(type);
 export const typeHint = (engine: Engine) => engine === "sqlite"
   ? "SQLite 普通表按类型亲和性处理；NUMERIC 不是定点精度约束。日期/JSON 通常存为 TEXT，布尔值通常存为 INTEGER（0/1）。STRICT 表仅支持 INT、INTEGER、REAL、TEXT、BLOB、ANY，请通过 SQL 管理。"
-  : engine === "postgres" ? "类型按当前数据库发现，扩展类型需已安装且有使用权限；timestamp 与 timestamptz、json 与 jsonb 分别保留。数组及复杂类型参数通过 SQL 管理。" : "类型按服务器版本筛选；自增仅适用于整数列。";
+  : engine === "dameng" ? "DM8 原生常用类型；IDENTITY 自增适用于整数列。时区与复杂类型通过 SQL 管理。" : engine === "postgres" ? "类型按当前数据库发现，扩展类型需已安装且有使用权限；timestamp 与 timestamptz、json 与 jsonb 分别保留。数组及复杂类型参数通过 SQL 管理。" : "类型按服务器版本筛选；自增仅适用于整数列。";
 
 
 const DESCRIPTIONS:Record<string,string>={tinyint:'1 字节整数',smallint:'2 字节整数',mediumint:'3 字节整数',int:'4 字节整数',integer:'整数',bigint:'8 字节整数',boolean:'布尔值',decimal:'精确定点数',numeric:'精确数值',float:'单精度浮点数',real:'单精度浮点数',double:'双精度浮点数','double precision':'双精度浮点数',varchar:'可变长度字符串',char:'固定长度字符串',text:'文本',mediumtext:'中等长度文本',longtext:'长文本',date:'日期',time:'不带时区的时间',timetz:'带时区的时间',datetime:'日期时间',timestamp:'日期时间',timestamptz:'带时区的日期时间',interval:'时间间隔',json:'JSON 文档',jsonb:'二进制 JSON 文档',blob:'二进制数据',mediumblob:'中等长度二进制数据',longblob:'长二进制数据',bytea:'二进制数据',uuid:'唯一标识符',inet:'IP 地址',cidr:'网络地址',macaddr:'MAC 地址',any:'任意值',enum:'枚举值列表',set:'集合值列表',binary:'固定长度二进制',varbinary:'可变长度二进制'};

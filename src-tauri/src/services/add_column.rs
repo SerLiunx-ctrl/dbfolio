@@ -29,7 +29,7 @@ pub fn render(
     if meta.kind != TableKind::Table {
         return Err(invalid("仅普通表支持添加列"));
     }
-    if !matches!(engine, Engine::Mysql | Engine::Postgres | Engine::Sqlite) {
+    if !matches!(engine, Engine::Mysql | Engine::Postgres | Engine::Sqlite | Engine::Dameng) {
         return Err(invalid("仅关系型数据库支持添加列"));
     }
     if meta.columns.iter().any(|c| {

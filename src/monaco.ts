@@ -4,6 +4,7 @@ import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
 import editorWorker from "monaco-editor/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/language/json/json.worker?worker";
+import { ensureSqlLanguage } from "./sqlLanguage";
 
 type MonacoEnvironmentLike = {
   getWorker: (moduleId: string, label: string) => Worker;
@@ -14,5 +15,6 @@ type MonacoEnvironmentLike = {
 };
 
 loader.config({ monaco });
+ensureSqlLanguage(monaco);
 
 export { monaco };

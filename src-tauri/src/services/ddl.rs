@@ -46,11 +46,11 @@ pub struct TableOptions { pub name:Option<String>, pub comment:Option<String>, p
 fn option_word(value:&str)->AppResult<&str>{if value.is_empty()||!value.bytes().all(|c|c.is_ascii_alphanumeric()||c==b'_'){return Err(AppError::InvalidInput("表选项包含无效字符".into()));}Ok(value)}
 fn table_options(adapter:&dyn DbAdapter,database:&str,schema:Option<&str>,table:&str,o:&TableOptions)->AppResult<Vec<String>> {
  let target=table_ref(adapter,database,schema,table);let engine=adapter.engine();
- if !matches!(engine,Engine::Mysql|Engine::Postgres|Engine::Sqlite){return Err(AppError::InvalidInput("该引擎不支持表属性修改".into()));}
+ if !matches!(engine,Engine::Mysql|Engine::Postgres|Engine::Sqlite|Engine::Dameng){return Err(AppError::InvalidInput("该引擎不支持表属性修改".into()));}
  if let Some(name)=&o.name {if name.trim().is_empty()||name.contains('\0'){return Err(AppError::InvalidInput("表名不能为空或包含空字符".into()));}if o.comment.is_some()||o.engine.is_some()||o.charset.is_some()||o.collation.is_some()||o.auto_increment.is_some()||o.row_format.is_some(){return Err(AppError::InvalidInput("请先单独保存表名，再修改其他选项".into()));}return Ok(vec![format!("ALTER TABLE {} RENAME TO {}",target,quote(adapter,name))]);}
  if engine!=Engine::Mysql {
   if o.engine.is_some()||o.charset.is_some()||o.collation.is_some()||o.auto_increment.is_some()||o.row_format.is_some(){return Err(AppError::InvalidInput("该数据库不支持这些表选项".into()));}
-  if engine==Engine::Postgres {if let Some(comment)=&o.comment{return Ok(vec![format!("COMMENT ON TABLE {} IS '{}'",target,escape(engine,comment))]);}}
+  if matches!(engine,Engine::Postgres|Engine::Dameng) {if let Some(comment)=&o.comment{return Ok(vec![format!("COMMENT ON TABLE {} IS '{}'",target,escape(engine,comment))]);}}
   return Err(AppError::InvalidInput("没有可用的表选项修改".into()));
  }
  let mut parts=Vec::new();
@@ -171,7 +171,7 @@ fn table_ref(adapter: &dyn DbAdapter, database: &str, schema: Option<&str>, tabl
     match schema.filter(|s| !s.is_empty()) {
         Some(s) => format!("{}.{}", quote(adapter, s), quote(adapter, table)),
         None => {
-            if adapter.engine() == Engine::Mysql && !database.is_empty() {
+            if matches!(adapter.engine(),Engine::Mysql|Engine::Dameng) && !database.is_empty() {
                 format!("{}.{}", quote(adapter, database), quote(adapter, table))
             } else {
                 quote(adapter, table)
@@ -257,7 +257,12 @@ fn sql_type(engine: Engine, spec: &ColumnSpec) -> String {
             "uuid" => "UUID".into(),
             _ => spec.data_type.trim().to_string(),
         },
-        Engine::Sqlite => match dt.as_str() {
+        Engine::Dameng => match dt.as_str() {
+ "varchar"|"char"|"binary"|"varbinary" => format!("{}({})",spec.data_type,spec.length.unwrap_or(255)),
+ "numeric"|"decimal"|"number"=>format!("DECIMAL({},{})",spec.precision.unwrap_or(18),spec.scale.unwrap_or(0)),
+ "boolean"|"bool"=>"BIT".into(),"text"|"json"=>"CLOB".into(),"datetime"=>"TIMESTAMP".into(),"uuid"=>"VARCHAR(36)".into(),_=>spec.data_type.trim().to_string(),
+ },
+ Engine::Sqlite => match dt.as_str() {
             "tinyint" | "smallint" | "int" | "integer" | "bigint" | "bool" | "boolean" => {
                 "INTEGER".into()
             }
@@ -406,8 +411,8 @@ fn move_column(
     let engine = adapter.engine();
     match engine {
         Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
-        Engine::Postgres => Err(AppError::InvalidInput(
-            "PostgreSQL 不支持调整列顺序（列顺序由创建时确定）".into(),
+        Engine::Postgres | Engine::Dameng => Err(AppError::InvalidInput(
+            "该数据库不支持调整列顺序（列顺序由创建时确定）".into(),
         )),
         Engine::Mysql => {
             let target = table_ref(adapter, database, schema, table);
@@ -727,6 +732,7 @@ fn apply_spec_to_column(engine: Engine, old: &ColumnMeta, spec: &ColumnSpec) -> 
         ordinal: old.ordinal,
         raw_type: new_type.clone(),
         canonical: match engine {
+ Engine::Dameng => crate::adapters::dameng::canonical(&new_type.split('(').next().unwrap_or(&new_type),spec.precision,spec.scale,spec.length),
             Engine::Mysql => CanonicalType::from_mysql(&new_type),
             Engine::Postgres => CanonicalType::from_postgres(&new_type),
             Engine::Sqlite => CanonicalType::from_sqlite(&new_type),
@@ -890,7 +896,8 @@ fn build_modify(
 
     match engine {
         Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
-        Engine::Mysql => Ok(vec![format!(
+        Engine::Dameng => Ok(vec![format!("ALTER TABLE {} MODIFY {}",target,column_def(adapter,spec))]),
+ Engine::Mysql => Ok(vec![format!(
             "ALTER TABLE {} MODIFY COLUMN {}",
             target,
             column_def(adapter, spec)
@@ -998,7 +1005,7 @@ fn build_drop_column(
 
     match engine {
         Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => Err(AppError::InvalidInput("非 SQL 引擎不支持结构变更".into())),
-        Engine::Mysql | Engine::Postgres => Ok(vec![format!(
+        Engine::Mysql | Engine::Postgres | Engine::Dameng => Ok(vec![format!(
             "ALTER TABLE {} DROP COLUMN {}",
             target,
             quote(adapter, column)
@@ -1142,6 +1149,7 @@ pub async fn preview(
             for c in changes {let column=meta.columns.iter().find(|v|v.name==c.name).ok_or_else(||AppError::InvalidInput("列不存在".into()))?;if c.nullable&&!column.nullable&&(column.auto_increment||meta.primary_key.contains(&c.name)){return Err(AppError::InvalidInput("主键或自增列不能设为可空".into()));}}
             let target=table_ref(adapter,database,schema.as_deref(),table);
             match adapter.engine(){
+ Engine::Dameng=>super::dameng_schema::columns(adapter,&target,&meta,changes),
                 Engine::Mysql=>{
                     // SHOW CREATE 与 SQL 解析器对反斜杠的解释可能不同，注释以元数据原文为准。
                     let changes=changes.iter().cloned().map(|mut change|{
@@ -1278,7 +1286,7 @@ pub async fn preview(
             if columns.is_empty() {
                 return Err(AppError::InvalidInput("索引至少需要一列".into()));
             }
-            if matches!(adapter.engine(),Engine::Postgres|Engine::Mysql) {
+            if matches!(adapter.engine(),Engine::Postgres|Engine::Mysql|Engine::Dameng) {
                 let meta = adapter.introspect_table(database, schema.as_deref(), table).await?;
                 let index = meta.indexes.iter().find(|index| &index.name == old_name)
                     .ok_or_else(|| AppError::InvalidInput("索引已不存在，请刷新结构".into()))?;
@@ -1321,7 +1329,7 @@ pub async fn preview(
                 name,
                 columns,
                 ref_table,
-                if adapter.engine() == Engine::Postgres { ref_schema.as_deref().or(schema.as_deref()).or(Some("public")) } else { None },
+                if adapter.engine() == Engine::Postgres { ref_schema.as_deref().or(schema.as_deref()).or(Some("public")) } else if adapter.engine()==Engine::Dameng {ref_schema.as_deref().or(schema.as_deref()).or(Some(database))} else { None },
                 ref_columns,
                 on_delete,
                 on_update,
@@ -1406,7 +1414,7 @@ fn render_drop_index(
             adapter.quote_ident(name),
             table_ref(adapter, database, schema, table)
         )),
-        Engine::Postgres => {
+        Engine::Postgres | Engine::Dameng => {
             let index_ref = match schema.filter(|value| !value.is_empty()) {
                 Some(schema) => format!(
                     "{}.{}",
@@ -1482,7 +1490,7 @@ fn render_drop_foreign_key(adapter: &dyn DbAdapter, target: &str, name: &str) ->
             target,
             adapter.quote_ident(name)
         )),
-        Engine::Postgres => Ok(format!(
+        Engine::Postgres | Engine::Dameng => Ok(format!(
             "ALTER TABLE {} DROP CONSTRAINT {}",
             target,
             adapter.quote_ident(name)
@@ -1528,7 +1536,7 @@ pub async fn apply(
     if adapter.engine()==Engine::Sqlite && matches!(spec,DdlSpec::ColumnFlags{..}|DdlSpec::MoveColumn{..}|DdlSpec::DropColumn{..}) { return adapter.sqlite_schema_edit(database,spec,true).await; }
     let statements = preview(state, session_id, database, spec).await?;
     // PostgreSQL 结构修改支持事务；包括先删后建的索引/外键，失败时必须保留旧结构。
-    if adapter.engine()==Engine::Postgres || (adapter.engine()!=Engine::Mysql && matches!(spec,DdlSpec::CreateTableDraft{..}|DdlSpec::AddColumnDraft{..})) {
+    if adapter.engine()==Engine::Postgres || (!matches!(adapter.engine(),Engine::Mysql|Engine::Dameng) && matches!(spec,DdlSpec::CreateTableDraft{..}|DdlSpec::AddColumnDraft{..})) {
         let items=statements.iter().map(|sql|crate::adapters::SqlParams{sql:sql.clone(),params:vec![]}).collect::<Vec<_>>();
         adapter.execute_transaction(database,&items).await?;return Ok(statements);
     }
@@ -1572,6 +1580,7 @@ pub async fn create_database(
             vec![statement]
         }
         Engine::Postgres => vec![format!("CREATE DATABASE {}", quote(adapter, name))],
+ Engine::Dameng=>vec![format!("CREATE SCHEMA {}",quote(adapter,name))],
         Engine::Redis | Engine::Mongodb | Engine::Kafka | Engine::Rabbitmq | Engine::Rocketmq => {
             return Err(AppError::InvalidInput(
                 "Redis 使用逻辑库（0-15），不支持创建数据库".into(),
@@ -1607,6 +1616,7 @@ pub async fn drop_database(
     let connected = state.connected(session_id).await?;
     let adapter = connected.adapter.as_ref();
     match adapter.engine() {
+ Engine::Dameng=>{adapter.execute_statements("",&[format!("DROP SCHEMA {}",quote(adapter,name))]).await?;Ok(())},
         Engine::Mysql | Engine::Postgres => {
             let statement = format!("DROP DATABASE {}", quote(adapter, name));
             adapter.execute_statements("", &[statement]).await?;

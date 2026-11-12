@@ -31,14 +31,15 @@ pub struct Preview {
     pub samples: Vec<Statement>,
     pub warnings: Vec<String>,
 }
-struct Plan {
-    request: Request,
-    spool: tempfile::NamedTempFile,
-    preview: Preview,
-    created: Instant,
+pub(crate) struct Plan {
+    pub(crate) engine:crate::meta::Engine,
+    pub(crate) request: Request,
+    pub(crate) spool: tempfile::NamedTempFile,
+    pub(crate) preview: Preview,
+    pub(crate) created: Instant,
 }
 #[derive(Default)]
-pub struct Registry(Mutex<HashMap<String, Plan>>);
+pub struct Registry(pub(crate) Mutex<HashMap<String, Plan>>);
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Report {
@@ -154,6 +155,7 @@ pub async fn preview(state: &AppState, request: Request) -> AppResult<Preview> {
     let record = state.local.get_session(&request.session_id).await?;
     super::database_access::check(record.allowed_databases.as_deref(), &request.database)?;
     let connected = state.connected(&request.session_id).await?;
+    if connected.adapter.engine()==crate::meta::Engine::Dameng{return super::dameng_import::preview(state,request).await;}
     let mut conn = connected
         .adapter
         .mysql_connection(&request.database, false)
@@ -220,6 +222,7 @@ pub async fn preview(state: &AppState, request: Request) -> AppResult<Preview> {
     plans.insert(
         preview.id.clone(),
         Plan {
+            engine:crate::meta::Engine::Mysql,
             request,
             spool,
             preview: preview.clone(),
@@ -235,6 +238,7 @@ pub async fn execute(
     confirmed: bool,
     report_directory: &str,
 ) -> AppResult<Report> {
+    if state.connected(session_id).await?.adapter.engine()==crate::meta::Engine::Dameng{return super::dameng_import::execute(state,session_id,id,confirmed,report_directory).await;}
     if !confirmed {
         return Err(AppError::Dangerous("请先确认目标与脚本作用范围".into()));
     }
@@ -260,6 +264,7 @@ pub async fn execute(
     drop(registry);
     let record = state.local.get_session(session_id).await?;
     let connected = state.connected(session_id).await?;
+    if plan.engine!=connected.adapter.engine(){return Err(invalid("会话数据库类型已改变，请重新预检"));}
     let mut conn = connected
         .adapter
         .mysql_connection(&plan.request.database, true)

@@ -18,6 +18,9 @@ import { useEffect, useState } from "react";
 import { useNotify } from "../../app/toast";
 import { EnvironmentBadge } from "../sessions/EnvironmentBadge";
 import { useSessionStore } from "../../stores/useSessionStore";
+import Editor from "@monaco-editor/react";
+import { useEditorTheme } from "../../useEditorTheme";
+import { sqlLanguage } from "../../sqlLanguage";
 
 const useStyles = makeStyles({
   sqlList: {
@@ -86,6 +89,7 @@ export function ConfirmSqlDialog({
   taskKind,
 }: Props) {
   const styles = useStyles();
+  const theme = useEditorTheme();
   const notify = useNotify();
   const session = useSessionStore(state => state.sessions.find(item => item.id === sessionId));
   const [statements, setStatements] = useState<string[]>([]);
@@ -150,7 +154,7 @@ export function ConfirmSqlDialog({
               </div>
             ) : (
               <div className={styles.sqlList}>
-                {statements.map((statement, index) => (
+                {session?.engine==="dameng"&&statements.length?<Editor height={Math.min(300,Math.max(90,statements.join("\n\n").split("\n").length*18+18))} language={sqlLanguage(session.engine)} theme={theme.name} beforeMount={theme.beforeMount} value={statements.join("\n\n")} options={{ariaLabel:"确认 SQL 预览",readOnly:true,domReadOnly:true,automaticLayout:true,minimap:{enabled:false},fontSize:12,lineHeight:18,scrollBeyondLastLine:false,wordWrap:"on"}}/>:statements.map((statement, index) => (
                   <pre key={index} className={styles.sql}>
                     {statement}
                   </pre>

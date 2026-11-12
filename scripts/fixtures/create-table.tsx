@@ -10,7 +10,7 @@ import {connectionBridge} from '../../src/ipc/connectionBridge';
 import {buildTheme} from '../../src/theme';
 import {surfaceColors} from '../../src/appearance';
 import '../../src/monaco';import '../../src/styles.css';import '../../src/compact.css';
-const w=window as any,p=new URLSearchParams(location.search),engine=(p.get('engine')??'mysql') as 'mysql'|'postgres'|'sqlite',mode=p.get('theme')??'light';
+const w=window as any,p=new URLSearchParams(location.search),engine=(p.get('engine')??'mysql') as 'mysql'|'postgres'|'sqlite'|'dameng',mode=p.get('theme')??'light';
 document.documentElement.dataset.density='compact';document.documentElement.dataset.oled=String(mode==='oled');
 const palette=surfaceColors(mode==='oled'?'oled':'aurora',mode!=='light');document.documentElement.style.setProperty('--dw-palette-surface',palette.surface);document.documentElement.style.setProperty('--dw-palette-border',palette.border);document.documentElement.style.setProperty('--dw-palette-ink',palette.foreground);
 connectionBridge.isOffline=()=>false;w.calls=[];w.tabs=useTabStore;w.session=useSessionStore;

@@ -225,6 +225,7 @@ pub async fn prepare(
     let port = p.port.unwrap_or(match p.engine {
         Engine::Mysql => 3306,
         Engine::Postgres => 5432,
+ Engine::Dameng => 5236,
         Engine::Redis => 6379,
         _ => 27017,
     });

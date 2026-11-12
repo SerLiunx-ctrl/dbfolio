@@ -26,6 +26,7 @@ import {
   IndexesPanel,
 } from "./StructurePanel";
 import { InfoPanel } from "./InfoPanel";
+import { objectDisplayName } from "./objectName";
 import { TableDataPanel } from "./TableDataPanel";
 import type { ColumnFocusRequest } from "./useColumnFocus";
 
@@ -155,7 +156,7 @@ export function TableWorkspace({ tab, active }: Props) {
   const currentView = (view === 'indexes' && !capabilities?.indexes || view === 'foreignKeys' && !capabilities?.foreignKeys) && detail ? 'structure' : view;
   const objectTable = detail?.kind === 'table';
   const supportsTriggers = !!detail && !capabilities?.materialized && (session?.engine === 'mysql' ? objectTable : session?.engine === 'postgres' || session?.engine === 'sqlite');
-  const fullName = `${tab.database}${tab.schema ? `.${tab.schema}` : ""}.${tab.table}`;
+  const fullName = objectDisplayName(session?.engine ?? "mysql", tab.database, tab.schema, tab.table);
 
   const openSelectQuery = () => {
     if (!session) return;
@@ -192,7 +193,7 @@ export function TableWorkspace({ tab, active }: Props) {
         <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} onClick={()=>useTabStore.getState().openDictionary(tab.sessionId,tab.database,{table:tab.table,schema:tab.schema})}>数据字典</Button>
         {supportsTriggers&&<Button size="small" appearance="subtle" icon={<FlashRegular/>} onClick={()=>useTabStore.getState().openTriggers(tab.sessionId,tab.database,tab.table,tab.schema)}>触发器</Button>}
         <Button size="small" appearance="subtle" icon={<DataBarVerticalRegular/>} disabled={!session} title="新建独立分析，预填当前对象的 SQL，不使用当前数据页或筛选" onClick={()=>{if(!session)return;const plan=newPlan(tab.sessionId,tab.database);plan.metadataSource={table:tab.table,schema:tab.schema??""};plan.name=(tab.table+" 分析").slice(0,120);plan.query="SELECT * FROM "+qualifiedTableSql(session.engine,tab.database,tab.schema,tab.table)+";";openAnalysis(plan);}}>新建分析</Button>
-        {objectTable&&<Button size="small" appearance="subtle" icon={<AddRegular/>} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</Button>}
+        {objectTable&&session?.engine!=="dameng"&&<Button size="small" appearance="subtle" icon={<AddRegular/>} onClick={()=>window.dispatchEvent(new CustomEvent("dw:generation",{detail:{sessionId:tab.sessionId,database:tab.database,schema:tab.schema??null,object:tab.table}}))}>数据生成</Button>}
 
         {currentView!=="info"&&<Button
           appearance="subtle"

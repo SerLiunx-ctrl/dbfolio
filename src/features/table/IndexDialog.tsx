@@ -1,3 +1,4 @@
+import {useSessionStore} from "../../stores/useSessionStore";
 import {useSessionReadOnly} from "../../stores/useSessionReadOnly";
 import {
   Button,
@@ -75,6 +76,7 @@ export function IndexDialog({
   onDone,
 }: Props) {
   const readOnly=useSessionReadOnly(sessionId);
+  const engine=useSessionStore(s=>s.sessions.find(v=>v.id===sessionId)?.engine);
   const styles = useStyles();
   const notify = useNotify();
   const [name, setName] = useState("");
@@ -188,7 +190,7 @@ export function IndexDialog({
                 />
               </div>
             ) : (
-              <div className={styles.sqlList}>
+              <div className={styles.sqlList}>{engine==="dameng"&&<span>达梦 DDL 可能隐式提交；失败后请刷新核对已执行结果。</span>}
                 {statements.map((statement, index) => (
                   <pre key={index} className={styles.sql}>
                     {statement}

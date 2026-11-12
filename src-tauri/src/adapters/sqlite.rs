@@ -375,6 +375,7 @@ impl DbAdapter for SqliteAdapter {
             comment: None,
             row_estimate: None,
             raw_ddl,
+            ddl_warnings: vec![],
         })
     }
 

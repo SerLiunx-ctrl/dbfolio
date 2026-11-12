@@ -250,6 +250,7 @@ async fn establish(
                 params.port.unwrap_or(match input.engine {
                     Engine::Mysql => 3306,
                     Engine::Postgres => 5432,
+ Engine::Dameng => 5236,
                     Engine::Redis => 6379,
                     Engine::Kafka => 9092,
                     Engine::Rabbitmq => 15672,

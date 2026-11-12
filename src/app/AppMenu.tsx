@@ -5,6 +5,7 @@ import { AddRegular, ArrowSyncRegular, SettingsRegular, AppFolderRegular, FullSc
 import { toggleFocusMode, useFocusMode } from "../stores/useFocusMode";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { useTabStore } from "../stores/useTabStore";
+import {supportsSqlTool} from '../features/mysql/sqlImportCapabilities';
 
 const useStyles = makeStyles({
   menu: { display: "flex", alignItems: "center", gap: "2px", paddingInline: "16px", flexShrink: 0 },
@@ -17,15 +18,16 @@ export function AppMenu({ onNewSession, onSync, onSettings }: { onNewSession: ()
   const focus = useFocusMode(s => s.active);
   const collapsed = useSettingsStore(s => s.sidebarCollapsed);
   const hasClosedTabs = useTabStore(s => s.recentlyClosed.length > 0);
-  const mysqlSession=useSessionStore(s=>s.sessions.find(v=>v.id===s.activeSessionId&&v.engine==='mysql'));
-  const openMysql=(mode:'import'|'objects')=>{if(!mysqlSession)return;const tabs=useTabStore.getState();const active=tabs.tabs.find(t=>t.id===tabs.activeId);tabs.openMysqlTool(mysqlSession.id,active?.sessionId===mysqlSession.id?active.database:mysqlSession.database??'',mode);};
+  const activeSession=useSessionStore(s=>s.sessions.find(v=>v.id===s.activeSessionId));
+  const canImport=!!activeSession&&supportsSqlTool(activeSession.engine,'import'),canManageObjects=!!activeSession&&supportsSqlTool(activeSession.engine,'objects');
+  const openSqlTool=(mode:'import'|'objects')=>{if(!activeSession||!supportsSqlTool(activeSession.engine,mode))return;const tabs=useTabStore.getState();const active=tabs.tabs.find(t=>t.id===tabs.activeId);tabs.openMysqlTool(activeSession.id,active?.sessionId===activeSession.id?active.database:activeSession.database??'',mode);};
   const emit = (name: string) => window.dispatchEvent(new Event(name));
   return <nav className={styles.menu} aria-label="应用菜单">
     <Menu><MenuTrigger disableButtonEnhancement><Button appearance="subtle" className={styles.trigger}>文件</Button></MenuTrigger>
       <MenuPopover><MenuList>
         <MenuItem icon={<AddRegular />} onClick={onNewSession}>新建连接…</MenuItem>
-        <MenuItem disabled={!mysqlSession} onClick={()=>openMysql('import')}>导入 SQL 文件…</MenuItem>
-        <MenuItem disabled={!mysqlSession} onClick={()=>openMysql('objects')}>MySQL 数据库对象…</MenuItem>
+        <MenuItem disabled={!canImport} onClick={()=>openSqlTool('import')}>导入 SQL 文件…</MenuItem>
+        <MenuItem disabled={!canManageObjects} onClick={()=>openSqlTool('objects')}>MySQL 数据库对象…</MenuItem>
         <MenuItem icon={<ArrowExportRegular />} onClick={() => {
           const state=useSessionStore.getState();const tabs=useTabStore.getState();const active=tabs.tabs.find(t=>t.id===tabs.activeId);const session=state.sessions.find(s=>s.id===state.activeSessionId);
           tabs.openSqlExport(session?.engine==='mysql'?{sessionId:session.id,database:active?.sessionId===session.id?active.database:session.database??'',tables:active?.kind==='table'?[active.table]:[]}:{});

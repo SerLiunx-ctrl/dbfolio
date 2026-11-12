@@ -580,6 +580,7 @@ impl DbAdapter for MySqlAdapter {
                 .filter(|c| !c.is_empty() && c.as_str() != "VIEW"),
             row_estimate: u64_opt(&table_info, "TABLE_ROWS"),
             raw_ddl,
+            ddl_warnings: vec![],
         })
     }
 

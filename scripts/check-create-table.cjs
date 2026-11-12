@@ -1,7 +1,7 @@
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const assert=require('node:assert/strict');
 (async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
  const page=await browser.newPage({viewport:{width:1500,height:900}});
- for(const [engine,theme] of [['mysql','light'],['postgres','dark'],['sqlite','oled']]){
+ for(const [engine,theme] of [['mysql','light'],['postgres','dark'],['sqlite','oled'],['dameng','light'],['dameng','oled']]){
   await page.goto(`http://localhost:1425/scripts/fixtures/create-table.html?engine=${engine}&theme=${theme}`);
   await page.getByRole('textbox',{name:'表名',exact:true}).fill('children');
   assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.getByRole('tab',{name:'数据',exact:true}).count(),0);
@@ -37,5 +37,5 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const asse
   assert.equal(await page.evaluate(()=>window.tabs.getState().tabs[0].kind),'table');assert.equal(await page.evaluate(()=>window.saved.indexes.length),1);assert.equal(await page.evaluate(()=>window.saved.indexes[0].unique),true);assert.equal(await page.evaluate(()=>window.saved.foreignKeys[0].columns[0]),'parent_new');assert.equal(await page.evaluate(()=>window.tabs.getState().tabs[0].title),'children');await page.getByRole('button',{name:'新建表*',exact:true}).click();await page.getByRole('textbox',{name:'表名',exact:true}).fill('discard_me');await page.getByRole('button',{name:'关闭页签',exact:true}).click();await page.getByRole('button',{name:'放弃修改并继续',exact:true}).click();assert.equal(await page.evaluate(()=>window.tabs.getState().tabs.length),1);
  }
  await page.goto('http://localhost:1425/scripts/fixtures/create-table.html?engine=sqlite&readonly');assert(await page.getByRole('button',{name:'保存',exact:true}).isDisabled());
- console.log('PASS 三引擎建表页/三主题、双击行内字段、属性/索引/外键草稿、引用改名、切换保留、关闭保护、失败保留、保存后原页签转为表详情并显示数据、只读');
+ console.log('PASS 四引擎建表页/三主题、双击行内字段、属性/索引/外键草稿、引用改名、切换保留、关闭保护、失败保留、保存后原页签转为表详情并显示数据、只读');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

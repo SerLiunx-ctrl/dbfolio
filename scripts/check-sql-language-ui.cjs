@@ -1,0 +1,27 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+(async()=>{const b=await chromium.launch({channel:'msedge',headless:true});try{
+ const p=await b.newPage({viewport:{width:1400,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
+ await p.goto('http://localhost:1425/scripts/fixtures/sql-language.html');
+ await p.waitForFunction(()=>window.monaco?.editor.getModels().some(m=>m.getLanguageId()==='dameng-sql'));
+ const tokens=await p.evaluate(()=>{const sql=window.sql,lines=sql.split('\n');return window.monaco.editor.tokenize(sql,'dameng-sql').flatMap((line,i)=>line.map((token,j)=>({text:lines[i].slice(token.offset,line[j+1]?.offset??lines[i].length),type:token.type,line:i})));});
+ for(const word of ['CLOB','BLOB','BIGINT','VARCHAR2'])assert(tokens.some(t=>t.text===word&&t.type==='type.sql'),word);
+ for(const word of ['IDENTITY','CLUSTER','STORAGE','CLUSTERBTR'])assert(tokens.some(t=>t.text===word&&t.type==='keyword.sql'),word);
+ assert(tokens.some(t=>t.text==='CLOB'&&t.type==='identifier.sql'),'带引号的 CLOB 标识符不按类型染色');
+ assert(tokens.some(t=>t.text.includes('CLOB BLOB IDENTITY CLUSTER STORAGE')&&t.type==='string.sql'),'字符串不按类型/关键字拆分');
+ assert(tokens.filter(t=>t.line>=5&&t.text.includes('CLOB')).every(t=>t.type.startsWith('comment')),'注释保留注释色');
+ const base=await p.evaluate(async()=>{await window.monaco.editor.colorize('CLOB BLOB CLUSTER STORAGE','sql',{});return window.monaco.editor.tokenize('CLOB BLOB CLUSTER STORAGE','sql')[0];});
+ assert(base.every(t=>!t.type.startsWith('type')&&!t.type.startsWith('keyword')),'原 SQL 语言不添加 DM 类型/关键字');
+ await p.getByRole('button',{name:'显示 SQL 确认',exact:true}).click();
+ await p.getByRole('dialog',{name:'达梦确认预览',exact:true}).waitFor();
+ assert(await p.evaluate(()=>window.monaco.editor.getEditors().filter(e=>e.getModel()?.getLanguageId()==='dameng-sql').length)>=2,'分析及确认 SQL 共用达梦语言');
+ await p.getByRole('button',{name:'取消',exact:true}).click();
+ const suggest=async()=>{await p.evaluate(()=>{const e=window.monaco.editor.getEditors()[0];e.setValue('SELECT * FROM dm_');e.setPosition({lineNumber:1,column:18});e.focus();e.trigger('test','editor.action.triggerSuggest',{});});await p.locator('.suggest-widget.visible').getByText('dm_orders',{exact:true}).waitFor();await p.keyboard.press('Enter');assert((await p.evaluate(()=>window.monaco.editor.getEditors()[0].getValue())).includes('"dm_orders"'));};
+ await suggest();
+ await p.goto('http://localhost:1425/scripts/fixtures/query-script.html?engine=dameng');
+ await p.waitForFunction(()=>window.monaco?.editor.getEditors().some(e=>e.getModel()?.getLanguageId()==='dameng-sql'));
+ await p.evaluate(()=>{const original=window.__TAURI_INTERNALS__.invoke;window.__TAURI_INTERNALS__.invoke=(command,args)=>command==='meta_tables'?Promise.resolve([{name:'dm_orders',kind:'table'}]):original(command,args);});
+ await suggest();
+ assert.deepEqual(errors,[]);
+ console.log('PASS Monaco 实际 tokenizer：达梦 CLOB/BLOB/IDENTITY/CLUSTER/STORAGE，字符串/注释/引号保护；分析/确认/查询共用语言，分析与查询表名补全');
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,0 +1,14 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+const moduleValue={exports:{}};
+const code=ts.transpileModule(fs.readFileSync('src/features/mysql/sqlImportCapabilities.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+new Function('exports','module',code)(moduleValue.exports,moduleValue);
+const {supportsSqlImport,supportsSqlTool,importTargetLabel}=moduleValue.exports;
+for(const engine of ['mysql','dameng'])assert(supportsSqlImport(engine));
+for(const engine of ['postgres','sqlite','redis','mongodb','kafka','rabbitmq','rocketmq'])assert(!supportsSqlImport(engine));
+assert(supportsSqlTool('dameng','import'));
+assert(!supportsSqlTool('dameng','objects'));
+assert(supportsSqlTool('mysql','objects'));
+assert(!supportsSqlTool('mysql','unknown'));
+assert.equal(importTargetLabel('dameng'),'模式');
+assert.equal(importTargetLabel('mysql'),'数据库');
+console.log('PASS SQL 导入能力：MySQL/达梦可用，对象管理保持 MySQL 专属，目标文案按模式/数据库区分');

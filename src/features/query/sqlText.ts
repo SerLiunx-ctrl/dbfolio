@@ -1,3 +1,5 @@
+import { currentDamengStatement } from "./damengStatement";
+
 export interface SqlToken { text: string; start: number; end: number; kind: "word" | "quoted" | "comment" | "space" | "symbol" }
 /** 词法扫描保留原文位置，分号和参数只在引号/注释外识别。 */
 export function sqlTokens(sql: string, engine = "mysql"): SqlToken[] {
@@ -7,6 +9,7 @@ export function sqlTokens(sql: string, engine = "mysql"): SqlToken[] {
     if (/\s/.test(sql[i])) {kind="space";while(i<sql.length&&/\s/.test(sql[i]))i++;}
     else if(sql.startsWith("--",i)||(engine==="mysql"&&sql[i]==="#")) {kind="comment";while(i<sql.length&&sql[i]!=="\n")i++;}
     else if(sql.startsWith("/*",i)) {kind="comment";i+=2;let depth=1;while(i<sql.length&&depth){if(sql.startsWith("/*",i)){depth++;i+=2;}else if(sql.startsWith("*/",i)){depth--;i+=2;}else i++;}}
+    else if(engine==="dameng" && /^(?:N?Q)'[^\s']/i.test(sql.slice(i))){kind="quoted";const prefix=sql.slice(i).match(/^(?:N?Q)'/i)![0],open=sql[i+prefix.length],close:Record<string,string>={"[":"]","{":"}","(":")","<":">"};const end=sql.indexOf((close[open]??open)+"'",i+prefix.length+1);i=end<0?sql.length:end+2;}
     else if ((['"',"'","`"].includes(sql[i])||(engine==="sqlite"&&sql[i]==="["))) {kind="quoted";const close=sql[i]==="["?"]":sql[i];i++;while(i<sql.length){if(sql[i]==="\\"&&(engine==="mysql"||(engine==="postgres"&&sql[start-1]?.toUpperCase()==="E"))){i+=2;continue;}if(sql[i++]===close){if(sql[i]===close)i++;else break;}}}
     else if(sql[i]==="$" && /^\$(?:[A-Za-z_][\w]*)?\$/.test(sql.slice(i))){kind="quoted";const tag=sql.slice(i).match(/^\$(?:[A-Za-z_][\w]*)?\$/)![0];const end=sql.indexOf(tag,i+tag.length);i=end<0?sql.length:end+tag.length;}
     else if(/[A-Za-z_\u0080-\uffff]/.test(sql[i])) {kind="word";i++;while(i<sql.length&&/[\w$\u0080-\uffff]/.test(sql[i]))i++;}
@@ -16,6 +19,7 @@ export function sqlTokens(sql: string, engine = "mysql"): SqlToken[] {
   return tokens;
 }
 export function currentStatement(sql: string, offset: number, engine = "mysql"): string {
+  if(engine==="dameng")return currentDamengStatement(sql,offset,sqlTokens(sql,engine));
   const delimiters=sqlTokens(sql, engine).filter(t=>t.kind==="symbol"&&t.text===";");
   let start=0,last="";
   for(const t of delimiters){
@@ -29,7 +33,10 @@ export function currentStatement(sql: string, offset: number, engine = "mysql"):
 }
 export function namedParameters(sql: string, engine = "mysql") {
   const tokens=sqlTokens(sql, engine), found:{name:string;start:number;end:number}[]=[];
-  tokens.forEach((token,i)=>{const next=tokens[i+1];if(token.text===":"&&tokens[i-1]?.text!==":"&&next?.kind==="word"&&next.start===token.end)found.push({name:next.text,start:token.start,end:next.end});});
+  tokens.forEach((token,i)=>{const next=tokens[i+1];if(token.text!==":"||tokens[i-1]?.text===":"||next?.kind!=="word"||next.start!==token.end)return;
+    // 达梦触发器伪记录不是命名绑定参数，独立的 :new / :old 仍是参数。
+    if(engine==="dameng"&&/^(NEW|OLD)$/i.test(next.text)){let at=i+2;while(tokens[at]?.kind==="space"||tokens[at]?.kind==="comment")at++;if(tokens[at]?.text===".")return;}
+    found.push({name:next.text,start:token.start,end:next.end});});
   return found;
 }
 export function fillParameters(sql: string, literals: Record<string,string>, engine = "mysql") {

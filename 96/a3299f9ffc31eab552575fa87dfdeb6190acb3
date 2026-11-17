@@ -1,0 +1,33 @@
+docs/roadmap.md
+  s_f823aea5f80980::t_a500b79dc468c8 3,18,28-30
+updates/preview.json
+  s_f823aea5f80980::t_a500b79dc468c8 2-4,7-9
+  s_f823aea5f80980::t_6682ff967b0b74 12-14,17-18
+docs/design.md
+  s_f823aea5f80980::t_e9199ca03573b1 5
+  s_f823aea5f80980::t_a500b79dc468c8 7,937,939,3211-3212
+docs/verification/release-alpha63.md
+  s_f823aea5f80980::t_e9199ca03573b1 6
+  s_f823aea5f80980::t_a500b79dc468c8 1-5,7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "96a3299f9ffc31eab552575fa87dfdeb6190acb3",
+  "prompts": {},
+  "humans": {
+    "h_a7eb17fbaf9265": {
+      "author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

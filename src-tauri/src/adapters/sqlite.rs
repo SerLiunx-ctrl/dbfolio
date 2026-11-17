@@ -289,6 +289,7 @@ impl DbAdapter for SqliteAdapter {
                 nullable: int_opt(row, "is_not_null").unwrap_or(0) == 0,
                 default_value: text_opt(row, "dflt_value"),
                 auto_increment,
+                generated: Some(matches!(int_opt(row, "hidden").unwrap_or(0), 2 | 3)),
                 unsigned: false,
                 charset: None,
                 collation: None,
@@ -599,6 +600,17 @@ impl crate::services::manual_transaction::ManualTransaction for ManualTx {
 #[cfg(test)]
 mod metadata_precision_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn sqlite_metadata_distinguishes_generated_columns_from_defaults() {
+        let pool = SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::query("CREATE TABLE items (id INTEGER PRIMARY KEY, amount INTEGER DEFAULT 7, virtual_value INTEGER GENERATED ALWAYS AS (amount+1) VIRTUAL, stored_value INTEGER GENERATED ALWAYS AS (amount+2) STORED)")
+            .execute(&pool).await.unwrap();
+        let adapter = SqliteAdapter { pool, path: String::new(), read_only: false, query_timeout_secs: 30 };
+        let meta = adapter.introspect_table("main", None, "items").await.unwrap();
+        let flags = meta.columns.iter().map(|column| (column.name.as_str(), column.generated)).collect::<Vec<_>>();
+        assert_eq!(flags, vec![("id", Some(false)), ("amount", Some(false)), ("virtual_value", Some(true)), ("stored_value", Some(true))]);
+    }
 
     #[tokio::test]
     async fn sqlite_sequence_preserves_large_integer() {

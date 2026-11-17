@@ -2,11 +2,12 @@
 mod export;
 use async_trait::async_trait;
 use futures_util::TryStreamExt;
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::mysql::{
     MySqlConnectOptions, MySqlPool, MySqlPoolOptions, MySqlQueryResult, MySqlRow, MySqlSslMode,
 };
 use sqlx::types::BigDecimal;
+use sqlx::mysql::types::{MySqlTime, MySqlTimeSign};
 use sqlx::{Column, ConnectOptions, Connection, Executor, MySql, Row};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -28,6 +29,13 @@ use super::{
 pub struct MySqlAdapter {
     params: ConnectionParams,
     pools: Mutex<HashMap<String, MySqlPool>>,
+}
+
+fn is_generated_column(extra: &str) -> bool {
+    let extra = extra.to_ascii_lowercase();
+    extra.contains("virtual generated")
+        || extra.contains("stored generated")
+        || extra.contains("persistent generated")
 }
 
 fn map_ssl_mode(mode: Option<&str>) -> MySqlSslMode {
@@ -108,6 +116,29 @@ impl MySqlAdapter {
         let pool = connect_pool(&self.params, Some(key.as_str())).await?;
         pools.insert(key, pool.clone());
         Ok(pool)
+    }
+
+    async fn transaction(&self, database: &str, items: &[SqlParams], require_one: bool) -> AppResult<u64> {
+        for item in items { crate::services::database_access::sql(self.params.allowed_databases.as_deref(), database, &item.sql)?; }
+        let pool = self.pool_for(database).await?;
+        let mut conn = pool.acquire().await?;
+        let mut tx = conn.begin().await?;
+        let mut affected = 0u64;
+        for (index, item) in items.iter().enumerate() {
+            let mut query = sqlx::query(&item.sql);
+            for value in &item.params {
+                query = bind_value(query, value);
+            }
+            let rows = query.execute(&mut *tx).await?.rows_affected();
+            // 驱动默认启用 CLIENT_FOUND_ROWS：等值更新也计为匹配一行。
+            if require_one && rows != 1 {
+                tx.rollback().await?;
+                return Err(AppError::Message(format!("第 {} 项修改实际匹配 {} 行，已回滚；请刷新数据后检查主键或并发修改", index + 1, rows)));
+            }
+            affected += rows;
+        }
+        tx.commit().await?;
+        Ok(affected)
     }
 }
 
@@ -196,12 +227,15 @@ pub(crate) fn decode_cell(row: &MySqlRow, idx: usize) -> DbValue {
         || type_name.starts_with("MEDIUMINT")
         || type_name.starts_with("INT")
         || type_name.starts_with("BIGINT")
-        || type_name == "YEAR"
     {
         if let Ok(v) = row.try_get::<Option<i64>, _>(idx) {
             return v.map_or(DbValue::Null, DbValue::Int);
         }
         if let Ok(v) = row.try_get::<Option<u64>, _>(idx) {
+            return v.map_or(DbValue::Null, DbValue::UInt);
+        }
+    } else if type_name == "YEAR" {
+        if let Ok(v) = row.try_get_unchecked::<Option<u64>, _>(idx) {
             return v.map_or(DbValue::Null, DbValue::UInt);
         }
     } else if type_name.starts_with("DECIMAL") || type_name == "NEWDECIMAL" {
@@ -221,24 +255,26 @@ pub(crate) fn decode_cell(row: &MySqlRow, idx: usize) -> DbValue {
             return v.map_or(DbValue::Null, |d| DbValue::Date(d.to_string()));
         }
     } else if type_name == "TIME" {
-        if let Ok(v) = row.try_get::<Option<NaiveTime>, _>(idx) {
-            return v.map_or(DbValue::Null, |t| DbValue::Time(t.to_string()));
-        }
+        return match row.try_get::<Option<MySqlTime>, _>(idx) {
+            Ok(v) => v.map_or(DbValue::Null, |t| DbValue::Time(format_mysql_time(t))),
+            Err(error) => DbValue::ReadOnly(format!("MySQL TIME 解析失败：{error}")),
+        };
     } else if type_name == "DATETIME" || type_name == "TIMESTAMP" {
         if let Ok(v) = row.try_get::<Option<NaiveDateTime>, _>(idx) {
             return v.map_or(DbValue::Null, |d| DbValue::DateTime(format_date_time(d)));
         }
     } else if type_name == "JSON" {
-        if let Ok(v) = row.try_get::<Option<serde_json::Value>, _>(idx) {
-            return v.map_or(DbValue::Null, |j| preview_json(j.to_string()));
-        }
+        // 保留服务器 JSON 文本，避免经 serde_json::Value/f64 再序列化改变大数值。
+        return match row.try_get_unchecked::<Option<String>, _>(idx) {
+            Ok(v) => v.map_or(DbValue::Null, preview_json),
+            Err(error) => DbValue::ReadOnly(format!("MySQL JSON 解析失败：{error}")),
+        };
     } else if type_name == "BIT" {
-        if let Ok(v) = row.try_get::<Option<u64>, _>(idx) {
-            return v.map_or(DbValue::Null, DbValue::UInt);
-        }
-        if let Ok(v) = row.try_get::<Option<Vec<u8>>, _>(idx) {
-            return v.map_or(DbValue::Null, preview_bytes);
-        }
+        // BIT 的协议字节是大端位值；部分服务端不设置 UNSIGNED 标识，绕过类型兼容检查。
+        return match row.try_get_unchecked::<Option<u64>, _>(idx) {
+            Ok(v) => v.map_or(DbValue::Null, DbValue::UInt),
+            Err(error) => DbValue::ReadOnly(format!("MySQL BIT 解析失败：{error}")),
+        };
     } else if type_name.contains("BLOB")
         || type_name.starts_with("BINARY")
         || type_name.starts_with("VARBINARY")
@@ -263,11 +299,24 @@ pub(crate) fn decode_cell(row: &MySqlRow, idx: usize) -> DbValue {
     if let Ok(v) = row.try_get::<Option<f64>, _>(idx) {
         return v.map_or(DbValue::Null, DbValue::Float);
     }
-    DbValue::Null
+    if row.try_get_raw(idx).is_ok_and(|raw| sqlx::ValueRef::is_null(&raw)) {
+        DbValue::Null
+    } else {
+        DbValue::ReadOnly(format!("MySQL {type_name} 类型暂不支持完整解析，请使用 SQL 查看或修改"))
+    }
 }
 
 fn format_date_time(value: NaiveDateTime) -> String {
     value.format("%Y-%m-%d %H:%M:%S%.f").to_string()
+}
+
+fn format_mysql_time(value: MySqlTime) -> String {
+    let sign = if value.sign() == MySqlTimeSign::Negative { "-" } else { "" };
+    let mut text = format!("{sign}{:02}:{:02}:{:02}", value.hours(), value.minutes(), value.seconds());
+    if value.microseconds() != 0 {
+        text.push_str(&format!(".{:06}", value.microseconds()).trim_end_matches('0'));
+    }
+    text
 }
 
 pub(crate) fn rows_to_outcome(rows: Vec<MySqlRow>, fallback: Vec<ColumnInfo>) -> QueryOutcome {
@@ -472,6 +521,7 @@ impl DbAdapter for MySqlAdapter {
                 nullable: text(row, "IS_NULLABLE").eq_ignore_ascii_case("YES"),
                 default_value: text_opt(row, "COLUMN_DEFAULT"),
                 auto_increment: extra.contains("auto_increment"),
+                generated: Some(is_generated_column(&extra)),
                 unsigned: text(row, "COLUMN_TYPE").contains("unsigned"),
                 charset: text_opt(row, "CHARACTER_SET_NAME"),
                 collation: text_opt(row, "COLLATION_NAME"),
@@ -815,20 +865,11 @@ impl DbAdapter for MySqlAdapter {
     }
 
     async fn execute_transaction(&self, database: &str, items: &[SqlParams]) -> AppResult<u64> {
-        for item in items {crate::services::database_access::sql(self.params.allowed_databases.as_deref(),database,&item.sql)?;}
-        let pool = self.pool_for(database).await?;
-        let mut conn = pool.acquire().await?;
-        let mut tx = conn.begin().await?;
-        let mut affected = 0u64;
-        for item in items {
-            let mut query = sqlx::query(&item.sql);
-            for value in &item.params {
-                query = bind_value(query, value);
-            }
-            affected += query.execute(&mut *tx).await?.rows_affected();
-        }
-        tx.commit().await?;
-        Ok(affected)
+        self.transaction(database, items, false).await
+    }
+
+    async fn execute_grid_transaction(&self, database: &str, items: &[SqlParams]) -> AppResult<u64> {
+        self.transaction(database, items, true).await
     }
 
     async fn cancel(&self, conn_id: u64) -> AppResult<()> {
@@ -846,6 +887,10 @@ impl DbAdapter for MySqlAdapter {
         let Some(row) = row else { return Ok(None) };
         if row.is_empty() {
             return Ok(None);
+        }
+        if sqlx::TypeInfo::name(row.column(0).type_info()).eq_ignore_ascii_case("JSON") {
+            let value = row.try_get_unchecked::<Option<String>, _>(0)?;
+            return Ok(value.map(DbValue::Json));
         }
         if let Ok(value) = row.try_get::<Option<String>, _>(0) {
             return Ok(value.map(DbValue::Text));
@@ -878,6 +923,28 @@ async fn fetch_raw_ddl(pool: &MySqlPool, database: &str, table: &str) -> Option<
 #[cfg(test)]
 mod statistic_tests {
     use super::*;
+    #[test]
+    fn mysql_time_preserves_intervals_and_microseconds() {
+        for (sign, hours, minutes, seconds, micros, expected) in [
+            (MySqlTimeSign::Positive, 0, 0, 0, 0, "00:00:00"),
+            (MySqlTimeSign::Positive, 12, 34, 56, 123400, "12:34:56.1234"),
+            (MySqlTimeSign::Positive, 100, 2, 3, 1, "100:02:03.000001"),
+            (MySqlTimeSign::Negative, 36, 30, 1, 123456, "-36:30:01.123456"),
+            (MySqlTimeSign::Negative, 838, 59, 59, 0, "-838:59:59"),
+        ] {
+            assert_eq!(format_mysql_time(MySqlTime::new(sign, hours, minutes, seconds, micros).unwrap()), expected);
+        }
+    }
+    #[test]
+    fn generated_columns_do_not_include_expression_defaults() {
+        for extra in ["VIRTUAL GENERATED", "STORED GENERATED", "PERSISTENT GENERATED", "virtual generated INVISIBLE"] {
+            assert!(is_generated_column(extra), "{extra}");
+        }
+        for extra in ["", "auto_increment", "DEFAULT_GENERATED", "DEFAULT_GENERATED on update CURRENT_TIMESTAMP", "on update CURRENT_TIMESTAMP"] {
+            assert!(!is_generated_column(extra), "{extra}");
+        }
+    }
+
     #[test]
     fn decimal_statistics_support_scaled_and_large_integers() {
         for (value, expected) in [

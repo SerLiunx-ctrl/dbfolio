@@ -741,6 +741,7 @@ fn apply_spec_to_column(engine: Engine, old: &ColumnMeta, spec: &ColumnSpec) -> 
         nullable: spec.nullable,
         default_value: spec.default_value.clone().filter(|v| !v.trim().is_empty()),
         auto_increment: spec.auto_increment,
+        generated: old.generated,
         unsigned: old.unsigned,
         charset: old.charset.clone(),
         collation: old.collation.clone(),

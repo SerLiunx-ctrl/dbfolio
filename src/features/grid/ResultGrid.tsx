@@ -10,16 +10,15 @@ import {
   useState,
 } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { MenuItem, MenuList, makeStyles, tokens } from "@fluentui/react-components";
-import { TextFieldRegular, CopyRegular, ZoomInRegular } from "@fluentui/react-icons";
+import { MenuDivider, MenuItem } from "@fluentui/react-components";
+import { TextFieldRegular, CopyRegular, ZoomInRegular, CodeRegular } from "@fluentui/react-icons";
 import { CellInspector, type InspectorTarget } from "./CellInspector";
 import { GridWorkbench, GridColumns, GridIconButton, useGridLayout } from "./GridWorkbench";
 import { ImageCell } from './ImageCell';
 import { isImageCandidate } from './base64Image';
 import { cellPreview } from './cellPreview';
 import type { ColDef, GridApi } from "ag-grid-community";
-import { api } from "../../ipc";
-import { ContextMenuPortal, ContextMenuSurface } from "../../app/ContextMenuPortal";
+import { GridContextMenu, GridMenuSubmenu } from "./GridContextMenu";
 import {
   formatDbValue,
   isNullValue,
@@ -30,24 +29,9 @@ import {
 import { useGridTheme } from "./register";
 import { TypeHeader } from "./TypeHeader";
 import { initialColumnSizing } from "./columnSizing";
-
-const useStyles = makeStyles({
-  menuOverlay: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 1198,
-  },
-  menu: {
-    position: "fixed",
-    zIndex: 1199,
-    minWidth: "160px",
-    padding: "4px",
-    borderRadius: "6px",
-    backgroundColor: tokens.colorNeutralBackground1,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    boxShadow: tokens.shadow16,
-  },
-});
+import { useNotify } from "../../app/toast";
+import { writeRowClipboard, writeCellClipboard } from "./rowClipboard";
+import { CopyRowsSqlDialog } from "./CopyRowsSqlDialog";
 
 interface ResultRow {
   key: string;
@@ -59,6 +43,9 @@ export interface ResultGridHandle {
 }
 
 interface Props {
+  sessionId?: string;
+  database?: string;
+  schema?: string | null;
   toolbarHost?:HTMLElement|null;
   columns: ColumnInfo[];
   rows: DbValue[][];
@@ -67,15 +54,16 @@ interface Props {
 
 function cellText(value: DbValue | undefined): string {
   if (isNullValue(value)) return "";
-  return String(value?.[1] ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
+  return String(value?.[1] ?? "");
 }
 
 export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGrid(
-  { columns, rows, onSortChange,toolbarHost },
+  { columns, rows, onSortChange,toolbarHost,sessionId,database,schema },
   ref,
 ) {
   const theme = useGridTheme();
-  const styles = useStyles();
+  const notify = useNotify();
+  const [sqlCopy,setSqlCopy]=useState<{kind:"insert"|"update";columns:ColumnInfo[];rows:DbValue[][];sessionId:string;database:string;schema?:string|null}|null>(null);
   const [detail,setDetail]=useState<InspectorTarget|null>(null);
   const [inspectorOpen,setInspectorOpen]=useState(false);
   const layout=useGridLayout("query",columns);
@@ -90,9 +78,10 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
     y: number;
     rowIndex: number;
     colIndex: number;
+    targets: ResultRow[];
   } | null>(null);
 
-  useEffect(()=>{setDetail(null);},[rows,columns]);
+  useEffect(()=>{setDetail(null);setCellMenu(null);},[rows,columns]);
   const rowData = useMemo<ResultRow[]>(
     () => rows.map((cells, index) => ({ key: `r${index}`, cells })),
     [rows],
@@ -127,6 +116,7 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
     if (!gridApi) return [];
     const selected = gridApi
       .getSelectedNodes()
+      .sort((a,b)=>(a.rowIndex??0)-(b.rowIndex??0))
       .map((node) => node.data)
       .filter((row): row is ResultRow => Boolean(row));
     if (selected.length > 0) return selected;
@@ -138,14 +128,22 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
     return [];
   }, []);
 
+  const visibleRows = useCallback((targets:ResultRow[])=>{
+    const indexes=apiRef.current
+      ?apiRef.current.getAllDisplayedColumns().map(c=>c.getColId()).filter(id=>/^c\d+$/.test(id)).map(id=>Number(id.slice(1)))
+      :columns.map((_,index)=>index);
+    return {columns:indexes.map(index=>columns[index]),rows:targets.map(row=>indexes.map(index=>row.cells[index]))};
+  },[columns]);
   const copyRows = useCallback(async (targets: ResultRow[]) => {
     if (targets.length === 0) return 0;
-    const text = targets
-      .map((row) => (apiRef.current?.getAllDisplayedColumns().filter(c=>/^c\d+$/.test(c.getColId())).map(c=>row.cells[Number(c.getColId().slice(1))])??row.cells).map((cell) => cellText(cell)).join("\t"))
-      .join("\n");
-    await api.clipboardWriteText(text);
-    return targets.length;
-  }, []);
+    try {const selected=visibleRows(targets);return await writeRowClipboard(selected.columns,selected.rows);}
+    catch(error){notify.error(error,"复制行失败");return 0;}
+  }, [notify,visibleRows]);
+  const sqlCopyUnavailable=!sessionId||!database?"查询结果缺少会话或数据库上下文，无法选择目标表":!cellMenu?.targets.length?"请先选择要复制的行":undefined;
+  const openSqlCopy=(kind:"insert"|"update")=>{
+    if(sqlCopyUnavailable||!cellMenu||!sessionId||!database)return;
+    setSqlCopy({kind,...visibleRows(cellMenu.targets),sessionId,database,schema});setCellMenu(null);
+  };
 
   useImperativeHandle(
     ref,
@@ -172,6 +170,12 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
   return (
     <div
       style={{ width: "100%", height: "100%" }}
+      onContextMenu={event=>{
+        const target=event.target as HTMLElement;
+        if(!target.closest('.ag-root-wrapper')||target.closest('.ag-cell,.ag-header'))return;
+        event.preventDefault();
+        setCellMenu({x:event.clientX,y:event.clientY,rowIndex:-1,colIndex:-1,targets:selectedOrFocusedRows()});
+      }}
       onKeyDownCapture={(event) => {
         if((event.target as HTMLElement).closest("input,textarea,[contenteditable=true],.dw-grid-inspector"))return;
         if (!(event.ctrlKey || event.metaKey)) return;
@@ -210,11 +214,16 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
               ? event.column.getColId()
               : "";
           const colIndex = colId ? Number(String(colId).replace("c", "")) : -1;
+          if(event.node.data&&!event.node.isSelected()){
+            event.api.deselectAll();event.node.setSelected(true);
+          }
+          focusedRef.current={rowIndex:event.rowIndex??-1,colIndex:Number.isFinite(colIndex)?colIndex:-1};
           setCellMenu({
             x: mouse?.clientX ?? 0,
             y: mouse?.clientY ?? 0,
             rowIndex: event.rowIndex ?? -1,
             colIndex: Number.isFinite(colIndex) ? colIndex : -1,
+            targets:selectedOrFocusedRows(),
           });
         }}
         onSortChanged={(params) => {
@@ -244,48 +253,46 @@ export const ResultGrid = forwardRef<ResultGridHandle, Props>(function ResultGri
         animateRows={false}
       /></GridWorkbench>
       {cellMenu && (
-        <ContextMenuPortal>
-          <div
-            className={styles.menuOverlay}
-            onClick={() => setCellMenu(null)}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              setCellMenu(null);
-            }}
-          />
-          <ContextMenuSurface className={`${styles.menu} dw-context-menu`} x={cellMenu.x} y={cellMenu.y}>
-            <MenuList>
-              <MenuItem icon={<ZoomInRegular />} onClick={()=>{
-                const value=apiRef.current?.getDisplayedRowAtIndex(cellMenu.rowIndex)?.data?.cells[cellMenu.colIndex];
-                if(value)inspect(cellMenu.rowIndex,cellMenu.colIndex,true);
+        <GridContextMenu x={cellMenu.x} y={cellMenu.y} onClose={() => setCellMenu(null)}>
+          <MenuItem icon={<ZoomInRegular />} disabled={cellMenu.rowIndex<0||cellMenu.colIndex<0} onClick={()=>{
+            const value=apiRef.current?.getDisplayedRowAtIndex(cellMenu.rowIndex)?.data?.cells[cellMenu.colIndex];
+            if(value)inspect(cellMenu.rowIndex,cellMenu.colIndex,true);
+            setCellMenu(null);
+          }}>查看单元格详情</MenuItem>
+          <MenuDivider/>
+          <GridMenuSubmenu label="复制" icon={<CopyRegular/>}>
+            <MenuItem
+              icon={<CopyRegular />}
+              disabled={cellMenu.rowIndex<0||cellMenu.colIndex<0}
+              onClick={() => {
+                const gridApi = apiRef.current;
+                const row = gridApi
+                  ?.getDisplayedRowAtIndex(cellMenu.rowIndex)
+                  ?.data;
+                void writeCellClipboard(cellText(row?.cells[cellMenu.colIndex])).catch(error=>notify.error(error,"复制单元格失败"));
                 setCellMenu(null);
-              }}>查看单元格详情</MenuItem>
-              <MenuItem
-                icon={<CopyRegular />}
-                onClick={() => {
-                  const gridApi = apiRef.current;
-                  const row = gridApi
-                    ?.getDisplayedRowAtIndex(cellMenu.rowIndex)
-                    ?.data;
-                  void api.clipboardWriteText(cellText(row?.cells[cellMenu.colIndex]));
-                  setCellMenu(null);
-                }}
-              >
-                复制单元格
-              </MenuItem>
-              <MenuItem
-                icon={<CopyRegular />}
-                onClick={() => {
-                  void copyRows(selectedOrFocusedRows());
-                  setCellMenu(null);
-                }}
-              >
-                复制选中行
-              </MenuItem>
-            </MenuList>
-          </ContextMenuSurface>
-        </ContextMenuPortal>
+              }}
+            >
+              复制单元格
+            </MenuItem>
+            <MenuItem
+              icon={<CopyRegular />}
+              disabled={!cellMenu.targets.length}
+              onClick={() => {
+                void copyRows(cellMenu.targets);
+                setCellMenu(null);
+              }}
+            >
+              复制行
+            </MenuItem>
+          </GridMenuSubmenu>
+          <GridMenuSubmenu label="复制 SQL" icon={<CodeRegular/>}>
+            <MenuItem icon={<CodeRegular/>} disabled={!!sqlCopyUnavailable} title={sqlCopyUnavailable} onClick={()=>openSqlCopy("insert")}>复制为 INSERT 语句…</MenuItem>
+            <MenuItem icon={<CodeRegular/>} disabled={!!sqlCopyUnavailable} title={sqlCopyUnavailable} onClick={()=>openSqlCopy("update")}>复制为 UPDATE 语句…</MenuItem>
+          </GridMenuSubmenu>
+        </GridContextMenu>
       )}
+      {sqlCopy&&<CopyRowsSqlDialog {...sqlCopy} onClose={()=>setSqlCopy(null)}/>}
 
     </div>
   );

@@ -2,6 +2,7 @@ pub mod message_queue;
 pub mod key_value;
 pub mod mongodb;
 pub mod mysql;
+mod mysql_value;
 pub mod postgres;
 pub mod redis;
 pub mod sqlite;
@@ -305,16 +306,29 @@ fn null_or_placeholder(
     column: &str,
     column_types: &std::collections::HashMap<String, String>,
     value: &DbValue,
-) -> String {
+) -> AppResult<String> {
+    reject_truncated(value)?;
+    let value = if adapter.engine() == Engine::Mysql {
+        match column_types.get(column) {
+            Some(raw_type) => mysql_value::normalize_column_value(column, raw_type, value)?,
+            None => value.clone(),
+        }
+    } else {
+        value.clone()
+    };
     if matches!(value, DbValue::Null) {
-        "NULL".to_string()
+        Ok("NULL".to_string())
     } else {
         params.push(value.clone());
         let placeholder = adapter.placeholder(params.len());
-        match pg_type_cast(adapter.engine(), column, value, column_types) {
+        // MySQL 的 JSON 比较不会把字符串参数自动当作 JSON 值；MariaDB 的别名实际为 LONGTEXT。
+        if adapter.engine() == Engine::Mysql && column_types.get(column).is_some_and(|raw| raw.trim().eq_ignore_ascii_case("json")) {
+            return Ok(format!("CAST({placeholder} AS JSON)"));
+        }
+        Ok(match pg_type_cast(adapter.engine(), column, &value, column_types) {
             Some(cast) => format!("{placeholder}::{cast}"),
             None => placeholder,
-        }
+        })
     }
 }
 
@@ -413,7 +427,7 @@ pub fn build_change_statements(
                     .map(|c| {
                         null_or_placeholder(adapter, &mut params, &c.column, column_types, &c.value)
                     })
-                    .collect();
+                    .collect::<AppResult<Vec<_>>>()?;
                 out.push(SqlParams {
                     sql: format!(
                         "INSERT INTO {} ({}) {}VALUES ({})",
@@ -444,7 +458,7 @@ pub fn build_change_statements(
                         &change.column,
                         column_types,
                         &change.new_value,
-                    );
+                    )?;
                     set_parts.push(format!("{} = {}", quote(&change.column), placeholder));
                 }
                 let mut where_parts = Vec::new();
@@ -456,7 +470,7 @@ pub fn build_change_statements(
                         &key.column,
                         column_types,
                         &key.value,
-                    );
+                    )?;
                     where_parts.push(format!("{} = {}", quote(&key.column), placeholder));
                 }
                 for change in changes {
@@ -469,7 +483,7 @@ pub fn build_change_statements(
                         &change.column,
                         column_types,
                         &change.old_value,
-                    );
+                    )?;
                     where_parts.push(
                         adapter.null_safe_eq(&quote(&change.column), &placeholder),
                     );
@@ -499,7 +513,7 @@ pub fn build_change_statements(
                             &key.column,
                             column_types,
                             &key.value,
-                        );
+                        )?;
                         Ok(adapter.null_safe_eq(&quote(&key.column), &placeholder))
                     })
                     .collect::<AppResult<Vec<String>>>()?;
@@ -544,14 +558,14 @@ pub fn build_cell_update(
 
     let mut params: Vec<DbValue> = Vec::new();
     let set_placeholder =
-        null_or_placeholder(adapter, &mut params, column, column_types, new_value);
+        null_or_placeholder(adapter, &mut params, column, column_types, new_value)?;
     let mut where_parts: Vec<String> = Vec::new();
     for key in keys {
-        let placeholder = null_or_placeholder(adapter, &mut params, &key.column, column_types, &key.value);
+        let placeholder = null_or_placeholder(adapter, &mut params, &key.column, column_types, &key.value)?;
         where_parts.push(format!("{} = {}", quote(&key.column), placeholder));
     }
     let old_placeholder =
-        null_or_placeholder(adapter, &mut params, column, column_types, old_value);
+        null_or_placeholder(adapter, &mut params, column, column_types, old_value)?;
     where_parts.push(adapter.null_safe_eq(&quote(column), &old_placeholder));
 
     Ok(SqlParams {
@@ -634,5 +648,69 @@ mod readonly_guard_tests {
     fn readonly_values_cannot_be_submitted() {
         assert!(reject_truncated(&DbValue::ReadOnly("[1,2]".into())).is_err());
         assert!(reject_truncated(&DbValue::Null).is_ok());
+    }
+}
+
+#[cfg(test)]
+mod mysql_bit_write_tests {
+    use super::*;
+
+    fn metadata() -> std::collections::HashMap<String, String> {
+        [("flag", "bit(1)"), ("id", "bit(64)"), ("wide", "bit(64)"), ("y", "year")]
+            .into_iter().map(|(name, raw)| (name.into(), raw.into())).collect()
+    }
+
+    fn key() -> Vec<CellValue> {
+        vec![CellValue { column: "id".into(), value: DbValue::Bytes(vec![255; 8]) }]
+    }
+
+    #[test]
+    fn mysql_bit_parameters_are_numeric_in_every_write_position() {
+        let adapter = mysql::MySqlAdapter::for_sql_tests();
+        let types = metadata();
+        let change = CellChange { column: "flag".into(), old_value: DbValue::Bytes(vec![0]), new_value: DbValue::Text("1".into()) };
+        let statements = build_change_statements(&adapter, "qa", None, "t", &[
+            RowChange::Insert { values: vec![CellValue { column: "wide".into(), value: DbValue::Text(u64::MAX.to_string()) }, CellValue { column: "flag".into(), value: DbValue::Null }] },
+            RowChange::Update { keys: key(), changes: vec![change] },
+            RowChange::Delete { keys: key() },
+        ], &types).unwrap();
+        assert_eq!(statements[0].params, vec![DbValue::UInt(u64::MAX)]);
+        assert!(statements[0].sql.ends_with("VALUES (?, NULL)"));
+        assert_eq!(statements[1].params, vec![DbValue::UInt(1), DbValue::UInt(u64::MAX), DbValue::UInt(0)]);
+        assert!(statements[1].sql.contains("`flag` <=> ?"));
+        assert_eq!(statements[2].params, vec![DbValue::UInt(u64::MAX)]);
+        let direct = build_cell_update(&adapter, "qa", None, "t", "flag", &key(), &DbValue::Bytes(vec![0]), &DbValue::Int(1), &types).unwrap();
+        assert_eq!(direct.params, statements[1].params);
+    }
+
+    #[test]
+    fn mysql_bit_rejects_invalid_set_old_key_and_direct_values() {
+        let adapter = mysql::MySqlAdapter::for_sql_tests();
+        let types = metadata();
+        let invalid = DbValue::Bytes(vec![b'1']);
+        for (old_value, new_value) in [(DbValue::Int(0), invalid.clone()), (invalid.clone(), DbValue::Int(1))] {
+            let changes = [RowChange::Update { keys: key(), changes: vec![CellChange { column: "flag".into(), old_value: old_value.clone(), new_value: new_value.clone() }] }];
+            assert!(build_change_statements(&adapter, "qa", None, "t", &changes, &types).is_err());
+            assert!(build_cell_update(&adapter, "qa", None, "t", "flag", &key(), &old_value, &new_value, &types).is_err());
+        }
+        for change in [RowChange::Insert { values: vec![CellValue { column: "flag".into(), value: invalid.clone() }] }, RowChange::Delete { keys: vec![CellValue { column: "flag".into(), value: invalid.clone() }] }] {
+            assert!(build_change_statements(&adapter, "qa", None, "t", &[change], &types).is_err());
+        }
+        assert!(build_cell_update(&adapter, "qa", None, "t", "flag", &key(), &DbValue::Int(0), &DbValue::ReadOnly("preview".into()), &types).is_err());
+        let legacy = build_cell_update(&adapter, "qa", None, "t", "y", &key(), &DbValue::Int(2025), &DbValue::Text("2026".into()), &types).unwrap();
+        assert_eq!(legacy.params, vec![DbValue::UInt(2026), DbValue::UInt(u64::MAX), DbValue::UInt(2025)]);
+    }
+
+    #[test]
+    fn mysql_json_parameters_use_json_comparison_without_changing_text() {
+        let adapter = mysql::MySqlAdapter::for_sql_tests();
+        let old = DbValue::Json("{\"n\":18446744073709551616,\"v\":0.1234567890123456789}".into());
+        let new = DbValue::Json("{\"n\":18446744073709551617}".into());
+        for (raw_type, cast) in [("json", true), ("longtext", false)] {
+            let types = [("payload".into(), raw_type.into())].into_iter().collect();
+            let statement = build_cell_update(&adapter, "qa", None, "t", "payload", &[CellValue { column: "id".into(), value: DbValue::Int(1) }], &old, &new, &types).unwrap();
+            assert_eq!(statement.sql.matches("CAST(? AS JSON)").count(), if cast { 2 } else { 0 });
+            assert_eq!(statement.params, vec![new.clone(), DbValue::Int(1), old.clone()]);
+        }
     }
 }

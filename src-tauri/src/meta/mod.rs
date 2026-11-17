@@ -93,6 +93,9 @@ pub struct ColumnMeta {
     pub nullable: bool,
     pub default_value: Option<String>,
     pub auto_increment: bool,
+    /// 服务器确认的计算/生成列；旧元数据快照及暂不能确定的引擎缺省此项。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generated: Option<bool>,
     pub unsigned: bool,
     pub charset: Option<String>,
     pub collation: Option<String>,
@@ -389,8 +392,24 @@ fn first_u8(args: &[String]) -> Option<u8> {
     args.first().and_then(|v| v.parse().ok())
 }
 
+/// MySQL BIT 的括号参数是有效位数，并非整数显示宽度。
+pub(crate) fn mysql_bit_width(raw: &str) -> Option<u8> {
+    let lower = raw.trim().to_ascii_lowercase();
+    if lower == "bit" {
+        return Some(1);
+    }
+    let width = lower.strip_prefix("bit")?.trim().strip_prefix('(')?.strip_suffix(')')?.trim();
+    if width.is_empty() || !width.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    width.parse::<u8>().ok().filter(|width| (1..=64).contains(width))
+}
+
 impl CanonicalType {
     pub fn from_mysql(raw: &str) -> CanonicalType {
+        if let Some(bits) = mysql_bit_width(raw) {
+            return CanonicalType::Int { bits, unsigned: true };
+        }
         let lower = raw.trim().to_ascii_lowercase();
         let unsigned = lower.contains("unsigned");
         let cleaned = lower
@@ -400,8 +419,8 @@ impl CanonicalType {
             .to_string();
         let (name, args) = split_type(&cleaned);
         match name.as_str() {
-            "tinyint" if args.first().map(|s| s.as_str()) == Some("1") => CanonicalType::Bool,
             "bool" | "boolean" => CanonicalType::Bool,
+            "year" => CanonicalType::Int { bits: 16, unsigned: true },
             "tinyint" | "smallint" | "mediumint" | "int" | "integer" | "bigint" => {
                 let bits = match name.as_str() {
                     "tinyint" => 8,
@@ -547,8 +566,9 @@ impl CanonicalType {
         }
         if lower.contains("dec") || lower.contains("num") {
             return CanonicalType::Decimal {
-                precision: args.first().and_then(|v| v.parse().ok()),
-                scale: args.get(1).and_then(|v| v.parse().ok()),
+                // SQLite 只使用 NUMERIC 亲和，不实施声明中的精度/小数位限制。
+                precision: None,
+                scale: None,
             };
         }
         if lower.contains("date") && lower.contains("time") {
@@ -578,6 +598,20 @@ impl CanonicalType {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn generated_column_metadata_is_optional_and_preserves_false() {
+        let json = serde_json::json!({"name":"amount","ordinal":1,"rawType":"int","canonical":{"kind":"int","bits":32,"unsigned":false},"nullable":true,"autoIncrement":false,"unsigned":false});
+        let mut column: super::ColumnMeta = serde_json::from_value(json).unwrap();
+        assert_eq!(column.generated, None);
+        assert!(serde_json::to_value(&column).unwrap().get("generated").is_none());
+        for generated in [false, true] {
+            column.generated = Some(generated);
+            let json = serde_json::to_value(&column).unwrap();
+            assert_eq!(json["generated"], generated);
+            assert_eq!(serde_json::from_value::<super::ColumnMeta>(json).unwrap().generated, Some(generated));
+        }
+    }
+
+    #[test]
     fn auto_increment_metadata_preserves_exact_decimal_string() {
         for value in ["9007199254740993", "1919654707669256368", "18446744073709551615"] {
             let info = super::TableExtraInfo {
@@ -596,8 +630,17 @@ mod tests {
     fn mysql_types() {
         assert_eq!(
             CanonicalType::from_mysql("tinyint(1)"),
-            CanonicalType::Bool
+            CanonicalType::Int { bits: 8, unsigned: false }
         );
+        assert_eq!(CanonicalType::from_mysql("tinyint(1) unsigned"), CanonicalType::Int { bits: 8, unsigned: true });
+        assert_eq!(CanonicalType::from_mysql("boolean"), CanonicalType::Bool);
+        assert_eq!(CanonicalType::from_mysql("YEAR(4)"), CanonicalType::Int { bits: 16, unsigned: true });
+        for (raw, bits) in [("BIT", 1), ("bit(1)", 1), ("BIT(8)", 8), ("bit(64)", 64), (" bit ( 9 ) ", 9)] {
+            assert_eq!(CanonicalType::from_mysql(raw), CanonicalType::Int { bits, unsigned: true });
+        }
+        for raw in ["bit(0)", "bit(65)", "bit(-1)", "bit(1,2)", "bit(1) trailing"] {
+            assert!(matches!(CanonicalType::from_mysql(raw), CanonicalType::Unknown { .. }), "{raw}");
+        }
         assert_eq!(
             CanonicalType::from_mysql("int unsigned"),
             CanonicalType::Int {
@@ -635,6 +678,7 @@ mod tests {
 
     #[test]
     fn sqlite_types() {
+        assert_eq!(CanonicalType::from_sqlite("DECIMAL(5,2)"), CanonicalType::Decimal { precision: None, scale: None });
         assert_eq!(
             CanonicalType::from_sqlite("INTEGER"),
             CanonicalType::Int {

@@ -242,6 +242,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, changes.length, detailError, stale]);
 
+  const canInsert = !readOnly && detail.kind === "table";
   const canEdit =
     !readOnly && detail.kind === "table" && detail.primaryKey.length > 0;
 
@@ -280,7 +281,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   const copySelected = async () => {
     try {
       const count = await gridRef.current?.copySelected();
-      if (count) notify.success("已复制", `${count} 行（Tab 分隔，可直接粘贴到 Excel）`);
+      if (count) notify.success("已复制", `${count} 行，可粘贴为新行或粘贴到 Excel`);
     } catch (error) {
       notify.error(error, "复制失败");
     }
@@ -290,10 +291,10 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
     try {
       const count = await gridRef.current?.pasteFromClipboard();
       if (count) {
-        notify.success("已粘贴", `${count} 个单元格（待提交）`);
+        notify.success("已粘贴", `${count} 项已进入待提交；复制的行会追加为新行`);
       } else {
         notify.error(
-          new Error("请先点击目标单元格，且该位置需可编辑（非主键/非只读字段）"),
+          new Error("剪贴板为空或目标不可编辑；可在空白处右键选择粘贴为新行"),
           "无法粘贴",
         );
       }
@@ -348,7 +349,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         {detail.kind === "table" && <><Button
           size="small"
           icon={<AddRegular />}
-          disabled={!canEdit}
+          disabled={!canInsert}
           onClick={() => gridRef.current?.addRow()}
         >
           添加行
@@ -376,13 +377,13 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
           复制
         </Button>
         {detail.kind === "table" && <Tooltip
-          content="从剪贴板粘贴（从当前单元格开始，可直接粘贴 Excel 内容）"
+          content="复制的行追加为新行；外部文本从当前单元格开始覆盖。空白处右键可选择粘贴方式"
           relationship="label"
         >
           <Button
             size="small"
             icon={<ClipboardPasteRegular />}
-            disabled={!canEdit}
+            disabled={!canInsert}
             onClick={() => void pasteClipboard()}
           >
             粘贴
@@ -460,7 +461,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         )}
         {detail.kind === "table" && detail.primaryKey.length === 0 && (
           <Badge appearance="tint" color="warning" size="small">
-            无主键 · 只读
+            无主键 · 现有行只读，可新增
           </Badge>
         )}
         {partialSaved&&<span style={{fontSize:12}}>部分已提交；服务器生成值将在剩余修改处理后刷新</span>}
@@ -505,7 +506,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
             database={tab.database}
             schema={tab.schema}
             table={tab.table}
-            readOnly={!canEdit}
+            readOnly={!canInsert}
             canSort={changes.length === 0 && !detailError}
             onRelated={(column,row)=>setRelated({column,row})}
             onFilterValue={(column,value)=>void applyFilters([{column,operator:value[0]==="null"?"isNull":"eq",value:value[0]==="null"?"":String(value[1]),literal:value}],"and")}

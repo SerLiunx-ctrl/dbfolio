@@ -512,7 +512,7 @@ impl DbAdapter for PostgresAdapter {
                     format_type(a.atttypid, a.atttypmod) AS raw_type, \
                     a.attnotnull AS not_null, \
                     pg_get_expr(d.adbin, d.adrelid) AS default_expr, \
-                    a.attidentity AS identity, \
+                    a.attidentity AS identity, COALESCE(to_jsonb(a)->>'attgenerated', '') <> '' AS generated, \
                     col_description(a.attrelid, a.attnum) AS comment \
              FROM pg_attribute a \
              LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum \
@@ -558,6 +558,7 @@ impl DbAdapter for PostgresAdapter {
                     nullable: !bool_opt(row, "not_null").unwrap_or(false),
                     default_value: default_expr,
                     auto_increment,
+                    generated: Some(bool_opt(row, "generated").unwrap_or(false)),
                     unsigned: false,
                     charset: None,
                     collation: None,

@@ -168,6 +168,8 @@ export interface ColumnMeta {
   nullable: boolean;
   defaultValue?: string | null;
   autoIncrement: boolean;
+  /** 服务器确认的计算/生成列；旧快照及暂不能确定的引擎可能缺省。 */
+  generated?: boolean;
   unsigned: boolean;
   charset?: string | null;
   collation?: string | null;

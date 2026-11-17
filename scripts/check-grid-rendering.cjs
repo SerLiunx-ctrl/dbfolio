@@ -5,10 +5,11 @@ const assert=require('node:assert/strict');
  try {
   const page=await browser.newPage({viewport:{width:1600,height:1000}});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const base=process.env.DBFOLIO_UI_URL||'http://localhost:1425';
   const text='<img src=x onerror=alert(1)> '+'完整日志😀'.repeat(400);
   for(const [engine,theme] of [['mysql','light'],['postgres','dark'],['sqlite','oled']]){
    for(const result of [false,true]){
-    await page.goto(`http://localhost:1425/scripts/fixtures/image-preview.html?engine=${engine}&theme=${theme}${result?'&result':''}`);
+    await page.goto(`${base}/scripts/fixtures/image-preview.html?engine=${engine}&theme=${theme}${result?'&result':''}`);
     await page.waitForFunction(()=>!!window.setImage);
     await page.evaluate(text=>window.setImage(text),text);
     const cell=page.locator('.ag-row[row-index="0"] [col-id="c1"]');
@@ -16,6 +17,7 @@ const assert=require('node:assert/strict');
     assert((await cell.textContent()).length<=257,'长文本单行预览有界');
     assert.equal(await cell.locator('img').count(),0,'普通值不解析为 HTML');
     await cell.click({button:'right'});
+    await page.getByRole('menuitem',{name:'复制',exact:true}).hover();
     await page.getByRole('menuitem',{name:'复制单元格',exact:true}).click();
     assert.equal(await page.evaluate(()=>window.copied),text,'复制仍为完整原文');
     if(!result){

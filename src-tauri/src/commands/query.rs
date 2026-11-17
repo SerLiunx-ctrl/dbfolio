@@ -148,7 +148,7 @@ pub async fn update_cell(
     )?;
     let affected = connected
         .adapter
-        .execute_transaction(&database, &[statement])
+        .execute_grid_transaction(&database, &[statement])
         .await?;
     Ok(affected)
 }

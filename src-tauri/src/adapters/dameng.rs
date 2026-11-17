@@ -556,6 +556,7 @@ impl DbAdapter for DamengAdapter {
                     nullable: field(r, "NULLABLE").as_deref() == Some("Y"),
                     default_value: field(r, "DATA_DEFAULT"),
                     auto_increment: identities.contains(&name),
+                    generated: None,
                     unsigned: false,
                     charset: None,
                     collation: None,

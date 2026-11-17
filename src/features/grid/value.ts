@@ -58,6 +58,10 @@ function previewExpression(engine: string, column: ColumnMeta): string {
     }
     return `LEFT(${ident}, ${PREVIEW_CHARS_FETCH}) AS ${alias}`;
   }
+  if (engine === "sqlite" && column.canonical.kind === "binary") {
+    // SQLite substr(X'', ...) returns NULL: preserve an actual zero-length BLOB.
+    return `CASE WHEN typeof(${ident}) = 'blob' AND length(${ident}) = 0 THEN zeroblob(0) ELSE substr(${ident}, 1, ${PREVIEW_CHARS_FETCH}) END AS ${alias}`;
+  }
   return `substr(${ident}, 1, ${PREVIEW_CHARS_FETCH}) AS ${alias}`;
 }
 
@@ -79,8 +83,18 @@ export function buildTableSelect(
 
 export function parseCell(column: ColumnMeta, text: string): DbValue {
   if (text === "") return ["null", null];
+  return parseColumnValue(column, text);
+}
+
+export function binaryValue(text: string): DbValue {
+  if (!/^0x(?:[\da-f]{2})*$/i.test(text)) throw Error("二进制值须为 0x 开头的完整十六进制字节");
+  return ["bytes", text];
+}
+
+/** 列类型解析；详情和类型化粘贴的空字符串不会自动变成 NULL。 */
+export function parseColumnValue(column: ColumnMeta, text: string): DbValue {
   const canonical: CanonicalType = column.canonical;
-  const numeric = numericValue(canonical, text);
+  const numeric = numericValue(canonical, text, column);
   if (numeric) return numeric;
   switch (canonical.kind) {
     case "date":
@@ -90,13 +104,12 @@ export function parseCell(column: ColumnMeta, text: string): DbValue {
     case "dateTime":
       return ["datetime", text];
     case "json":
+      JSON.parse(text);
       return ["json", text];
     case "uuid":
       return ["uuid", text];
-    case "binary": {
-      if (/^0x[0-9a-f]*$/i.test(text)) return ["bytes", text];
-      return ["text", text];
-    }
+    case "binary":
+      return binaryValue(text);
     default:
       return ["text", text];
   }

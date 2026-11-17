@@ -626,6 +626,8 @@ export function QueryWorkspace({ tab, active }: Props) {
           {active && result && result.columns.length > 0 ? (
             <ResultGrid toolbarHost={toolbarHost}
               ref={resultGridRef}
+              sessionId={tab.sessionId}
+              database={resultDatabase}
               columns={result.columns}
               rows={result.rows}
               onSortChange={result.scriptStatements || transaction.lost || (!!resultTransaction && resultTransaction!==transaction.transaction?.id) ? undefined : applySort}

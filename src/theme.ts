@@ -42,6 +42,16 @@ export function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function contrastWithWhite(hex: string): number {
+  const { r, g, b } = hexToRgb(hex);
+  const linear = (channel: number) => {
+    const s = channel / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  return 1.05 / (luminance + 0.05);
+}
+
 function hexToHsl(hex: string): Hsl {
   const { r, g, b } = hexToRgb(hex);
   const rn = r / 255;
@@ -153,6 +163,13 @@ export function buildTheme(dark: boolean, accent: string, style = "aurora", dens
     fontSizeBase500: "18px", lineHeightBase500: "24px",
     borderRadiusMedium: "5px", borderRadiusLarge: "8px",
   } : {})};
+  // Fluent uses white labels on all four solid brand fills. Shade the states
+  // together so hover/pressed stay distinct, including for a custom accent.
+  const fills = ["colorBrandBackground", "colorBrandBackgroundHover", "colorBrandBackgroundPressed", "colorBrandBackgroundSelected"] as const;
+  const brightest = fills.map(token => base[token]).reduce((a, b) => contrastWithWhite(a) < contrastWithWhite(b) ? a : b);
+  let shade = 0;
+  while (contrastWithWhite(mixColor(brightest, "#000000", shade)) < 4.5) shade += 0.025;
+  for (const token of fills) base[token] = mixColor(base[token], "#000000", shade);
   if (style === "oled") return {...base,
     colorNeutralBackground1:'#000000',colorNeutralBackground2:'#000000',colorNeutralBackground3:'#000000',
     colorNeutralBackground4:'#000000',colorNeutralBackground5:'#000000',colorNeutralBackground6:'#000000',

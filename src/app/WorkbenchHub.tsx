@@ -1,7 +1,7 @@
 import {useShortcut,useShortcutLabel} from './shortcuts';
 import {InfoHint} from '../common/InfoHint';
 import { useEffect, useRef, useState } from "react";
-import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Input, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, tokens } from "@fluentui/react-components";
+import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Input, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, tokens, useRestoreFocusTarget } from "@fluentui/react-components";
 import { DataBarVerticalRegular, AddRegular, AppFolderRegular, ArrowUndoRegular, ArrowResetRegular, FullScreenMaximizeRegular, InfoRegular, DeleteRegular, SaveRegular, DismissRegular, SettingsRegular, TabDesktopRegular, ChevronDownRegular } from "@fluentui/react-icons";
 import { useFocusMode, toggleFocusMode } from "../stores/useFocusMode";
 import { useLocalUndo, undoLocal } from "../stores/useLocalUndo";
@@ -17,6 +17,7 @@ export function WorkbenchHub() {
   const presets = useLayoutPresets(s => s.presets), closed = useTabStore(s => s.recentlyClosed);
   const [dialog, setDialog] = useState<"layout" | null>(null), [name, setName] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [aboutOpen, setAboutOpen] = useState(false);
+  const aboutReturnFocus = useRestoreFocusTarget();
   const reopening = useRef(false);
   const actionLock = useRef(false);
   const run = async (action: () => Promise<void>) => { if(actionLock.current)return;actionLock.current=true;setBusy(true); setError(""); try { await action(); } catch (e) { setError(e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e)); } finally { actionLock.current=false;setBusy(false); } };
@@ -48,7 +49,7 @@ export function WorkbenchHub() {
   return <>
     {focus && <Button size="small" appearance="subtle" icon={<FullScreenMaximizeRegular />} onClick={toggleFocusMode} title={`退出专注模式 (${focusKey})`}>退出专注</Button>}
     {entries.length > 0 && <Button size="small" appearance="subtle" icon={<ArrowUndoRegular />} aria-label={"撤销" + entries.slice(-1)[0]!.label} title={"撤销" + entries.slice(-1)[0]!.label + ` (${undoKey})`} disabled={undoBusy} onClick={undo} />}
-    <Menu><MenuTrigger disableButtonEnhancement><Button size="small" appearance="subtle" icon={<AppFolderRegular />} title="工作区布局、页签恢复与关于" aria-label="工作区菜单" /></MenuTrigger><MenuPopover><MenuList>
+    <Menu><MenuTrigger disableButtonEnhancement><Button {...aboutReturnFocus} size="small" appearance="subtle" icon={<AppFolderRegular />} title="工作区布局、页签恢复与关于" aria-label="工作区菜单" /></MenuTrigger><MenuPopover><MenuList>
       <MenuItem icon={<DataBarVerticalRegular />} onClick={() => emit("dw:analysis")}>数据分析与图表…</MenuItem>
       <MenuItem icon={<AddRegular />} onClick={() => emit("dw:generation")}>数据生成…</MenuItem>
       <MenuItem icon={<AppFolderRegular />} onClick={() => emit("dw:layouts")}>工作区布局…</MenuItem>

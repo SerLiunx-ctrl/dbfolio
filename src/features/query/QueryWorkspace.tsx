@@ -56,6 +56,7 @@ import {
   HistoryRegular,
   FolderOpenRegular,
   PlayRegular,
+  SaveRegular,
   TextAlignLeftRegular,
   StopRegular,
 } from "@fluentui/react-icons";
@@ -518,10 +519,10 @@ export function QueryWorkspace({ tab, active }: Props) {
           ))}
         </Dropdown>
         <Menu><MenuTrigger disableButtonEnhancement><Button size="small" icon={<FolderOpenRegular/>}>文件</Button></MenuTrigger><MenuPopover><MenuList>
-          <MenuItem disabled={fileBusy} onClick={()=>void openFile()}>打开 SQL</MenuItem>
-          <MenuItem disabled={fileBusy} onClick={()=>saveFileRef.current()}>保存文件</MenuItem>
-          <MenuItem disabled={fileBusy} onClick={()=>void saveFile(true).catch(e=>notify.error(e,"另存为失败"))}>另存为</MenuItem>
-          <MenuItem disabled={fileBusy} onClick={()=>void saveLocal().catch(e=>notify.error(e))}>保存草稿</MenuItem>
+          <MenuItem icon={<FolderOpenRegular />} disabled={fileBusy} onClick={()=>void openFile()}>打开 SQL</MenuItem>
+          <MenuItem icon={<SaveRegular />} disabled={fileBusy} onClick={()=>saveFileRef.current()}>保存文件</MenuItem>
+          <MenuItem icon={<CopyRegular />} disabled={fileBusy} onClick={()=>void saveFile(true).catch(e=>notify.error(e,"另存为失败"))}>另存为</MenuItem>
+          <MenuItem icon={<SaveRegular />} disabled={fileBusy} onClick={()=>void saveLocal().catch(e=>notify.error(e))}>保存草稿</MenuItem>
         </MenuList></MenuPopover></Menu>
         <Menu><MenuTrigger disableButtonEnhancement><Button size="small">草稿库</Button></MenuTrigger><MenuPopover><MenuList>
         {Object.entries(savedDrafts).filter(([,d])=>d.sessionId===tab.sessionId).map(([id,d])=><MenuItem disabled={fileBusy} icon={<HistoryRegular />} key={id} onClick={async()=>{if(await confirmEdits(e=>e.tabId===tab.id)){setFilePath("");setFileBaseline("");setDraftName(d.name??"");setSql(d.sql);setSavedSql(d.sql);setDatabase(d.database);}}}>{d.name || d.database} · {d.sql.slice(0,50) || "空草稿"}</MenuItem>)}

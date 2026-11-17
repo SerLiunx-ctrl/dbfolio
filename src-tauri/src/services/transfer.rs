@@ -9,6 +9,8 @@ use crate::services::query::{self, SortSpec};
 use crate::state::AppState;
 
 const BATCH_SIZE: u32 = 5000;
+// Excel 数值单元格仅保证 15 位十进制有效数字。较长的整数以原文保存。
+const EXCEL_MAX_INTEGER: u64 = 999_999_999_999_999;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +31,7 @@ pub struct ExportRequest {
 pub struct ExportResult {
     pub rows: u64,
     pub path: String,
+    pub integer_text_columns: Vec<String>,
 }
 
 fn text_of(value: &DbValue) -> String {
@@ -93,6 +96,7 @@ enum Sink {
     Xlsx {
         headers: Vec<String>,
         rows: Vec<Vec<XlsxCell>>,
+        integer_text_columns: std::collections::BTreeSet<usize>,
     },
 }
 
@@ -122,6 +126,7 @@ impl Sink {
             "xlsx" => Ok(Sink::Xlsx {
                 headers: Vec::new(),
                 rows: Vec::new(),
+                integer_text_columns: Default::default(),
             }),
             other => Err(AppError::InvalidInput(format!("不支持的导出格式: {other}"))),
         }
@@ -169,16 +174,21 @@ impl Sink {
                     writer.write_all(text.as_bytes())?;
                 }
             }
-            Sink::Xlsx { headers, rows: data } => {
+            Sink::Xlsx { headers, rows: data, integer_text_columns } => {
                 if headers.is_empty() {
                     *headers = columns.to_vec();
                 }
                 for row in rows {
                     let cells: Vec<XlsxCell> = row
                         .iter()
-                        .map(|value| match value {
-                            DbValue::Int(v) => XlsxCell::Number(*v as f64),
-                            DbValue::UInt(v) => XlsxCell::Number(*v as f64),
+                        .enumerate()
+                        .map(|(col, value)| match value {
+                            DbValue::Int(v) if v.unsigned_abs() <= EXCEL_MAX_INTEGER => XlsxCell::Number(*v as f64),
+                            DbValue::UInt(v) if *v <= EXCEL_MAX_INTEGER => XlsxCell::Number(*v as f64),
+                            DbValue::Int(_) | DbValue::UInt(_) => {
+                                integer_text_columns.insert(col);
+                                XlsxCell::Text(text_of(value))
+                            }
                             DbValue::Float(v) if v.is_finite() => XlsxCell::Number(*v),
                             DbValue::Bool(v) => XlsxCell::Bool(*v),
                             other => XlsxCell::Text(text_of(other)),
@@ -192,18 +202,18 @@ impl Sink {
         Ok(())
     }
 
-    fn finish(self, path: &str) -> AppResult<()> {
+    fn finish(self, path: &str) -> AppResult<Vec<String>> {
         match self {
             Sink::Csv { mut writer, .. } => {
                 writer.flush()?;
-                Ok(())
+                Ok(Vec::new())
             }
             Sink::Json { mut writer, .. } => {
                 writer.write_all(b"\n]\n")?;
                 writer.flush()?;
-                Ok(())
+                Ok(Vec::new())
             }
-            Sink::Xlsx { headers, rows } => {
+            Sink::Xlsx { headers, rows, integer_text_columns } => {
                 let mut workbook = rust_xlsxwriter::Workbook::new();
                 let sheet = workbook.add_worksheet();
                 for (col, name) in headers.iter().enumerate() {
@@ -235,7 +245,9 @@ impl Sink {
                     }
                 }
                 workbook.save(path).map_err(xlsx_err)?;
-                Ok(())
+                Ok(integer_text_columns.into_iter().map(|index| {
+                    headers.get(index).cloned().unwrap_or_else(|| format!("col_{}", index + 1))
+                }).collect())
             }
         }
     }
@@ -252,6 +264,40 @@ fn xlsx_err(error: rust_xlsxwriter::XlsxError) -> AppError {
 #[cfg(test)]
 mod export_file_tests {
     use super::*;
+
+    #[test]
+    fn xlsx_writes_long_integer_ids_as_exact_text_and_keeps_small_integers_numeric() {
+        use std::io::Read;
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("precision.xlsx");
+        let path = output.to_str().unwrap();
+        let mut sink = Sink::new("xlsx", path, true).unwrap();
+        let numbers = [
+            DbValue::Int(9007199254740993), DbValue::Int(i64::MAX),
+            DbValue::Int(i64::MIN), DbValue::UInt(u64::MAX),
+            DbValue::Int(999_999_999_999_999), DbValue::UInt(1_000_000_000_000_001),
+            DbValue::Int(-999_999_999_999_999), DbValue::UInt(42),
+        ];
+        let rows: Vec<_> = numbers.into_iter().map(|n| vec![n, DbValue::Text("中文".into()), DbValue::Null]).collect();
+        sink.write_batch(&["id".into(), "name".into(), "empty".into()], &rows, path).unwrap();
+        assert_eq!(sink.finish(path).unwrap(), ["id"]);
+        let mut workbook = zip::ZipArchive::new(File::open(output).unwrap()).unwrap();
+        let mut sheet = String::new();
+        workbook.by_name("xl/worksheets/sheet1.xml").unwrap().read_to_string(&mut sheet).unwrap();
+        let mut shared = String::new();
+        workbook.by_name("xl/sharedStrings.xml").unwrap().read_to_string(&mut shared).unwrap();
+        for (index, value) in [(2,"9007199254740993"), (3,"9223372036854775807"),
+            (4,"-9223372036854775808"), (5,"18446744073709551615"), (7,"1000000000000001")] {
+            assert!(sheet.contains(&format!(r#"<c r="A{index}" t="s">"#)));
+            assert!(shared.contains(&format!("<t>{value}</t>")));
+        }
+        for (index, value) in [(6,"999999999999999"), (8,"-999999999999999"), (9,"42")] {
+            assert!(sheet.contains(&format!(r#"<c r="A{index}"><v>{value}</v>"#)));
+        }
+        assert!(shared.contains("<t>中文</t>"));
+        assert!(!sheet.contains(r#"<c r="C2""#));
+    }
+
     #[test]
     fn interrupted_export_preserves_destination_and_removes_temporary_file() {
         let dir = tempfile::tempdir().unwrap();
@@ -330,7 +376,7 @@ pub async fn export(state: &AppState, req: &ExportRequest) -> AppResult<ExportRe
         offset += take as u64;
     }
 
-    sink.finish(&temporary_path)?;
+    let integer_text_columns = sink.finish(&temporary_path)?;
     crate::tasks::checkpoint()?;
     temporary.persist(destination).map_err(|e| AppError::Internal(format!("保存导出文件失败：{}", e.error)))?;
     crate::tasks::progress(written, Some(written), "导出完成，文件已保存");
@@ -343,6 +389,7 @@ pub async fn export(state: &AppState, req: &ExportRequest) -> AppResult<ExportRe
     Ok(ExportResult {
         rows: written,
         path: req.file_path.clone(),
+        integer_text_columns,
     })
 }
 

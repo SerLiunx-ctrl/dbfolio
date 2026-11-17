@@ -18,6 +18,7 @@ import {
   EraserRegular,
   ZoomInRegular,
   CodeRegular,
+  LinkRegular,
 } from "@fluentui/react-icons";
 import type { ColDef, GridApi, RowClassRules, ValueSetterParams } from "ag-grid-community";
 import { api } from "../../ipc";
@@ -739,8 +740,8 @@ export const EditableDataGrid = forwardRef<EditableDataGridHandle, Props>(
         /></GridWorkbench>
         {cellMenu && (
           <GridContextMenu x={cellMenu.x} y={cellMenu.y} onClose={() => setCellMenu(null)}>
-            <MenuItem disabled={cellMenu.rowIndex<0||cellMenu.colIndex<0} icon={<ZoomInRegular/>} onClick={()=>{inspect(cellMenu.rowIndex,cellMenu.colIndex,true);setCellMenu(null);}}>查看/编辑单元格详情</MenuItem>
-            {onRelated && cellMenu.rowIndex>=0 && <MenuItem onClick={()=>{const row=apiRef.current?.getDisplayedRowAtIndex(cellMenu.rowIndex)?.data;const column=columns[cellMenu.colIndex];setCellMenu(null);if(row&&column)onRelated(column.name,row.cells.map(c=>c.value));}}>查看关联记录…</MenuItem>}
+            <MenuItem disabled={cellMenu.rowIndex<0||cellMenu.colIndex<0} icon={<ZoomInRegular/>} onClick={()=>{inspect(cellMenu.rowIndex,cellMenu.colIndex,true);setCellMenu(null);}}>{readOnly ? "查看单元格详情" : "查看/编辑单元格详情"}</MenuItem>
+            {onRelated && cellMenu.rowIndex>=0 && <MenuItem icon={<LinkRegular />} onClick={()=>{const row=apiRef.current?.getDisplayedRowAtIndex(cellMenu.rowIndex)?.data;const column=columns[cellMenu.colIndex];setCellMenu(null);if(row&&column)onRelated(column.name,row.cells.map(c=>c.value));}}>查看关联记录…</MenuItem>}
             {onFilterValue && cellMenu.rowIndex>=0 && <MenuItem icon={<FilterRegular />} onClick={()=>{const value=apiRef.current?.getDisplayedRowAtIndex(cellMenu.rowIndex)?.data?.cells[cellMenu.colIndex]?.value;const column=columns[cellMenu.colIndex];setCellMenu(null);if(!value||!column)return;if(isReadOnlyValue(value)){notify.error(Error("截断或扩展类型值不能直接用于精确筛选，请使用 SQL"));return;}onFilterValue(column.name,value);}}>按此值筛选（替换条件）</MenuItem>}
             <MenuDivider/>
             <GridMenuSubmenu label="复制" icon={<CopyRegular/>}>

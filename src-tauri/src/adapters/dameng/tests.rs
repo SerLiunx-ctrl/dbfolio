@@ -34,7 +34,11 @@ fn exact_values_and_readonly_types() {
 }
 
 fn params(password: String) -> ConnectionParams {
-    serde_json::from_value(serde_json::json!({"engine":"dameng","host":"127.0.0.1","port":15236,"username":"SYSDBA","password":password,"database":null,"filePath":null,"sslMode":null,"connectTimeoutSecs":10,"redisDb":null,"tls":null,"authSource":null})).unwrap()
+    let port = std::env::var("DBFOLIO_TEST_DM_PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(15236);
+    serde_json::from_value(serde_json::json!({"engine":"dameng","host":"127.0.0.1","port":port,"username":"SYSDBA","password":password,"database":null,"filePath":null,"sslMode":null,"connectTimeoutSecs":10,"redisDb":null,"tls":null,"authSource":null})).unwrap()
 }
 fn col(name: &str, ty: &str) -> DraftColumn {
     DraftColumn {
@@ -97,8 +101,9 @@ async fn local_dm8_roundtrip() -> AppResult<()> {
         let update=|old:DbValue,new:DbValue|RowChange::Update{keys:keys.clone(),changes:vec![CellChange{column:"title".into(),old_value:old,new_value:new}]};
         for change in [update(values[0].1.clone(),DbValue::Null),update(DbValue::Null,DbValue::Text("已修改".into()))]{a.execute_grid_transaction(&schema,&build_change_statements(&a,&schema,None,"items",&[change],&types)?).await?;}
         let conflict=vec![update(DbValue::Text("已修改".into()),DbValue::Text("必须回滚".into())),update(DbValue::Text("过期值".into()),DbValue::Null)];
-        if a.execute_grid_transaction(&schema,&build_change_statements(&a,&schema,None,"items",&conflict,&types)?).await.is_ok()||scalar(&a,&schema,&format!("SELECT \"title\" FROM {target}")).await?!=DbValue::Text("已修改".into()){return Err(AppError::Internal("乐观锁冲突未回滚".into()));}
-        println!("PASS NULL-safe update / conflict rollback");
+        let conflict_error=a.execute_grid_transaction(&schema,&build_change_statements(&a,&schema,None,"items",&conflict,&types)?).await;
+        if !matches!(&conflict_error,Err(AppError::GridRowCount{item:2,rows:0}))||scalar(&a,&schema,&format!("SELECT \"title\" FROM {target}")).await?!=DbValue::Text("已修改".into()){return Err(AppError::Internal(format!("乐观锁冲突位置或回滚错误：{conflict_error:?}")));}
+        println!("PASS NULL-safe update / conflict row index / rollback");
         let change=ColumnFlags{name:"title".into(),new_name:Some("renamed".into()),data_type:Some("varchar(256)".into()),nullable:false,comment:Some("修改后的注释".into()),default_mode:Some("literal".into()),default_value:Some("默认中文".into()),unsigned:None,auto_increment:None,on_update:None};
         a.execute_statements(&schema,&crate::services::dameng_schema::columns(&a,&target,&meta,&[change])?).await?;
         a.execute_statements(&schema,&[format!("ALTER TABLE {target} ADD COLUMN \"added\" INT DEFAULT 7"),format!("CREATE INDEX \"idx_dm58\" ON {target}(\"renamed\" DESC)")]).await?;

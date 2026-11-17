@@ -27,7 +27,7 @@ export const AccentPicker = memo(function AccentPicker({ value, onApply }: Props
       <input type="color" aria-label="自定义强调色" value={draft} disabled={saving}
         onChange={event=>{setDraft(event.target.value);setError("");}} />
       <code style={{fontSize:12}}>{draft}</code>
-      <span aria-hidden="true" style={{padding:"3px 9px",borderRadius:4,border:"1px solid "+draft,color:draft}}>强调色预览</span>
+      <span aria-hidden="true" style={{padding:"3px 9px",borderRadius:4,border:"2px solid "+draft,color:"var(--colorNeutralForeground1)"}}>强调色预览</span>
       <Button appearance="primary" disabled={saving||!dirty} onClick={()=>void apply()}>{saving?"应用中…":"应用配色"}</Button>
       {dirty&&<Button appearance="subtle" disabled={saving} onClick={()=>{setDraft(value);setError("");}}>还原</Button>}
     </div>

@@ -334,7 +334,7 @@ impl DamengAdapter {
         c.begin().await.map_err(err)?;
         let result = async {
             let mut count = 0;
-            for item in items {
+            for (index, item) in items.iter().enumerate() {
                 let params = parameters(&mut c, item).await?;
                 let n = c
                     .execute(&item.sql, &params)
@@ -342,9 +342,10 @@ impl DamengAdapter {
                     .map_err(write_err)?
                     .rows_affected;
                 if exact && n != 1 {
-                    return Err(AppError::InvalidInput(format!(
-                        "数据已变化，本次修改应命中 1 行，实际 {n} 行，已回滚"
-                    )));
+                    return Err(AppError::GridRowCount {
+                        item: index + 1,
+                        rows: n.max(0) as u64,
+                    });
                 }
                 count += n.max(0) as u64;
             }

@@ -6,6 +6,8 @@ pub enum AppError {
     Cancelled(String),
     #[error("{0}")]
     Message(String),
+    #[error("第 {item} 项修改实际匹配 {rows} 行，已回滚。请检查该行是否已被修改或删除")]
+    GridRowCount { item: usize, rows: u64 },
     #[error("{0}")]
     WriteUncertain(String),
     #[error("{0}")]
@@ -32,7 +34,7 @@ impl AppError {
     pub fn code(&self) -> &'static str {
         match self {
             AppError::Cancelled(_) => "E_CANCELLED",
-            AppError::Message(_) => "E_MESSAGE",
+            AppError::Message(_) | AppError::GridRowCount { .. } => "E_MESSAGE",
             AppError::WriteUncertain(_) => "E_WRITE_UNCERTAIN",
             AppError::Connection(_) => "E_CONN",
             AppError::Database(_) => "E_SQL_EXEC",

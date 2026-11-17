@@ -22,7 +22,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 import { useNotify } from "../../app/toast";
 import { api } from "../../ipc";
-import type { ExportFormat, SortSpec } from "../../ipc/types";
+import type { ExportFormat, ExportResult, SortSpec } from "../../ipc/types";
 
 const useStyles = makeStyles({
   form: {
@@ -86,7 +86,7 @@ export function ExportDialog({
   const [scope, setScope] = useState<"page" | "all">("all");
   const [includeHeader, setIncludeHeader] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ rows: number; path: string } | null>(null);
+  const [result, setResult] = useState<ExportResult | null>(null);
 
   const current = FORMATS.find((item) => item.value === format) ?? FORMATS[0];
 
@@ -109,7 +109,7 @@ export function ExportDialog({
         filePath: path,
         includeHeader,
       });
-      setResult({ rows: outcome.rows, path: outcome.path });
+      setResult(outcome);
       notify.success("导出完成", `${outcome.rows} 行 → ${outcome.path}`);
     } catch (error) {
       notify.error(error, "导出失败");
@@ -137,6 +137,9 @@ export function ExportDialog({
               <div className={styles.done}>
                 <div>已导出 {result.rows.toLocaleString()} 行</div>
                 <div>{result.path}</div>
+                {result.integerTextColumns?.length > 0 && (
+                  <div>以下列中超过 15 位的整数已按文本保存，以保留精度：{result.integerTextColumns.join("、")}</div>
+                )}
               </div>
             ) : (
               <div className={styles.form}>

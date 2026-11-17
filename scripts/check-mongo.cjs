@@ -1,6 +1,7 @@
-const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),assert=require('node:assert/strict');
 const data=new Map(),api={settingsGet:async key=>data.get(key)??null,settingsSet:async(key,value)=>{data.set(key,value);}};
-function load(file,mocks={}){const m={exports:{}};new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(name=>mocks[name]??require(name),m,m.exports);return m.exports;}
+const cache=new Map();
+function load(file,mocks={}){file=path.resolve(file);if(cache.has(file))return cache.get(file).exports;const m={exports:{}};cache.set(file,m);new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(name=>mocks[name]??(name.startsWith('.')?load(path.resolve(path.dirname(file),name)+'.ts'):require(name)),m,m.exports);return m.exports;}
 (async()=>{
  const {useTabStore:tabs}=load('src/stores/useTabStore.ts',{'../ipc':{api},'./useEditGuard':{confirmEdits:async()=>true,useEditGuard:{getState:()=>({entries:{}})}}});
  tabs.getState().openMongo('a','db','docs');tabs.getState().openMongo('a','db','docs');assert.equal(tabs.getState().tabs.length,1);

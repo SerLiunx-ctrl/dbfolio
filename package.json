@@ -1,12 +1,12 @@
 {
   "name": "dbfolio",
   "private": true,
-  "version": "1.0.0-alpha.63",
+  "version": "1.0.0-alpha.64",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && node scripts/create-web-manifest.mjs",
+    "build": "tsc && vite build && node scripts/package-offline-manual.mjs && node scripts/create-web-manifest.mjs",
     "preview": "vite preview",
     "app:build": "powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1",
     "app:build:fast": "powershell -ExecutionPolicy Bypass -File scripts/build-app-fast.ps1",

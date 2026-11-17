@@ -75,7 +75,19 @@ pub async fn commit(state: &AppState, req: &GridRequest) -> AppResult<u64> {
     let affected = connected
         .adapter
         .execute_grid_transaction(&req.database, &items)
-        .await?;
+        .await
+        .map_err(|error| {
+            if let AppError::GridRowCount { item, .. } = &error {
+                let change = req.changes.iter().filter(|change| !change.is_empty_edit()).nth(item - 1);
+                if let Some(RowChange::Update { keys, .. } | RowChange::Delete { keys }) = change {
+                    let keys = keys.iter().map(|key| format!("{}={}", key.column,
+                        crate::adapters::render_literal(connected.adapter.engine(), &key.value)))
+                        .collect::<Vec<_>>().join(", ");
+                    return AppError::Message(format!("{error}（{keys}）"));
+                }
+            }
+            error
+        })?;
     tracing::info!(
         table = %req.table,
         statements = items.len(),

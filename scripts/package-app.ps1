@@ -100,6 +100,7 @@ try {
 DBFolio $version ($Profile) - Windows x64 便携版
 
 请完整解压本目录，再运行 DBFolio.exe。web 目录必须和 EXE 放在一起。
+离线设计文档入口为 web/manual/docs/design.md，附件可通过文档内的相对链接打开。
 需要 Microsoft Edge WebView2 Runtime；便携包不附带该运行时。
 便携版免安装，但会话、首选项和历史仍位于 %APPDATA%\data-workbench；
 密码仍由 Windows 凭据管理器保存，不能通过复制程序目录迁移。

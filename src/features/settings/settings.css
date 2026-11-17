@@ -8,6 +8,7 @@
 .dw-settings-heading > span { color: var(--colorNeutralForeground3); font-size: 11px; }
 .dw-settings-content > section, .dw-settings-content > .dw-settings-section, .dw-settings-content > .fui-Field { padding-bottom: 12px; border-bottom: 1px solid var(--colorNeutralStroke2); }
 .dw-settings-content .fui-RadioGroup { flex-wrap: wrap; }
+.dw-settings-content .fui-Field > .fui-Dropdown { min-width: 0; width: 100%; max-width: 100%; }
 .dw-about-content { display: flex; flex-direction: column; gap: 12px; max-width: 660px; font-size: 12px; line-height: 1.6; }
 .dw-about-product { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
 .dw-about-product strong { font-size: 22px; line-height: 28px; }

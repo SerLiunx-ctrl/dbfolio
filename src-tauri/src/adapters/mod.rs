@@ -107,6 +107,16 @@ pub enum RowChange {
     Delete { keys: Vec<CellValue> },
 }
 
+impl RowChange {
+    pub fn is_empty_edit(&self) -> bool {
+        match self {
+            Self::Insert { values } => values.is_empty(),
+            Self::Update { keys, changes } => !keys.is_empty() && changes.is_empty(),
+            Self::Delete { .. } => false,
+        }
+    }
+}
+
 #[async_trait]
 pub trait DbAdapter: Send + Sync {
     fn message_queue(&self)->Option<&message_queue::MessageQueueAdapter>{None}
@@ -197,9 +207,9 @@ pub trait DbAdapter: Send + Sync {
     /// 在单个事务中执行一组参数化语句，返回受影响行数总和。
     async fn execute_transaction(&self, database: &str, items: &[SqlParams]) -> AppResult<u64>;
 
-    /// 网格逐行提交：适配器可在事务内校验每条语句都命中一行。
-    async fn execute_grid_transaction(&self, database: &str, items: &[SqlParams]) -> AppResult<u64> {
-        self.execute_transaction(database, items).await
+    /// 网格逐行提交：支持写入的适配器必须在提交前确认每项命中一行。
+    async fn execute_grid_transaction(&self, _database: &str, _items: &[SqlParams]) -> AppResult<u64> {
+        Err(AppError::InvalidInput("当前引擎不支持提交网格修改".into()))
     }
 
     /// 取消正在执行的查询。
@@ -410,12 +420,9 @@ pub fn build_change_statements(
         }
         Ok(())
     };
-    for change in changes {
+    for change in changes.iter().filter(|change| !change.is_empty_edit()) {
         match change {
             RowChange::Insert { values } => {
-                if values.is_empty() {
-                    continue;
-                }
                 for cell in values {
                     reject_truncated(&cell.value)?;
                     reject_vector_write(&cell.column, &cell.value)?;
@@ -442,9 +449,6 @@ pub fn build_change_statements(
             RowChange::Update { keys, changes } => {
                 if keys.is_empty() {
                     return Err(AppError::InvalidInput("更新操作缺少主键".into()));
-                }
-                if changes.is_empty() {
-                    continue;
                 }
                 let mut params: Vec<DbValue> = Vec::new();
                 let mut set_parts = Vec::new();

@@ -341,6 +341,7 @@ export interface FilterCondition {
 export interface ExportResult {
   rows: number;
   path: string;
+  integerTextColumns: string[];
 }
 
 export type ExportFormat = "csv" | "json" | "xlsx";

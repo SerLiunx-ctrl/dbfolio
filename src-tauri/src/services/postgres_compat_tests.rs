@@ -47,6 +47,38 @@ impl Fixture {
     async fn cleanup(self) { self.sql(&format!("DROP SCHEMA {} CASCADE", self.adapter.quote_ident(&self.schema))).await; self.state.disconnect(&self.session).await; }
 }
 
+#[tokio::test]
+#[ignore = "需要 DBFOLIO_TEST_PG_PORT 指向隔离 PostgreSQL"]
+async fn grid_commit_rolls_back_valid_update_when_another_row_is_gone() {
+    use super::grid::{commit, GridRequest};
+    use crate::adapters::{CellChange, CellValue, RowChange};
+    use crate::meta::value::DbValue;
+
+    let f = Fixture::new().await;
+    let table = f.target("grid_conflict");
+    f.sql(&format!("CREATE TABLE {table} (id integer PRIMARY KEY, label text)")).await;
+    f.sql(&format!("INSERT INTO {table} VALUES (1, 'one'), (2, 'two')")).await;
+    let edit = |id, old: &str, new: &str| RowChange::Update {
+        keys: vec![CellValue {column: "id".into(), value: DbValue::Int(id)}],
+        changes: vec![CellChange {
+            column: "label".into(), old_value: DbValue::Text(old.into()), new_value: DbValue::Text(new.into())
+        }],
+    };
+    let request = GridRequest {
+        session_id: f.session.clone(), database: "postgres".into(), schema: Some(f.schema.clone()),
+        table: "grid_conflict".into(), changes: vec![edit(1,"one","one-ui"), edit(2,"two","two-ui")],
+    };
+    f.sql(&format!("DELETE FROM {table} WHERE id=2")).await;
+    let conflict = commit(&f.state, &request).await.unwrap_err();
+    let retained = f.adapter.fetch_full_value("postgres", &format!("SELECT label FROM {table} WHERE id=1")).await.unwrap();
+    f.sql(&format!("INSERT INTO {table} VALUES (2, 'two')")).await;
+    let retry = commit(&f.state, &request).await;
+    f.cleanup().await;
+    assert!(conflict.to_string().contains("id=2"));
+    assert_eq!(retained, Some(DbValue::Text("one".into())));
+    assert_eq!(retry.unwrap(), 2);
+}
+
 #[tokio::test] #[ignore="需要显式指定 DBFOLIO_TEST_PG_PORT 的隔离 PostgreSQL"]
 async fn pg_compat_create_and_case_sensitive_columns() {
     let f=Fixture::new().await;

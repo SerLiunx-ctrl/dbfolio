@@ -165,7 +165,7 @@ export function SessionDialog({
       setName(session.name + (copy ? "-副本" : ""));
       setEngine(session.engine);
       setHost(session.host ?? "127.0.0.1");
-      setPort(session.port ? String(session.port) : "");
+      setPort(session.port != null ? String(session.port) : "");
       setUsername(session.username ?? "");
       setDatabase(session.database ?? "");
       setFilePath(session.filePath ?? "");
@@ -303,7 +303,11 @@ export function SessionDialog({
   const isMq = isMessageQueue(engine);
   const allowedNames=allowedDatabases.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   const scopeError=engine === "mysql" && restrictDatabases ? (!allowedNames.length ? "请至少填写一个允许的数据库" : database.trim() && !allowedNames.includes(database.trim()) ? "默认数据库必须在允许列表中，或清空默认数据库" : "") : "";
-  const canSave = !scopeError &&
+  const portText = port.trim();
+  const portError = !isSqlite && portText !== "" &&
+    (!/^\d+$/.test(portText) || Number(portText) < 1 || Number(portText) > 65535)
+    ? "请输入 1 到 65535 之间的整数，或留空使用默认端口" : "";
+  const canSave = !portError && !scopeError &&
     name.trim().length > 0 && (isSqlite ? filePath.trim().length > 0 : host.trim().length > 0);
 
   return (
@@ -368,8 +372,10 @@ export function SessionDialog({
                     <Field label={engine === "mongodb" ? "主机或连接 URI" : "主机"} required>
                       <Input value={host} onChange={(_, data) => setHost(data.value)} />
                     </Field>
-                    <Field label={engine==="rabbitmq"||engine==="rocketmq"?"管理接口端口":"端口"}>
+                    <Field label={engine==="rabbitmq"||engine==="rocketmq"?"管理接口端口":"端口"}
+                      validationState={portError ? "error" : "none"} validationMessage={portError || undefined}>
                       <Input
+                        inputMode="numeric"
                         value={port}
                         placeholder={String(DEFAULT_PORTS[engine] ?? "")}
                         onChange={(_, data) => setPort(data.value)}

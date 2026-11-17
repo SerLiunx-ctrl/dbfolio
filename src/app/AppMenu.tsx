@@ -1,7 +1,7 @@
 import {useShortcutLabel} from './shortcuts';
 import {useSessionStore} from "../stores/useSessionStore";
-import { Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, MenuDivider, makeStyles, tokens } from "@fluentui/react-components";
-import { AddRegular, ArrowSyncRegular, SettingsRegular, AppFolderRegular, FullScreenMaximizeRegular, InfoRegular, ArrowResetRegular, PanelLeftRegular, ArrowExportRegular } from "@fluentui/react-icons";
+import { Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, MenuDivider, makeStyles, tokens, useRestoreFocusTarget } from "@fluentui/react-components";
+import { AddRegular, ArrowSyncRegular, SettingsRegular, AppFolderRegular, FullScreenMaximizeRegular, InfoRegular, ArrowResetRegular, PanelLeftRegular, ArrowExportRegular, ArrowDownloadRegular, DatabaseRegular } from "@fluentui/react-icons";
 import { toggleFocusMode, useFocusMode } from "../stores/useFocusMode";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { useTabStore } from "../stores/useTabStore";
@@ -15,6 +15,7 @@ const useStyles = makeStyles({
 export function AppMenu({ onNewSession, onSync, onSettings }: { onNewSession: () => void; onSync: () => void; onSettings: () => void }) {
   const settingsKey=useShortcutLabel('settings'),sidebarKey=useShortcutLabel('sidebar'),focusKey=useShortcutLabel('focus'),reopenKey=useShortcutLabel('reopen');
   const styles = useStyles();
+  const aboutReturnFocus = useRestoreFocusTarget();
   const focus = useFocusMode(s => s.active);
   const collapsed = useSettingsStore(s => s.sidebarCollapsed);
   const hasClosedTabs = useTabStore(s => s.recentlyClosed.length > 0);
@@ -26,8 +27,8 @@ export function AppMenu({ onNewSession, onSync, onSettings }: { onNewSession: ()
     <Menu><MenuTrigger disableButtonEnhancement><Button appearance="subtle" className={styles.trigger}>文件</Button></MenuTrigger>
       <MenuPopover><MenuList>
         <MenuItem icon={<AddRegular />} onClick={onNewSession}>新建连接…</MenuItem>
-        <MenuItem disabled={!canImport} onClick={()=>openSqlTool('import')}>导入 SQL 文件…</MenuItem>
-        <MenuItem disabled={!canManageObjects} onClick={()=>openSqlTool('objects')}>MySQL 数据库对象…</MenuItem>
+        <MenuItem icon={<ArrowDownloadRegular />} disabled={!canImport} onClick={()=>openSqlTool('import')}>导入 SQL 文件…</MenuItem>
+        <MenuItem icon={<DatabaseRegular />} disabled={!canManageObjects} onClick={()=>openSqlTool('objects')}>MySQL 数据库对象…</MenuItem>
         <MenuItem icon={<ArrowExportRegular />} onClick={() => {
           const state=useSessionStore.getState();const tabs=useTabStore.getState();const active=tabs.tabs.find(t=>t.id===tabs.activeId);const session=state.sessions.find(s=>s.id===state.activeSessionId);
           tabs.openSqlExport(session?.engine==='mysql'?{sessionId:session.id,database:active?.sessionId===session.id?active.database:session.database??'',tables:active?.kind==='table'?[active.table]:[]}:{});
@@ -51,7 +52,7 @@ export function AppMenu({ onNewSession, onSync, onSettings }: { onNewSession: ()
         <MenuItem icon={<ArrowSyncRegular />} onClick={onSync}>数据同步…</MenuItem>
       </MenuList></MenuPopover>
     </Menu>
-    <Menu><MenuTrigger disableButtonEnhancement><Button appearance="subtle" className={styles.trigger}>帮助</Button></MenuTrigger>
+    <Menu><MenuTrigger disableButtonEnhancement><Button {...aboutReturnFocus} appearance="subtle" className={styles.trigger}>帮助</Button></MenuTrigger>
       <MenuPopover><MenuList>
         <MenuItem icon={<InfoRegular />} onClick={() => emit("dw:about")}>关于 DBFolio</MenuItem>
         <MenuItem icon={<ArrowSyncRegular />} onClick={() => emit("dw:updates")}>检查更新…</MenuItem>

@@ -58,7 +58,7 @@ adapter = adapter.slice(adapter.indexOf('use async_trait'), adapter.indexOf('pub
   + adapter.slice(adapter.indexOf('pub fn connect_timeout'), adapter.indexOf('#[cfg(test)]'));
 assert(adapter.includes('async fn mysql_connection'), '适配器抽取边界已变化');
 adapter = adapter.replace(/    async fn mysql_connection[\s\S]*?\n    }\n/, '');
-write('adapters.rs', `pub mod message_queue {pub struct MessageQueueAdapter;}\n#[path=${JSON.stringify(production('adapters/dameng.rs'))}] pub mod dameng;\n` + adapter);
+write('adapters.rs', `pub mod message_queue {pub struct MessageQueueAdapter;}\n#[path=${JSON.stringify(production('adapters/mysql_value.rs'))}] mod mysql_value;\n#[path=${JSON.stringify(production('adapters/dameng.rs'))}] pub mod dameng;\n` + adapter);
 const error = read('src-tauri/src/error.rs');
 write('error.rs', error.split('impl From<sqlx::Error>')[0]
   + error.slice(error.indexOf('impl From<std::io::Error>'), error.indexOf('impl From<keyring::Error>')));

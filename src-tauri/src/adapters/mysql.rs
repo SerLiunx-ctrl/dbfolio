@@ -133,7 +133,7 @@ impl MySqlAdapter {
             // 驱动默认启用 CLIENT_FOUND_ROWS：等值更新也计为匹配一行。
             if require_one && rows != 1 {
                 tx.rollback().await?;
-                return Err(AppError::Message(format!("第 {} 项修改实际匹配 {} 行，已回滚；请刷新数据后检查主键或并发修改", index + 1, rows)));
+                return Err(AppError::GridRowCount { item: index + 1, rows });
             }
             affected += rows;
         }

@@ -1705,7 +1705,7 @@ pub async fn compare_data(
         plans.push((table.clone(), source_plan, target_plan));
     }
     let mut no_collector: Option<&mut DataCollector<'_>> = None;
-    scan_data_diff(
+    let compared = scan_data_diff(
         &pair,
         &request.source,
         &request.target,
@@ -1713,7 +1713,28 @@ pub async fn compare_data(
         &request.options,
         &mut no_collector,
     )
-    .await
+    .await.and_then(|differences| {
+        crate::tasks::checkpoint()?;
+        Ok(differences)
+    });
+    let differences = match compared {
+        Ok(differences) => differences,
+        Err(error) => {
+            let message = if matches!(error, AppError::Cancelled(_)) { "对比已取消" } else { "对比未完成" };
+            crate::tasks::progress(0, None, message);
+            return Err(error);
+        }
+    };
+    let source_rows: u64 = differences.iter().map(|table| table.source_rows).sum();
+    let target_rows: u64 = differences.iter().map(|table| table.target_rows).sum();
+    let skipped = differences.iter().filter(|table| table.skipped).count();
+    let processed = source_rows + target_rows;
+    let mut summary = format!("对比完成：源 {source_rows} 行 / 目标 {target_rows} 行");
+    if skipped > 0 {
+        summary.push_str(&format!("，跳过 {skipped} 张表"));
+    }
+    crate::tasks::progress(processed, Some(processed), summary);
+    Ok(differences)
 }
 
 pub async fn execute_data(

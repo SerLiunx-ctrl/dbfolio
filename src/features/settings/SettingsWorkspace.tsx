@@ -44,7 +44,9 @@ const useStyles = makeStyles({
     display: "flex",
   },
   nav: {
-    width: "164px",
+    width: "min(164px, 32%)",
+    minWidth: 0,
+    boxSizing: "border-box",
     flexShrink: 0,
     borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
     padding: "10px 8px",
@@ -186,7 +188,7 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
   const rightSidebarWidth = useSettingsStore(s=>s.rightSidebarWidth);
   const setRightSidebarWidth = useSettingsStore(s=>s.setRightSidebarWidth);
   const sidebarWidth = useSettingsStore((s) => s.sidebarWidth);
-  const sidebarSplit = useSettingsStore((s) => s.sidebarSplit);
+  const sidebarSplitPercent = useSettingsStore((s) => Math.round(s.sidebarSplit * 1000) / 10);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const setAccent = useSettingsStore((s) => s.setAccent);
   const setMaxTabs = useSettingsStore((s) => s.setMaxTabs);
@@ -419,18 +421,18 @@ export function SettingsWorkspace({initialCategory="appearance"}:{initialCategor
                 <Slider
                   min={200}
                   max={460}
-                  step={10}
+                  step={1}
                   value={sidebarWidth}
                   onChange={(_, data) => setSidebarWidth(data.value, true)}
                 />
               </Field>
-              <Field label={`右侧面板宽度（${rightSidebarWidth}px）`}><Slider min={200} max={460} step={10} value={rightSidebarWidth} onChange={(_, data)=>setRightSidebarWidth(data.value,true)} /></Field>
-              <Field label={`同侧上下比例（上方面板 ${Math.round(sidebarSplit * 100)}%）`}>
+              <Field label={`右侧面板宽度（${rightSidebarWidth}px）`}><Slider min={200} max={460} step={1} value={rightSidebarWidth} onChange={(_, data)=>setRightSidebarWidth(data.value,true)} /></Field>
+              <Field label={`同侧上下比例（上方面板 ${sidebarSplitPercent}%）`}>
                 <Slider
                   min={20}
                   max={80}
-                  step={5}
-                  value={Math.round(sidebarSplit * 100)}
+                  step={0.1}
+                  value={sidebarSplitPercent}
                   onChange={(_, data) => setSidebarSplit(data.value / 100, true)}
                 />
               </Field>

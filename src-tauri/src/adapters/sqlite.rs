@@ -549,10 +549,8 @@ impl DbAdapter for SqliteAdapter {
             }
             let affected = query.execute(&mut *tx).await?.rows_affected();
             if affected != 1 {
-                return Err(AppError::Message(format!(
-                    "第 {} 项修改实际影响 {} 行，已回滚；请刷新数据后检查主键或并发修改",
-                    index + 1, affected
-                )));
+                tx.rollback().await?;
+                return Err(AppError::GridRowCount { item: index + 1, rows: affected });
             }
         }
         tx.commit().await?;

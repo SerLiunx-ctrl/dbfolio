@@ -421,6 +421,7 @@ async fn attempt(
     id: Option<&str>,
     input: &SessionInput,
 ) -> AppResult<(TestResult, Option<ConnectedSession>)> {
+    input.validate_port()?;
     super::database_access::validate(
         input.engine,
         input.allowed_databases.as_deref(),

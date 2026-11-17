@@ -555,6 +555,7 @@ mod history_search_tests {
 }
 
 pub(super) fn validate_input(input: &SessionInput) -> AppResult<()> {
+    input.validate_port()?;
     input.network.validate(input.engine,input.host.as_deref())?;
     crate::services::database_access::validate(input.engine, input.allowed_databases.as_deref(), input.database.as_deref())?;
     if input.name.trim().is_empty() {
@@ -574,6 +575,15 @@ pub(super) fn validate_input(input: &SessionInput) -> AppResult<()> {
         }
     }
     Ok(())
+}
+
+impl SessionInput {
+    pub(crate) fn validate_port(&self) -> AppResult<()> {
+        if self.engine != Engine::Sqlite && self.port == Some(0) {
+            return Err(AppError::InvalidInput("端口必须是 1 到 65535 之间的整数，或留空使用默认端口".into()));
+        }
+        Ok(())
+    }
 }
 
 // 一次性升级默认值，后续保留用户明确关闭只读的选择。

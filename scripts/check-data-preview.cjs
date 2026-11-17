@@ -3,8 +3,8 @@ const {chromium}=require('C:/Users/zhangwq/.cache/codex-runtimes/codex-primary-r
 const edit=async(row,value)=>{const c=p.locator('[role="gridcell"][col-id="c1"]').nth(row);await c.dblclick();await p.locator('.ag-cell-inline-editing input').fill(value);await p.locator('.ag-cell-inline-editing input').press('Enter');};
 await p.getByText('before1',{exact:true}).waitFor();await edit(0,'after1');await edit(1,'after2');await p.getByRole('button',{name:'预览',exact:true}).click();await p.getByText('before1',{exact:true}).waitFor();await p.getByRole('checkbox',{name:/2\. 修改/}).uncheck();await p.getByRole('button',{name:'SQL 预览',exact:true}).click();await p.getByText('update SQL',{exact:true}).waitFor();assert(await p.getByRole('button',{name:'提交所选 1 行'}).isDisabled());await p.getByRole('textbox',{name:'生产数据库确认'}).fill('d');await p.getByRole('button',{name:'提交所选 1 行'}).click();await p.getByRole('dialog').waitFor({state:'hidden'});let remaining=await p.evaluate(()=>window.grid.current.getChanges());assert.equal(remaining.length,1);assert.equal(remaining[0].keys[0].value[1],2);await p.screenshot({path:'.qa/partial-submit.png'});await p.getByText('废弃',{exact:true}).click();await p.waitForTimeout(100);assert.equal((await p.evaluate(()=>window.grid.current.getChanges())).length,0);assert(await p.getByText('after1',{exact:true}).isVisible());assert(await p.getByText('before2',{exact:true}).isVisible());
 await edit(1,'second-change');
-await p.locator('input[aria-label="Column with Header Selection"]').check();
-await p.locator('input[aria-label="Column with Header Selection"]').uncheck();
+await p.getByRole('checkbox',{name:'选择全部行',exact:true}).check();
+await p.getByRole('checkbox',{name:'选择全部行',exact:true}).uncheck();
 await p.locator('[role="gridcell"][col-id="c0"]').filter({hasText:/^3$/}).locator('..').locator('input[type=checkbox]').check();
 await p.getByText('删除',{exact:true}).click();
 await p.getByText('增加',{exact:true}).click();

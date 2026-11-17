@@ -59,17 +59,35 @@ const useStyles = makeStyles({
   root: {
     flex: 1,
     minHeight: 0,
+    minWidth: 0,
     display: "flex",
     flexDirection: "column",
   },
   toolbar: {
     display: "flex",
-    flexWrap:"wrap",
+    flexWrap:"nowrap",
     alignItems: "center",
     gap: "8px",
     padding: "6px 10px",
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     flexShrink: 0,
+  },
+  toolbarPrimary: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    flex: "1 1 auto",
+    minWidth: 0,
+    overflowX: "auto",
+    whiteSpace: "nowrap",
+    "& > *": { flexShrink: 0 },
+  },
+  toolbarActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    flexShrink: 0,
+    whiteSpace: "nowrap",
   },
   grid: {
     flex: 1,
@@ -85,7 +103,6 @@ const useStyles = makeStyles({
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     flexShrink: 0,
   },
-  spacer: { flex: 1 },
   centered: {
     flex: 1,
     display: "flex",
@@ -339,6 +356,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
   return (
     <div className={styles.root}>
       <div className={`${styles.toolbar} dw-data-toolbar`}>
+        <div className={styles.toolbarPrimary}>
         <Button
           size="small"
           icon={<ArrowClockwiseRegular />}
@@ -452,7 +470,6 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
           </Button>
         </Tooltip>
         <div ref={setToolbarHost} className="dw-grid-toolbar-host"/>
-        <div className={styles.spacer} />
         {readOnly && <Tag size="small">只读</Tag>}
         {hasTruncated && (
           <Badge appearance="tint" color="warning" size="small">
@@ -470,6 +487,8 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
             {changes.length} 项待提交
           </Tag>
         )}
+        </div>
+        <div className={styles.toolbarActions}>
         {detail.kind === "table" && <><Button
           size="small"
           icon={<DismissRegular />}
@@ -487,6 +506,7 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         >
           提交
         </Button></>}
+        </div>
       </div>
 
       <div style={{display:"flex",flex:1,minHeight:0,minWidth:0}}>

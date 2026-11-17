@@ -27,7 +27,17 @@ export function RelatedRecords({source,meta,engine,selection,onClose}:{source:Ta
       const where=await api.buildFilterClause(source.sessionId,keys.map((column,i)=>({column,operator:'eq',literal:values[i]})),'and');
       const sql=buildTableSelect(engine,relation.target.database,relation.target.schema,relation.target.table,targetMeta.columns)+where;
       const data=await api.queryFetchPage(source.sessionId,relation.target.database,sql,page*100,100,[]);
-      if(live)setResult(data);
+      if (live) {
+        // 截断长文本的 SELECT 表达式在 SQLite 中可能返回 NULL 类型，即使实际值非空。
+        const declared = new Map(targetMeta.columns.map(column => [column.name, column.rawType]));
+        const columns = data.columns.map(column => {
+          const queryType = column.rawType?.trim();
+          const rawType = declared.get(column.name)?.trim() ||
+            (queryType && queryType.toUpperCase() !== 'NULL' ? queryType : '未知');
+          return { ...column, rawType };
+        });
+        setResult({ ...data, columns });
+      }
     }catch(e){if(live)setError(normalizeError(e).message);}finally{if(live)setBusy(false);}};
     void read();return()=>{live=false;};
   },[relation,selection,source.sessionId,meta,engine,page]);

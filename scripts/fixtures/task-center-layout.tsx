@@ -22,4 +22,4 @@ const tasks:WorkTask[]=[{...base,id:'done',kind:'导出',label:'已结束的导�
 {...base,id:'cancelled',kind:'生成',label:'已取消的任务',status:'cancelled',endedAt:now,error:'用户已取消'},
 {...base,id:'front',kind:'查询',label:'普通前台查询',status:'running'}];
 w.reset=()=>useTaskStore.setState({tasks:structuredClone(tasks)});w.reset();
-createRoot(document.getElementById('root')!).render(<FluentProvider theme={buildTheme(mode!=='light','#d65b16',mode==='oled'?'oled':'classic')} style={{minHeight:'100vh'}}><AppToaster/><TaskCenter/></FluentProvider>);
+createRoot(document.getElementById('root')!).render(<FluentProvider theme={buildTheme(mode!=='light',p.get('accent')??'#d65b16',mode==='oled'?'oled':'classic')} style={{minHeight:'100vh'}}><AppToaster/><TaskCenter/></FluentProvider>);

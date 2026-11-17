@@ -1,6 +1,8 @@
 const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
 const moduleText=fs.readFileSync('src/features/query/sqlText.ts','utf8');const mod={exports:{}};
-new Function('module','exports',ts.transpileModule(moduleText,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(mod,mod.exports);
+const damengText=fs.readFileSync('src/features/query/damengStatement.ts','utf8');const damengMod={exports:{}};
+new Function('module','exports',ts.transpileModule(damengText,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(damengMod,damengMod.exports);
+new Function('require','module','exports',ts.transpileModule(moduleText,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(name=>{assert.equal(name,'./damengStatement');return damengMod.exports;},mod,mod.exports);
 const {currentStatement,namedParameters,fillParameters,formatSql,tableReferences,sqlTokens}=mod.exports;
 assert.equal(currentStatement('SELECT 1;\n',10),'SELECT 1');
 assert.equal(currentStatement('SELECT 1;SELECT 2;',9),'SELECT 2');

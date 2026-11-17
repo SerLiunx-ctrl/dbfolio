@@ -205,7 +205,6 @@ pre,
   border: 1px solid var(--dw-line);
   border-radius: 8px;
   background: var(--dw-tint);
-  flex-wrap: wrap;
 }
 [data-style="aurora"] .dw-data-surface {
   margin: 0 10px;
@@ -229,7 +228,6 @@ pre,
 [data-style="studio"] .dw-data-toolbar {
   border-top: 1px solid var(--dw-line);
   background: var(--dw-tint);
-  flex-wrap: wrap;
 }
 [data-style="studio"] .dw-data-surface .ag-cell {
   font-family: "Cascadia Mono", Consolas, monospace;

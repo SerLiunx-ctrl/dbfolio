@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, PgRow, PgSslMode, PgValueFormat};
 use sqlx::types::BigDecimal;
-use sqlx::{Column, ConnectOptions, Connection, Executor, Postgres, Row, ValueRef};
+use sqlx::{Column, ConnectOptions, Executor, Postgres, Row, ValueRef};
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::Mutex;
@@ -70,6 +70,26 @@ impl PostgresAdapter {
         let pool = connect_pool(&self.params, database).await?;
         pools.insert(database.to_string(), pool.clone());
         Ok(pool)
+    }
+
+    async fn transaction(&self, database: &str, items: &[SqlParams], require_one: bool) -> AppResult<u64> {
+        let pool = self.pool_for(database).await?;
+        let mut tx = pool.begin().await?;
+        let mut affected = 0;
+        for (index, item) in items.iter().enumerate() {
+            let mut query = sqlx::query(&item.sql);
+            for value in &item.params {
+                query = bind_value(query, value);
+            }
+            let rows = query.execute(&mut *tx).await?.rows_affected();
+            if require_one && rows != 1 {
+                tx.rollback().await?;
+                return Err(AppError::GridRowCount { item: index + 1, rows });
+            }
+            affected += rows;
+        }
+        tx.commit().await?;
+        Ok(affected)
     }
 }
 
@@ -917,19 +937,11 @@ impl DbAdapter for PostgresAdapter {
     }
 
     async fn execute_transaction(&self, database: &str, items: &[SqlParams]) -> AppResult<u64> {
-        let pool = self.pool_for(database).await?;
-        let mut conn = pool.acquire().await?;
-        let mut tx = conn.begin().await?;
-        let mut affected = 0u64;
-        for item in items {
-            let mut query = sqlx::query(&item.sql);
-            for value in &item.params {
-                query = bind_value(query, value);
-            }
-            affected += query.execute(&mut *tx).await?.rows_affected();
-        }
-        tx.commit().await?;
-        Ok(affected)
+        self.transaction(database, items, false).await
+    }
+
+    async fn execute_grid_transaction(&self, database: &str, items: &[SqlParams]) -> AppResult<u64> {
+        self.transaction(database, items, true).await
     }
 
     async fn cancel(&self, conn_id: u64) -> AppResult<()> {

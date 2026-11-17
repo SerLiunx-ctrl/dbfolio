@@ -80,6 +80,7 @@ export function ProductivityHub(){
       {!text.trim()&&<InfoHint label="搜索范围说明">输入关键词后加载数据库对象；页签、收藏与文件立即可用。输入 &gt; 切换到应用命令。</InfoHint>}
       {loading&&<Spinner size="tiny" label="加载表和视图；本地页签、收藏与文件可先打开"/>}{error&&<p role="alert">{error}</p>}
       <div id="dw-quick-results" role="listbox" aria-label="快速打开结果" style={{maxHeight:"50vh",overflowY:"auto",marginTop:10}}>{items.map((item,i)=><Button id={"dw-quick-option-"+i} role="option" aria-selected={i===selected} key={item.id} appearance={i===selected?"secondary":"subtle"} style={{display:"flex",width:"100%",justifyContent:"start",textAlign:"left",marginBottom:4}} disabled={opening} onClick={()=>void choose(item)}><span style={{minWidth:0,overflowWrap:"anywhere"}}><strong>{item.label}</strong><small style={{display:"block"}}>{item.detail}</small></span></Button>)}</div>
+      <div role="status">{!loading && !error && !items.length && "没有匹配的项目，请更换或清空关键词。"}</div>
       <InfoHint label="快捷打开说明">↑↓ 选择，Enter 打开，Esc 关闭。显示前 100 项；对象索引缓存 60 秒，可手动刷新。SQL 文件覆盖曾打开/保存的文件；打开不会执行 SQL。</InfoHint>
     </DialogContent><DialogActions><Button disabled={opening} onClick={()=>setQuick(false)}>关闭</Button></DialogActions></DialogBody></DialogSurface></Dialog>
   </>;

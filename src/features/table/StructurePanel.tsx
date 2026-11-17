@@ -34,6 +34,7 @@ import {
   CopyRegular,
   DeleteRegular,
   EditRegular,
+  InfoRegular,
   LinkRegular,
 } from "@fluentui/react-icons";
 import { useState } from "react";
@@ -311,7 +312,7 @@ function TableColumnsPanel({
           />
           <ContextMenuSurface className={`${styles.menu} dw-context-menu`} x={rowMenu.x} y={rowMenu.y}>
             <MenuList>
-              <MenuItem onClick={()=>{void navigator.clipboard.writeText(rowMenu.column.name).catch(error=>notify.error(error,'复制失败'));setRowMenu(null);}}>复制字段名</MenuItem>
+              <MenuItem icon={<CopyRegular />} onClick={()=>{void navigator.clipboard.writeText(rowMenu.column.name).catch(error=>notify.error(error,'复制失败'));setRowMenu(null);}}>复制字段名</MenuItem>
               {canEdit && (
                 <>
                   {caps.insertPosition ? <>
@@ -384,12 +385,12 @@ function TableColumnsPanel({
                     移除
                   </MenuItem>
                   <MenuDivider />
-                  <MenuItem disabled={dirtyFlags||flagsBusy||!!draft} onClick={()=>{setColumnIndex({selectedColumns:[rowMenu.column.name]});setRowMenu(null);}}>创建索引</MenuItem>
+                  <MenuItem icon={<AddRegular />} disabled={dirtyFlags||flagsBusy||!!draft} onClick={()=>{setColumnIndex({selectedColumns:[rowMenu.column.name]});setRowMenu(null);}}>创建索引</MenuItem>
                   <Menu>
-                    <MenuTrigger disableButtonEnhancement><MenuItem disabled={dirtyFlags||flagsBusy||!!draft}>加入索引</MenuItem></MenuTrigger>
+                    <MenuTrigger disableButtonEnhancement><MenuItem icon={<LinkRegular />} disabled={dirtyFlags||flagsBusy||!!draft}>加入索引</MenuItem></MenuTrigger>
                     <MenuPopover><MenuList>
-                      {(detail.indexes??[]).filter(i=>!i.primary&&!i.editUnsupportedReason&&!i.comment&&(!i.method||i.method.toUpperCase()==='BTREE')&&i.columns.every(c=>!c.prefixLen&&detail.columns.some(v=>v.name===c.name))&&!i.columns.some(c=>c.name===rowMenu.column.name)).map(i=><MenuItem key={i.name} onClick={()=>{setColumnIndex({initial:i,selectedColumns:[...i.columns.map(c=>c.name),rowMenu.column.name]});setRowMenu(null);}}>{i.name}</MenuItem>)}
-                      <MenuItem disabled>仅支持未包含此列的普通或唯一 B-tree 索引</MenuItem>
+                      {(detail.indexes??[]).filter(i=>!i.primary&&!i.editUnsupportedReason&&!i.comment&&(!i.method||i.method.toUpperCase()==='BTREE')&&i.columns.every(c=>!c.prefixLen&&detail.columns.some(v=>v.name===c.name))&&!i.columns.some(c=>c.name===rowMenu.column.name)).map(i=><MenuItem icon={<LinkRegular />} key={i.name} onClick={()=>{setColumnIndex({initial:i,selectedColumns:[...i.columns.map(c=>c.name),rowMenu.column.name]});setRowMenu(null);}}>{i.name}</MenuItem>)}
+                      <MenuItem icon={<InfoRegular />} disabled>仅支持未包含此列的普通或唯一 B-tree 索引</MenuItem>
                     </MenuList></MenuPopover>
                   </Menu>
                 </>
@@ -557,8 +558,8 @@ export function IndexesPanel({
         <div className={styles.menuOverlay} onClick={() => setIndexMenu(null)} onContextMenu={event => { event.preventDefault(); setIndexMenu(null); }} />
         <ContextMenuSurface className={`${styles.menu} dw-context-menu`} x={indexMenu.x} y={indexMenu.y}>
           <MenuList>
-            <MenuItem onClick={() => { void navigator.clipboard.writeText(indexMenu.index.name).catch(error => notify.error(error, "复制失败")); setIndexMenu(null); }}>复制索引名称</MenuItem>
-            <MenuItem onClick={() => { void navigator.clipboard.writeText(indexMenu.index.columns.map(c => c.name).join(", ")).catch(error => notify.error(error, "复制失败")); setIndexMenu(null); }}>复制列名</MenuItem>
+            <MenuItem icon={<CopyRegular />} onClick={() => { void navigator.clipboard.writeText(indexMenu.index.name).catch(error => notify.error(error, "复制失败")); setIndexMenu(null); }}>复制索引名称</MenuItem>
+            <MenuItem icon={<CopyRegular />} onClick={() => { void navigator.clipboard.writeText(indexMenu.index.columns.map(c => c.name).join(", ")).catch(error => notify.error(error, "复制失败")); setIndexMenu(null); }}>复制列名</MenuItem>
             <MenuDivider />
             <MenuItem icon={<EditRegular />} disabled={!canEdit || indexMenu.index.primary || Boolean(indexMenu.index.editUnsupportedReason)} title={indexMenu.index.editUnsupportedReason ?? undefined} onClick={() => { setIndexDialog({initial: indexMenu.index}); setIndexMenu(null); }}>编辑索引</MenuItem>
             <MenuItem icon={<DeleteRegular />} disabled={!canEdit || indexMenu.index.primary} onClick={() => { setDropIndex(indexMenu.index); setIndexMenu(null); }}>删除索引</MenuItem>

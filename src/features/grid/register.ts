@@ -16,6 +16,11 @@ provideGlobalGridOptions({
   localeText: {
     noRowsToShow: "暂无数据",
     loadingOoo: "正在加载…",
+    ariaHeaderSelection: "选择全部行",
+    ariaChecked: "已选中",
+    ariaUnchecked: "未选中",
+    ariaIndeterminate: "部分选中",
+    ariaToggleCellValue: "按空格键切换单元格值",
     ariaRowSelect: "按空格键选中行",
     ariaRowDeselect: "按空格键取消选中行",
     ariaRowSelectAll: "按空格键切换全选",

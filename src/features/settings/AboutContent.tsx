@@ -26,7 +26,7 @@ export function AboutContent() {
 export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   // 关闭动画期间仍保留同一份内容与宽度，不复用布局弹窗的尺寸。
   return <Dialog open={open} onOpenChange={(_, data) => { if (!data.open) onClose(); }}>
-    <DialogSurface className="dw-about-dialog" style={{ width: "min(520px,92vw)", maxWidth: "520px" }}>
+    <DialogSurface className="dw-about-dialog" backdrop={{ onMouseDown: event => event.preventDefault() }} style={{ width: "min(520px,92vw)", maxWidth: "520px" }}>
       <DialogBody><DialogTitle>关于 DBFolio</DialogTitle><DialogContent><AboutContent /></DialogContent>
         <DialogActions><Button size="small" appearance="primary" onClick={onClose}>关闭</Button></DialogActions>
       </DialogBody>

@@ -1,0 +1,235 @@
+src/features/grid/rowSql.ts
+  s_f823aea5f80980::t_d072e11730b022 145,149-158,181,185
+  s_f823aea5f80980::t_99d1b59a172029 66-68,202,209
+  s_f823aea5f80980::t_7eaa7753f487ec 36-38
+  s_f823aea5f80980::t_f8f54bda29a02c 1-35,39-65,70-144,146,148,159-167,169-171,174-180,182-184,186-197,199-201,203-208,210-226
+  s_f823aea5f80980::t_e8af3946a1fed2 69,147,168,172-173
+  s_f823aea5f80980::t_72e65b565f4e37 198
+src/features/grid/GridContextMenu.tsx
+  s_f823aea5f80980::t_f98d00c071753d 2,39,48,50-51
+  s_f823aea5f80980::t_aeacc6e1fd5c59 1,3-38,40-47,49,52-58
+src-tauri/src/services/sync_schema.rs
+  s_f823aea5f80980::t_743c85cd24bbb2 1185
+src-tauri/tauri.conf.json
+  s_f823aea5f80980::t_8fd45ad9827061 4
+src-tauri/src/adapters/mod.rs
+  s_f823aea5f80980::t_808a6796cf5c16 5
+  s_f823aea5f80980::t_a90322c3e8fb13 309-318,320,324-328,331,430,461,473,486,516,561,564,568,653-716
+docs/roadmap.md
+  s_f823aea5f80980::t_05bea7a72a321f 3-4
+  s_f823aea5f80980::t_1ea60acc3d7d1f 5
+  s_f823aea5f80980::t_8fd45ad9827061 6,18
+  s_f823aea5f80980::t_cbfd8eb9303ea8 9
+  s_f823aea5f80980::t_db58b88f5ec500 10
+  s_f823aea5f80980::t_c283f40cb07bff 7
+  s_f823aea5f80980::t_6d705b961e41d6 8
+src/features/grid/value.ts
+  s_f823aea5f80980::t_e30cb367d0cd3d 61-64
+  s_f823aea5f80980::t_ec46f3a4770e56 86-95,97,107,111-112
+src/features/grid/EditableDataGrid.tsx
+  s_f823aea5f80980::t_fa17e57524c89c 14,20,24,38-40,47,58-59,84,171,173-177,202
+  s_f823aea5f80980::t_08faafa0773eb4 178-185,326,332,430,452,459,465
+  s_f823aea5f80980::t_45712ed5cca3af 243,254-255,276,291,300-325,327-331,354-359,369,374,382-383,403-404,416-418,420-429,431-451,453-458,460-464,481,486,507,512,520,536-537,539,556,558,633-637,645,649,680-681,741-798,800
+scripts/fixtures/grid-workbench.tsx
+  s_f823aea5f80980::t_f8c05fd0c3e356 13
+  s_f823aea5f80980::t_73c77ad3d6496b 16,24-25,39,41-42,51-53,61,65-66,69,71
+docs/releases/1.0.0-alpha.61.md
+  s_f823aea5f80980::t_e07b5244099161 1-6,8-16,18-23
+  s_f823aea5f80980::t_883162408ed2f0 7,17
+docs/design.md
+  s_f823aea5f80980::t_6d705b961e41d6 949-951,955,3207
+  s_f823aea5f80980::t_883162408ed2f0 961
+  s_f823aea5f80980::t_db58b88f5ec500 6,957-960,963,3205
+  s_f823aea5f80980::t_c283f40cb07bff 948,952-954,3208
+  s_f823aea5f80980::t_cbfd8eb9303ea8 956,962,3206
+  s_f823aea5f80980::t_1ea60acc3d7d1f 5,941,945-946,3210
+  s_f823aea5f80980::t_05bea7a72a321f 937-940
+  s_f823aea5f80980::t_8fd45ad9827061 942-943,947,3209
+  s_f823aea5f80980::t_5703ad4ee38454 7,944
+docs/releases/1.0.0-alpha.62.md
+  s_f823aea5f80980::t_d9d6609d422031 1-7,9-17,19-23
+  s_f823aea5f80980::t_b22b96b7668e5c 8,18
+src-tauri/src/adapters/mysql_value.rs
+  s_f823aea5f80980::t_808a6796cf5c16 1-93
+scripts/fixtures/result-grid-clipboard.html
+  s_f823aea5f80980::t_3de03d76956e73 1
+docs/releases/1.0.0-alpha.63.md
+  s_f823aea5f80980::t_5d7041642e169c 5,7-16,19,21-29
+  s_f823aea5f80980::t_8fd45ad9827061 1-4,6,17-18,20
+src-tauri/src/adapters/dameng.rs
+  s_f823aea5f80980::t_13ba96a7339632 559
+docs/verification/grid-context-menu-alpha63.md
+  s_f823aea5f80980::t_ab69ea6f205f09 1-2,4-14
+  s_f823aea5f80980::t_05bea7a72a321f 26
+  s_f823aea5f80980::t_1ea60acc3d7d1f 3,15-25,27-28
+docs/verification/grid-clipboard-alpha61.md
+  s_f823aea5f80980::t_883162408ed2f0 11-13
+  s_f823aea5f80980::t_cbfd8eb9303ea8 14-22
+  s_f823aea5f80980::t_64c48fbddabbe3 1-10
+src-tauri/src/adapters/mysql.rs
+  s_f823aea5f80980::t_55cbec9071f423 10
+  s_f823aea5f80980::t_970da3331fac83 34-40,320
+  s_f823aea5f80980::t_062cfc7590d49d 5
+  s_f823aea5f80980::t_c521db8e12d235 120-142,237-240,258-261,267-271,273-277,302-306,313-319,321,524,868-872,891-894,926-947
+src/features/grid/CopyRowsSqlDialog.tsx
+  s_f823aea5f80980::t_f8f54bda29a02c 1-10,12-26,29-31,36-39,41,45-48,51,53,56-61,63-66,68-69
+  s_f823aea5f80980::t_99d1b59a172029 27-28,32-35,40,42-44,54,62,67
+  s_f823aea5f80980::t_5893c8de356679 11,55
+  s_f823aea5f80980::t_d072e11730b022 49-50,52
+scripts/check-row-clipboard.cjs
+  s_f823aea5f80980::t_ba6d6381c233bb 1-113,149-155,169-188,190
+  s_f823aea5f80980::t_29b310b41fce7a 114-148,156-168,189
+scripts/fixtures/result-grid-clipboard.tsx
+  s_f823aea5f80980::t_3220223939683a 5,17-19,26,28,40-42,47,50-53
+  s_f823aea5f80980::t_51e535dac8caf5 12,27,39
+  s_f823aea5f80980::t_3de03d76956e73 1-4,6-7,9-11,13-16,20-25,29-38,43-45,48
+  s_f823aea5f80980::t_38d5966e7d2681 8,46,49,54-55
+src/features/grid/ResultGrid.tsx
+  s_f823aea5f80980::t_fa17e57524c89c 13-14,21,32-34,46-48,57,61,65-66
+  s_f823aea5f80980::t_e01f375a5fc67c 81,84,119,131-136,139-146,173-178,217-220,226,256-282,284-293,295
+package.json
+  s_f823aea5f80980::t_8fd45ad9827061 4
+src-tauri/Cargo.toml
+  s_f823aea5f80980::t_8fd45ad9827061 3
+scripts/check-sqlite-empty-preview.cjs
+  s_f823aea5f80980::t_aa1e2719116abd 1-16
+src/features/grid/numericValue.ts
+  s_f823aea5f80980::t_dd21857ed3d092 28-54,56
+  s_f823aea5f80980::t_ec46f3a4770e56 1,4,14-16
+scripts/fixtures/grid-field-values.html
+  s_f823aea5f80980::t_0cca1893add4ee 1
+src/features/grid/detailValue.ts
+  s_f823aea5f80980::t_ec46f3a4770e56 2,7,10
+scripts/check-grid-row-sql.cjs
+  s_f823aea5f80980::t_d072e11730b022 91
+  s_f823aea5f80980::t_7eaa7753f487ec 19-28
+  s_f823aea5f80980::t_e8af3946a1fed2 1-18,29-90,92-98
+src-tauri/src/commands/query.rs
+  s_f823aea5f80980::t_ab81a9ff2ebf6b 151
+scripts/check-result-grid-boundaries.cjs
+  s_f823aea5f80980::t_3220223939683a 1-28,30-34,50-51,62-63,65-68
+  s_f823aea5f80980::t_a924203e03fd8f 29,35,39,43,47
+  s_f823aea5f80980::t_84fde889929d2e 36-38,41,64
+  s_f823aea5f80980::t_a7ecbc1f6bf1fe 46
+  s_f823aea5f80980::t_e8157985ad564d 44-45,48-49
+  s_f823aea5f80980::t_b3fc0db759a853 59
+  s_f823aea5f80980::t_80a9b245b275a6 40
+  s_f823aea5f80980::t_2491c36e615b34 52-58,60-61
+  s_f823aea5f80980::t_dba3403e5c4a77 42
+scripts/check-grid-row-sql-roundtrip.cjs
+  s_f823aea5f80980::t_86d18fc53c9f30 90
+  s_f823aea5f80980::t_1069991ca832cd 1-89,91-147
+src-tauri/src/services/ddl.rs
+  s_f823aea5f80980::t_13ba96a7339632 744
+scripts/fixtures/grid-field-values.tsx
+  s_f823aea5f80980::t_0cca1893add4ee 1-68
+scripts/check-grid-clipboard-ui.cjs
+  s_f823aea5f80980::t_883162408ed2f0 35
+  s_f823aea5f80980::t_d161ffaf0c1b58 27,30
+  s_f823aea5f80980::t_c9f97cd2c95c90 34
+  s_f823aea5f80980::t_54fd5fa358b29d 1-4,7,9,11-12,14-22,25-26,31,36
+  s_f823aea5f80980::t_f0fdafc5cbc4e4 5-6,8,10,13,23-24,28-29,32
+  s_f823aea5f80980::t_190ea4becf505b 33
+scripts/check-mysql-grid-values.cjs
+  s_f823aea5f80980::t_472c8f63c8f0f8 1-9,12-21,27-28,30,32-34,36-43,45-51
+  s_f823aea5f80980::t_64c77aa58b7d54 10-11,22-24,26,29,31,35,44
+  s_f823aea5f80980::t_effbb18427bb76 25
+docs/verification/field-values-alpha62.md
+  s_f823aea5f80980::t_c283f40cb07bff 3,45-56
+  s_f823aea5f80980::t_b22b96b7668e5c 41-42
+  s_f823aea5f80980::t_d9d6609d422031 1-2,4-40,43-44
+src/features/grid/rowClipboard.ts
+  s_f823aea5f80980::t_a24834568d5fcf 23
+  s_f823aea5f80980::t_e2230d161052d6 19,26,107-108,111-112,116,122-131,138-141
+  s_f823aea5f80980::t_a8f8bb8b2b4a83 1-18,20-22,24-25,27-106,109-110,113-115,117-121,132-137,142-203
+scripts/check-grid-field-values.cjs
+  s_f823aea5f80980::t_ebd1eac9eae5ff 34
+  s_f823aea5f80980::t_8482a8dd007615 100-120
+  s_f823aea5f80980::t_94edad8e3e9707 1-33,35-60,63-99
+  s_f823aea5f80980::t_f3e6f23eed0b8c 61-62
+scripts/check-result-grid-clipboard.cjs
+  s_f823aea5f80980::t_f0fdafc5cbc4e4 14-15,28,43,49,62
+  s_f823aea5f80980::t_3de03d76956e73 1-13,16-18,20-21,23-25,29-33,35-42,44-46,61,63-65,68-70,72-73
+  s_f823aea5f80980::t_d3538676392cf3 26-27
+  s_f823aea5f80980::t_51e535dac8caf5 47-48,50-60,71
+  s_f823aea5f80980::t_f84225c1935f5d 19
+  s_f823aea5f80980::t_ffdc842a57462a 22
+  s_f823aea5f80980::t_c68806d50a4ebd 34
+  s_f823aea5f80980::t_bfb97fa2d2ab0e 66-67
+scripts/check-grid-field-values-ui.cjs
+  s_f823aea5f80980::t_c9f97cd2c95c90 18
+  s_f823aea5f80980::t_cb32d1584d4f89 40-41,45-46,52
+  s_f823aea5f80980::t_a671060dfac121 78-98
+  s_f823aea5f80980::t_0cca1893add4ee 1-17,19-39,42-44,47-51,53-77,99-108
+scripts/check-grid-context-menu-ui.cjs
+  s_f823aea5f80980::t_584a6569ca153e 1-12,22,24-33,35-50,52-54,57-68,70,72-73,76-83
+  s_f823aea5f80980::t_c90e7dc3a4f5be 23
+  s_f823aea5f80980::t_dba3403e5c4a77 34
+  s_f823aea5f80980::t_7c3f2815e1a4ae 55-56
+  s_f823aea5f80980::t_f379ecb6cd8880 51
+  s_f823aea5f80980::t_92a25e12deaa70 13-17,69,71
+  s_f823aea5f80980::t_0f96509ec8753d 18-21,74-75
+src/features/grid/clipboardValue.ts
+  s_f823aea5f80980::t_ec46f3a4770e56 3,5,10-15,20-21,26-27,30-31,33,36,43
+  s_f823aea5f80980::t_f3e6f23eed0b8c 28-29
+  s_f823aea5f80980::t_6134f01c64c4fb 1-2,4,16-19,32,34-35,37-42,44-46
+  s_f823aea5f80980::t_8d9bc47f878e4b 6-9,22-25
+docs/grid-clipboard.md
+  s_f823aea5f80980::t_64c48fbddabbe3 1-2,10-28,30-35
+  s_f823aea5f80980::t_ab69ea6f205f09 3-9,29
+README.en.md
+  s_f823aea5f80980::t_86ebb59936cc06 103,105
+README.md
+  s_f823aea5f80980::t_a39abb93ff5a57 105-106
+package-lock.json
+  s_f823aea5f80980::t_7aaba493b122bd 3,9
+scripts/check-grid-rendering.cjs
+  s_f823aea5f80980::t_e25b4384ea8e3f 8,12,20
+src-tauri/Cargo.lock
+  s_f823aea5f80980::t_d71e3b162925a9 1326
+src-tauri/src/adapters/postgres.rs
+  s_f823aea5f80980::t_252e3b548e5366 515,561
+src-tauri/src/adapters/sqlite.rs
+  s_f823aea5f80980::t_cb09b1166a816c 292,604-614
+src-tauri/src/meta/mod.rs
+  s_f823aea5f80980::t_661e262f6f1e35 96-98,395-407,410-412,423,569-571,600-613,633,635-643,681
+src-tauri/src/services/generation/tests.rs
+  s_f823aea5f80980::t_59e5def62cc15e 354,815,870
+src/app/releaseInfo.ts
+  s_f823aea5f80980::t_654b45d489ff2f 5-6
+src/features/table/TableDataPanel.tsx
+  s_f823aea5f80980::t_9468d096f0ceb7 245,284,294,297,352,380,386,464,509
+src/ipc/types.ts
+  s_f823aea5f80980::t_289148b2a857aa 171-172
+src/features/query/QueryWorkspace.tsx
+  s_5c924e74571dc2::t_ea7116cbd751a3 629-630
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "abced86d765c5bc83cf089568e7755600639b429",
+  "prompts": {},
+  "humans": {
+    "h_a7eb17fbaf9265": {
+      "author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_5c924e74571dc2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cdaa-7102-70f0-85c5-f6e26af968d8",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_f823aea5f80980": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a3eb-927a-7cc3-ae93-ef3e16cc6e45",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

@@ -20,6 +20,10 @@ custom-protocol = ["tauri/custom-protocol"]
 winreg = "0.52"
 webview2-com = "0.38.2"
 windows-core = "0.61.2"
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
 
 [dependencies]
 base64 = "0.22"
@@ -51,7 +55,7 @@ dm-rust = { version = "=0.1.1", features = ["pool"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
-keyring = { version = "3", features = ["windows-native"] }
+keyring = "3"
 dirs = "6"
 arboard = { version = "3", default-features = false }
 csv = "1"

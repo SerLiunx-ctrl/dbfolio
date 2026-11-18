@@ -35,7 +35,7 @@ pub struct Preferences {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
-            automatic: crate::startup_check::profile().is_none(),
+            automatic: UPDATER_SUPPORTED && crate::startup_check::profile().is_none(),
             channel: if env!("CARGO_PKG_VERSION").contains('-') {
                 "preview"
             } else {
@@ -67,6 +67,14 @@ pub struct Available {
     size: Option<u64>,
 }
 const KEY: &str = "updater_preferences_v1";
+// 现有签名索引和安装恢复流程只覆盖 Windows x64；其他平台不能复用 Windows 安装包。
+const UPDATER_SUPPORTED: bool = cfg!(all(target_os = "windows", target_arch = "x86_64"));
+fn ensure_updates_supported() -> AppResult<()> {
+    if !UPDATER_SUPPORTED {
+        return Err(failure("当前平台暂未支持在线更新，请下载对应平台的安装包手动更新"));
+    }
+    Ok(())
+}
 #[tauri::command]
 pub fn updater_ready() -> AppResult<()> {
     crate::startup_check::frontend_ready()?;
@@ -76,12 +84,17 @@ fn failure(error: impl std::fmt::Display) -> AppError {
     AppError::Message(format!("更新失败：{error}"))
 }
 async fn preferences(state: &AppState) -> AppResult<Preferences> {
-    Ok(state
+    let mut value: Preferences = state
         .local
         .get_setting(KEY)
         .await?
         .and_then(|v| serde_json::from_str(&v).ok())
-        .unwrap_or_default())
+        .unwrap_or_default();
+    // 从其他平台导入的旧偏好也不能触发不兼容的更新检查。
+    if !UPDATER_SUPPORTED {
+        value.automatic = false;
+    }
+    Ok(value)
 }
 fn portable() -> AppResult<bool> {
     let exe = std::env::current_exe()?;
@@ -113,6 +126,9 @@ fn client(prefs: &Preferences) -> AppResult<reqwest::Client> {
     builder.build().map_err(failure)
 }
 fn validate_preferences(p: &Preferences) -> AppResult<()> {
+    if p.automatic {
+        ensure_updates_supported()?;
+    }
     if !matches!(p.channel.as_str(), "stable" | "preview") {
         return Err(failure("无效的更新通道"));
     }
@@ -194,6 +210,7 @@ pub async fn updater_check(
     state: State<'_, AppState>,
     updates: State<'_, UpdateState>,
 ) -> AppResult<Option<Available>> {
+    ensure_updates_supported()?;
     let _guard = updates
         .operation
         .try_lock()
@@ -264,6 +281,7 @@ pub async fn updater_download(
     updates: State<'_, UpdateState>,
     task_id: Option<String>,
 ) -> AppResult<String> {
+    ensure_updates_supported()?;
     let _guard = updates
         .operation
         .try_lock()
@@ -366,6 +384,7 @@ pub async fn updater_install(
     state: State<'_, AppState>,
     updates: State<'_, UpdateState>,
 ) -> AppResult<()> {
+    ensure_updates_supported()?;
     if cfg!(debug_assertions) {
         return Err(failure("开发模式不能安装更新，请使用正式包验证"));
     }
@@ -461,6 +480,18 @@ pub async fn updater_install(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn platform_updates_and_automatic_preferences_agree() {
+        let preferences = Preferences::default();
+        assert_eq!(ensure_updates_supported().is_ok(), UPDATER_SUPPORTED);
+        if !UPDATER_SUPPORTED {
+            assert!(!preferences.automatic);
+            let enabled = Preferences { automatic: true, ..preferences };
+            assert!(validate_preferences(&enabled).unwrap_err().to_string().contains("暂未支持在线更新"));
+            assert!(validate_preferences(&Preferences { automatic: false, ..enabled }).is_ok());
+        }
+    }
+
     #[test]
     fn channel_and_numeric_prerelease_order() {
         assert!(ensure_version("1.0.0-alpha.9", "1.0.0-alpha.10", "preview").is_ok());

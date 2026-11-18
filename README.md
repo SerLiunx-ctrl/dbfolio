@@ -254,6 +254,12 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 涉及真实外部数据库的测试需按测试要求准备环境；跳过的集成测试不表示对应服务已经通过验证。
 
+### GitHub Actions 云构建
+
+仓库的 **Actions → Desktop build** 支持手动选择 Windows、macOS 或全部平台构建，相关推送和 PR 也会自动运行。Windows 生成安装包和完整便携版；macOS 分别生成 Apple Silicon、Intel 的 DMG 与完整 .app ZIP。
+
+产物在运行页面的 **Artifacts** 下载，保留 14 天。macOS 当前为 ad-hoc 签名的构建测试包，仍需实机验收。操作方式、检查范围和签名边界见[云构建说明](docs/github-actions.md)。
+
 ### 生成 Windows 安装包与便携版
 
 ```powershell

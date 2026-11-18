@@ -9,6 +9,7 @@
     "build": "tsc && vite build && node scripts/package-offline-manual.mjs && node scripts/create-web-manifest.mjs",
     "preview": "vite preview",
     "app:build": "powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1",
+    "app:build:macos": "node scripts/package-macos.mjs",
     "app:build:fast": "powershell -ExecutionPolicy Bypass -File scripts/build-app-fast.ps1",
     "tauri": "tauri",
     "app:portable": "powershell -ExecutionPolicy Bypass -File scripts/package-app.ps1"

@@ -9,10 +9,27 @@ struct Manifest {
     files: BTreeMap<String, String>,
 }
 
-/// 前端文件从 EXE 同目录的 web 加载；EXE 仅保存构建时的摘要清单。
+/// 前端文件从安装目录的 web 加载，macOS 使用应用包的 Resources/web；程序仅保存摘要清单。
 pub struct DiskAssets {
     root: PathBuf,
     manifest: Manifest,
+}
+
+/// macOS 应用包的可执行文件和资源分别位于 Contents/MacOS 与 Contents/Resources。
+/// 未打包的开发二进制继续使用旁边的 web，应用包缺失资源时不回退到其他目录。
+fn resource_root(executable: &Path, macos: bool) -> PathBuf {
+    let directory = executable.parent().expect("无法确定 DBFolio 安装目录");
+    if macos && directory.file_name().is_some_and(|name| name == "MacOS") {
+        if let Some(contents) = directory.parent().filter(|path| {
+            path.file_name().is_some_and(|name| name == "Contents")
+                && path.parent().is_some_and(|bundle| {
+                    bundle.extension().is_some_and(|extension| extension == "app")
+                })
+        }) {
+            return contents.join("Resources").join("web");
+        }
+    }
+    directory.join("web")
 }
 
 impl DiskAssets {
@@ -33,7 +50,7 @@ impl DiskAssets {
     pub fn packaged() -> Self {
         let executable = std::env::current_exe().expect("无法确定 DBFolio 安装目录");
         Self {
-            root: executable.parent().expect("无法确定 DBFolio 安装目录").join("web"),
+            root: resource_root(&executable, cfg!(target_os = "macos")),
             manifest: serde_json::from_str(include_str!("../../dist/web-manifest.json"))
                 .expect("构建时的前端资源清单无效，请重新运行 npm run build"),
         }
@@ -84,6 +101,41 @@ impl<R: tauri::Runtime> tauri::Assets<R> for DiskAssets {
 mod tests {
     use super::*;
     use tauri::Assets;
+
+    #[test]
+    fn distribution_layouts_load_their_own_verified_resources() {
+        let temp = tempfile::tempdir().unwrap();
+        let cases = [
+            (temp.path().join("portable/DBFolio.exe"), false, temp.path().join("portable/web")),
+            (temp.path().join("DBFolio.app/Contents/MacOS/dbfolio"), true,
+                temp.path().join("DBFolio.app/Contents/Resources/web")),
+            (temp.path().join("unbundled/dbfolio"), true, temp.path().join("unbundled/web")),
+        ];
+        for (executable, macos, expected) in cases {
+            std::fs::create_dir_all(executable.parent().unwrap()).unwrap();
+            std::fs::create_dir_all(&expected).unwrap();
+            std::fs::write(expected.join("index.html"), b"verified page").unwrap();
+            let provider = DiskAssets {
+                root: resource_root(&executable, macos),
+                manifest: Manifest {
+                    version: env!("CARGO_PKG_VERSION").into(),
+                    files: BTreeMap::from([("index.html".into(),
+                        format!("{:x}", Sha256::digest(b"verified page")))]),
+                },
+            };
+            assert_eq!(provider.root, expected);
+            provider.validate().unwrap();
+            assert_eq!(provider.read("index.html").unwrap(), b"verified page");
+            // 包内缺失资源时，不能误读可执行文件旁边的同名目录。
+            if executable.parent().unwrap().file_name().unwrap() == "MacOS" {
+                let adjacent = executable.parent().unwrap().join("web");
+                std::fs::create_dir(&adjacent).unwrap();
+                std::fs::write(adjacent.join("index.html"), b"verified page").unwrap();
+                std::fs::remove_file(expected.join("index.html")).unwrap();
+                assert!(provider.validate().unwrap_err().contains("缺少资源"));
+            }
+        }
+    }
 
     #[test]
     fn external_assets_reject_missing_modified_and_traversal() {

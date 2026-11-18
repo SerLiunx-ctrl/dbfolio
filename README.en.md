@@ -239,6 +239,12 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 Tests requiring an external database need their own test environment. Skipped integration tests do not prove a service has passed validation.
 
+### GitHub Actions builds
+
+Open **Actions → Desktop build** to build Windows, macOS, or all platforms. Relevant pushes and pull requests also trigger builds. Windows produces an installer and a complete portable ZIP; macOS produces separate Apple Silicon and Intel DMGs and complete .app ZIPs.
+
+Download results from the run's **Artifacts** section within 14 days. macOS packages currently use ad-hoc test signatures and still require interactive Mac acceptance testing. See the [cloud build guide (Chinese)](docs/github-actions.md) for checks and signing scope.
+
 ### Build the Windows installer and portable edition
 
 ```powershell

@@ -55,7 +55,7 @@ $staging = Join-Path $root ('.qa/release-publish-' + [guid]::NewGuid().ToString(
 New-Item -ItemType Directory -Path $staging -Force | Out-Null
 Invoke-Gh release download $tag --repo $repo --dir $staging
 $metadataPath = Join-Path $staging 'release-metadata.json'
-$metadata = [IO.File]::ReadAllText($metadataPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -AsHashtable
+$metadata = [IO.File]::ReadAllText($metadataPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -AsHashtable -DateKind String
 if ($metadata.version -cne $Version -or ([string]$metadata.notes).TrimEnd() -cne ([string]$release.body).TrimEnd()) {
     throw '签名更新说明与 Release 正文或版本号不一致。'
 }

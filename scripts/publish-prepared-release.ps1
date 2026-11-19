@@ -23,7 +23,7 @@ function Invoke-Gh {
 }
 
 function Get-Release {
-    Invoke-Gh release view $tag --repo $repo --json tagName,targetCommitish,body,isDraft,isPrerelease,assets | ConvertFrom-Json
+    Invoke-Gh release view $tag --repo $repo --json 'tagName,targetCommitish,body,isDraft,isPrerelease,assets' | ConvertFrom-Json
 }
 
 function Get-TagCommit {

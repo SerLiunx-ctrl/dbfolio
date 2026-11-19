@@ -1,0 +1,109 @@
+name: macOS signed build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-signed-build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+  RUST_BACKTRACE: '1'
+
+jobs:
+  macos:
+    name: Signed macOS ${{ matrix.arch }}
+    if: ${{ github.repository == 'SerLiunx-ctrl/dbfolio' && github.ref == 'refs/heads/master' }}
+    environment: macos-signing
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            arch: x64
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal --no-self-update
+          rustup default 1.98.1
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+        with:
+          workspaces: src-tauri -> target
+          key: macos-signed-${{ matrix.arch }}
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build signed and notarized macOS packages
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const required = ['APPLE_CERTIFICATE', 'APPLE_CERTIFICATE_PASSWORD', 'APPLE_SIGNING_IDENTITY', 'APPLE_ID', 'APPLE_PASSWORD', 'APPLE_TEAM_ID'];
+          const missing = required.filter(name => !process.env[name]?.trim());
+          if (missing.length) throw new Error('macos-signing 环境缺少签名秘密：' + missing.join('、') + '。此工作流禁止回退到 ad-hoc。');
+          if (!process.env.APPLE_SIGNING_IDENTITY.trim().startsWith('Developer ID Application:')) {
+            throw new Error('APPLE_SIGNING_IDENTITY 必须是完整的 Developer ID Application 证书名称；不接受 ad-hoc 或开发证书。');
+          }
+          NODE
+          npm run app:build:macos -- --target ${{ matrix.target }}
+      - name: Verify signed distribution metadata
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+          const prefix = `release/${version}/DBFolio_${version}_macos_${process.env.BUILD_ARCH}`;
+          const info = JSON.parse(await readFile(`${prefix}_build-info.json`, 'utf8'));
+          assert.equal(info.signing, 'developer-id', '禁止上传 ad-hoc 包作为正式签名包');
+          assert.equal(info.notarized, true, '必须完成 Apple 公证');
+          assert.equal(info.appNotarizationTicketValidated, true, '应用公证票据未验证');
+          assert.equal(info.dmgNotarizationTicketValidated, true, '最终 DMG 公证票据未验证');
+          assert.equal(info.commit, process.env.GITHUB_SHA, '安装包源码提交与本次运行不符');
+          NODE
+      - name: Check packaged app startup
+        run: node scripts/check-app-startup-macos.mjs "src-tauri/target/${{ matrix.target }}/release/bundle/macos/DBFolio.app"
+      - name: Upload signed macOS packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: DBFolio-macos-signed-${{ matrix.arch }}-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            release/*/*_macos_${{ matrix.arch }}_*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Upload startup diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diagnostics-macos-signed-${{ matrix.arch }}-${{ github.run_number }}-${{ github.run_attempt }}
+          path: .qa/startup-macos-*
+          if-no-files-found: ignore
+          retention-days: 7

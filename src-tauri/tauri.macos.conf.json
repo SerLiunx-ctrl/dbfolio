@@ -25,7 +25,8 @@
       "dmg"
     ],
     "macOS": {
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "hardenedRuntime": true
     }
   }
 }

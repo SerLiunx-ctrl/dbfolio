@@ -51,4 +51,19 @@ ad-hoc 测试包没有经过 Apple Developer ID 签名或公证，下载后可�
 
 在有现有更新签名私钥的 Windows 机器上，使用最终双语说明执行 `scripts/create-update-feed.ps1 -Version <版本> -NotesPath <说明文件>`，再运行 `scripts/check-update-release.ps1 -Version <版本>`。建立 GitHub Release 草稿，把目标指定到构建的完整提交 SHA，上传两个包、两份 SHA256、两个包签名、更新元数据及其签名。草稿正文使用同一份说明。预发布版本应标为 prerelease。
 
-在 **Actions → Publish Windows release → Run workflow** 选择 `master` 并输入版本。工作流校验草稿、标签目标、签名及包的校验和，公开 Release 后重新匿名下载全部资产，通过 SHA256 对比后将签名索引写入对应通道。如果公开下载校验失败，可以修复后重跑同一版本。签名私钥留在本机。
+在 **Actions → Publish prepared release → Run workflow** 选择 `master` 并输入版本。工作流校验草稿、标签目标、签名及包的校验和，公开 Release 后重新匿名下载全部资产，通过 SHA256 对比后将签名索引写入对应通道。如果公开下载校验失败，可以修复后重跑同一版本。签名私钥留在本机。
+
+## macOS 正式签名构建
+
+需要 Apple Developer Program 账号签发的 Developer ID Application 证书和 Apple 公证凭据。配置 GitHub 的 `macos-signing` 环境，并只允许从 `master` 使用。在环境的 Secrets 中设置：
+
+| Secret | 值 |
+| --- | --- |
+| `APPLE_CERTIFICATE` | Apple Developer ID Application 证书及私钥的 .p12，采用 Base64 编码 |
+| `APPLE_CERTIFICATE_PASSWORD` | 导出 .p12 时设置的密码 |
+| `APPLE_SIGNING_IDENTITY` | 完整的 Developer ID Application 证书名称 |
+| `APPLE_ID`、`APPLE_PASSWORD`、`APPLE_TEAM_ID` | Apple 账号、应用专用密码、团队 ID |
+
+配置好后，从 **Actions → macOS signed build → Run workflow** 启动。Apple Silicon 和 Intel 各生成一份 DMG 与完整 .app ZIP。流程验证应用和 DMG 的公证票据及应用启动，并上传 `DBFolio-macos-signed-*` 产物。使用可交互的 Mac 下载并安装签名版，验收首次启动及主要桌面操作。
+
+[Apple 公证说明](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution) · [Tauri 签名配置](https://v2.tauri.app/distribute/sign/macos/)

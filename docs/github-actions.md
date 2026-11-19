@@ -44,3 +44,11 @@ ad-hoc 测试包没有经过 Apple Developer ID 签名或公证，下载后可�
 - [Tauri GitHub Actions 构建](https://v2.tauri.app/distribute/pipelines/github/)
 - [GitHub runner 镜像与架构](https://github.com/actions/runner-images)
 - [Tauri macOS 签名与公证](https://v2.tauri.app/distribute/sign/macos/)
+
+## 发布 Windows 版本
+
+更新应用版本并提交发布说明。在对应源码提交的 **Desktop build** 运行中下载 Windows x64 产物，核对 `build-info.json` 的版本、提交和架构。将安装包、便携 ZIP 和两份校验清单放到 `release/<版本>/`，再原样解压便携 ZIP 到该目录。
+
+在有现有更新签名私钥的 Windows 机器上，使用最终双语说明执行 `scripts/create-update-feed.ps1 -Version <版本> -NotesPath <说明文件>`，再运行 `scripts/check-update-release.ps1 -Version <版本>`。建立 GitHub Release 草稿，把目标指定到构建的完整提交 SHA，上传两个包、两份 SHA256、两个包签名、更新元数据及其签名。草稿正文使用同一份说明。预发布版本应标为 prerelease。
+
+在 **Actions → Publish Windows release → Run workflow** 选择 `master` 并输入版本。工作流校验草稿、标签目标、签名及包的校验和，公开 Release 后重新匿名下载全部资产，通过 SHA256 对比后将签名索引写入对应通道。如果公开下载校验失败，可以修复后重跑同一版本。签名私钥留在本机。

@@ -1,0 +1,72 @@
+name: Publish prepared release
+run-name: Publish v${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 已准备好并完成签名的版本号（不含 v）
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+  RUST_BACKTRACE: '1'
+  RELEASE_VERSION: ${{ inputs.version }}
+
+jobs:
+  publish:
+    name: Verify and publish prepared release
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Validate release context
+        run: |
+          if ($env:GITHUB_REPOSITORY -ne 'SerLiunx-ctrl/dbfolio') {
+            throw '发布工作流只允许在 SerLiunx-ctrl/dbfolio 仓库运行。'
+          }
+          if ($env:GITHUB_REF -ne 'refs/heads/master') {
+            throw '发布工作流只允许从 master 分支手动触发。'
+          }
+          if ($env:RELEASE_VERSION -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+            throw '版本号格式无效，请填写不含 v 前缀的版本号。'
+          }
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal --no-self-update
+          rustup default 1.98.1
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
+        with:
+          workspaces: src-tauri -> target
+          key: windows-release-verifier
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build frontend for release verifier
+        run: npm run build
+      - name: Verify and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/publish-prepared-release.ps1 -Version $env:RELEASE_VERSION

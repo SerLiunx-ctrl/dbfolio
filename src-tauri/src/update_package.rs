@@ -647,7 +647,7 @@ mod tests {
         let root = PathBuf::from(std::env::var_os("DBFOLIO_UPDATE_RELEASE").unwrap());
         let version = env!("CARGO_PKG_VERSION");
         let feed: serde_json::Value =
-            serde_json::from_slice(&fs::read(root.join("preview.json")).unwrap()).unwrap();
+            serde_json::from_slice(&fs::read(root.join(if version.contains('-') { "preview.json" } else { "stable.json" })).unwrap()).unwrap();
         verify_release_metadata(&feed).unwrap();
         let mut changed = feed.clone();
         changed["version"] = serde_json::json!("99.0.0");

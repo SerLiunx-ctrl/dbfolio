@@ -1,0 +1,21 @@
+src/features/settings/AboutContent.tsx
+  s_ba3d8a7c023e81::t_394bca832eca7e 3,15
+src/features/settings/settings.css
+  s_ba3d8a7c023e81::t_b517f8cc2ed8f0 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c3dd49d510df0f967b946a107b263a8c863081b6",
+  "prompts": {},
+  "sessions": {
+    "s_ba3d8a7c023e81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b005-90d9-7b72-b699-9b9dacc9a3ee",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

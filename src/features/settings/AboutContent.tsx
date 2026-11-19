@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Link } from "@fluentui/react-components";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { APP_RELEASE, CURRENT_RELEASE } from "../../app/releaseInfo";
+import { APP_RELEASE } from "../../app/releaseInfo";
 import { useNotify } from "../../app/toast";
 import "./settings.css";
 
@@ -12,8 +12,7 @@ export function AboutContent() {
   }}>{label}</Link>;
   return <div className="dw-about-content">
     <div className="dw-about-product"><strong>DBFolio</strong><span>跨引擎数据库工作台</span></div>
-    <div className="dw-about-version"><span>版本 {APP_RELEASE}</span><time dateTime={CURRENT_RELEASE.date}>{CURRENT_RELEASE.date}</time></div>
-    <section aria-label="本版更新"><h3>本版更新</h3><ul>{CURRENT_RELEASE.changes.map(change => <li key={change}>{change}</li>)}</ul></section>
+    <div className="dw-about-version"><span>版本 {APP_RELEASE}</span></div>
     <dl className="dw-about-details">
       <dt>作者</dt><dd>SerLiunx</dd>
       <dt>邮箱</dt><dd>root@serliunx.com</dd>

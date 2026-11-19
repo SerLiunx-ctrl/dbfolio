@@ -12,11 +12,8 @@
 .dw-about-content { display: flex; flex-direction: column; gap: 12px; max-width: 660px; font-size: 12px; line-height: 1.6; }
 .dw-about-product { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
 .dw-about-product strong { font-size: 22px; line-height: 28px; }
-.dw-about-product span, .dw-about-version time, .dw-about-details dt { color: var(--colorNeutralForeground3); }
-.dw-about-version { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--colorBrandForeground1); }
-.dw-about-content h3 { font-size: 13px; line-height: 20px; margin: 0 0 6px; }
-.dw-about-content ul { margin: 0; padding-inline-start: 18px; }
-.dw-about-content li + li { margin-top: 5px; }
+.dw-about-product span, .dw-about-details dt { color: var(--colorNeutralForeground3); }
+.dw-about-version { color: var(--colorBrandForeground1); }
 .dw-about-details { display: grid; grid-template-columns: 40px minmax(0,1fr); column-gap: 12px; row-gap: 6px; margin: 0; padding-top: 10px; border-top: 1px solid var(--colorNeutralStroke2); }
 .dw-about-details dd { margin: 0; overflow-wrap: anywhere; }
 .dw-update-panel { display: flex; flex-direction: column; gap: 10px; max-width: 660px; font-size: 12px; line-height: 18px; }

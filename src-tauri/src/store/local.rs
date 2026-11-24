@@ -479,6 +479,14 @@ impl LocalStore {
             })
             .collect())
     }
+    pub async fn delete_history(&self, id: i64) -> AppResult<u64> {
+        Ok(sqlx::query("DELETE FROM query_history WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?
+            .rows_affected())
+    }
+
     pub async fn search_history(&self, session_id: Option<String>, database: Option<String>, text: String, from: Option<String>, to: Option<String>, success: Option<bool>, offset: u32) -> AppResult<Vec<HistoryEntry>> {
         let mut q = sqlx::QueryBuilder::<sqlx::Sqlite>::new("SELECT * FROM query_history WHERE 1=1");
         if let Some(id)=session_id.filter(|v| !v.is_empty()) { q.push(" AND session_id = ").push_bind(id); }
@@ -536,6 +544,34 @@ mod history_search_tests {
         assert_eq!(store.get_setting("a").await.unwrap().as_deref(), Some("new"));
         assert_eq!(store.get_setting("b").await.unwrap().as_deref(), Some("new"));
     }
+    #[tokio::test]
+    async fn delete_history_removes_only_requested_record_and_allows_retry() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = LocalStore::initialize_in(dir.path().to_path_buf()).await.unwrap();
+        for session in ["first", "second"] {
+            store.insert_history(session, Some("db"), "SELECT '历史内容'", true, Some(1), 5, None).await.unwrap();
+        }
+        let original = store.list_history(None, 100).await.unwrap();
+        let selected = original[1].id;
+        let saved = serde_json::to_string(&original[1]).unwrap();
+        store.set_setting("productivity_library_v1", &saved).await.unwrap();
+
+        let (first, retry) = tokio::join!(store.delete_history(selected), store.delete_history(selected));
+        assert_eq!(first.unwrap() + retry.unwrap(), 1);
+        assert_eq!(store.delete_history(selected).await.unwrap(), 0);
+        assert_eq!(store.delete_history(i64::MAX).await.unwrap(), 0);
+
+        let listed = store.list_history(None, 100).await.unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].id, original[0].id);
+        assert_eq!(store.get_setting("productivity_library_v1").await.unwrap(), Some(saved));
+        let searched = store.search_history(None, None, String::new(), None, None, None, 0).await.unwrap();
+        assert_eq!(searched.len(), 1);
+        assert_eq!(searched[0].id, original[0].id);
+        assert!(store.list_history(Some("first"), 100).await.unwrap().is_empty());
+        store.pool.close().await;
+    }
+
     #[tokio::test]
     async fn filters_run_before_pagination_and_remain_bound() {
         let pool=SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();

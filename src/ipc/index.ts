@@ -167,6 +167,7 @@ export const api = {
   },
   queryHistorySearch: (filters: { sessionId?: string; database?: string; text: string; from?: string; to?: string; success?: boolean; offset: number }) => invoke<HistoryEntry[]>("query_history_search", filters),
   queryParameterLiterals: (sessionId: string, values: Record<string,DbValue>) => invoke<Record<string,string>>("query_parameter_literals", {sessionId,values}),
+  queryHistoryDelete: (id: number) => invoke<number>("query_history_delete", { id }),
   queryHistory: (sessionId?: string | null, limit?: number) =>
     invoke<HistoryEntry[]>("query_history_list", {
       sessionId: sessionId ?? null,

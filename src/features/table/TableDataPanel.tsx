@@ -41,7 +41,6 @@ import type {
   SortSpec,
   TableMeta,
 } from "../../ipc/types";
-import { isReadOnlyValue } from "../../ipc/types";
 import type { TableTab } from "../../stores/useTabStore";
 import {
   EditableDataGrid,
@@ -168,11 +167,6 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         detail.columns,
       )}${whereClause}`,
     [detail.columns, engine, tab.database, tab.schema, tab.table, whereClause],
-  );
-
-  const hasTruncated = useMemo(
-    () => rows.some((row) => row.some((cell) => isReadOnlyValue(cell))),
-    [rows],
   );
 
   const load = useCallback(
@@ -471,11 +465,6 @@ export function TableDataPanel({ tab, active, detail, engine, readOnly, onChange
         </Tooltip>
         <div ref={setToolbarHost} className="dw-grid-toolbar-host"/>
         {readOnly && <Tag size="small">只读</Tag>}
-        {hasTruncated && (
-          <Badge appearance="tint" color="warning" size="small">
-            含截断预览，可在单元格详情读取完整值
-          </Badge>
-        )}
         {detail.kind === "table" && detail.primaryKey.length === 0 && (
           <Badge appearance="tint" color="warning" size="small">
             无主键 · 现有行只读，可新增

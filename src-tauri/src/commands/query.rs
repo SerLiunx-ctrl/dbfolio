@@ -278,6 +278,11 @@ pub async fn grid_commit(
 }
 
 #[tauri::command]
+pub async fn query_history_delete(state: State<'_, AppState>, id: i64) -> AppResult<u64> {
+    state.local.delete_history(id).await
+}
+
+#[tauri::command]
 pub async fn query_history_search(state: State<'_, AppState>, session_id: Option<String>, database: Option<String>, text: String, from: Option<String>, to: Option<String>, success: Option<bool>, offset: u32) -> AppResult<Vec<HistoryEntry>> {
     state.local.search_history(session_id,database,text,from,to,success,offset).await
 }

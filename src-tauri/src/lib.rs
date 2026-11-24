@@ -151,6 +151,7 @@ pub fn run() {
             commands::query::query_cancel,
             commands::query::query_history_list,
             commands::query::query_history_search,
+            commands::query::query_history_delete,
             commands::query::query_parameter_literals,
             commands::query::build_filter_clause,
             commands::query::query_explain,

@@ -52,7 +52,7 @@ export function ProductivityHub(){
       ["reopen-tab","重新打开关闭的页签",`恢复最近关闭的页签 · ${reopenKey}`],
       ["tasks","打开任务中心","进度、失败详情与来源页签"],
       ["history","打开历史中心","查询历史与收藏"],
-      ["about","关于与快捷键","版本、更新说明与诊断信息"],
+      ["about","关于 DBFolio","应用版本与项目信息"],
     ].map(([id,label,detail])=>({id:"command:"+id,label,detail:"应用命令 · "+detail,command:true,open:()=>{requestAnimationFrame(()=>{if(id==="focus")toggleFocusMode();else window.dispatchEvent(new Event("dw:"+id));});}}));
     if(commandMode){const terms=text.trimStart().slice(1).toLowerCase().trim().split(/\s+/).filter(Boolean);return commands.filter(i=>terms.every(t=>(i.label+" "+i.detail).toLowerCase().includes(t)));}
     const result:Item[]=[];const name=(id:string)=>sessions.find(s=>s.id===id)?.name??"已删除连接";
@@ -75,9 +75,17 @@ export function ProductivityHub(){
     <HistoryCenter open={history} onClose={()=>setHistory(false)}/>
     <Dialog open={quick} onOpenChange={(_,d)=>{if(!d.open&&!opening)setQuick(false);}}><DialogSurface style={{maxWidth:850,width:"92vw"}}><DialogBody><DialogTitle>快速打开</DialogTitle><DialogContent>
       <Input aria-label="搜索快速打开项目" aria-controls="dw-quick-results" aria-activedescendant={items[selected]?"dw-quick-option-"+selected:undefined} autoFocus style={{width:"100%"}} placeholder="搜索表、收藏、文件、页签；输入 > 搜索应用命令" value={text} onChange={(_,d)=>setText(d.value)} onKeyDown={e=>{if(e.key==="ArrowDown"){e.preventDefault();setSelected(n=>Math.min(items.length-1,n+1));}if(e.key==="ArrowUp"){e.preventDefault();setSelected(n=>Math.max(0,n-1));}if(e.key==="Enter"&&items[selected]){e.preventDefault();void choose(items[selected]);}}}/>
-      {!commandMode&&<label>对象加载范围 <select className="dw-native-select" value={scope} onChange={e=>setScope(e.target.value)}><option value="">全部已连接会话</option>{sessions.filter(s=>["mysql","postgres","sqlite","dameng"].includes(s.engine)).map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
-      {!commandMode&&searchObjects&&<Button size="small" disabled={loading} onClick={()=>{cache.current.clear();setRefreshIndex(n=>n+1);}}>刷新对象索引</Button>}
-      {!text.trim()&&<InfoHint label="搜索范围说明">输入关键词后加载数据库对象；页签、收藏与文件立即可用。输入 &gt; 切换到应用命令。</InfoHint>}
+      {!commandMode && <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, maxWidth: "100%" }}>
+          <span style={{ flexShrink: 0 }}>对象加载范围</span>
+          <select className="dw-native-select" style={{ minWidth: 0, textOverflow: "ellipsis" }} value={scope} onChange={e=>setScope(e.target.value)}>
+            <option value="">全部已连接会话</option>
+            {sessions.filter(s=>["mysql","postgres","sqlite","dameng"].includes(s.engine)).map(s=><option value={s.id} key={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+        {searchObjects && <Button size="small" disabled={loading} onClick={()=>{cache.current.clear();setRefreshIndex(n=>n+1);}}>刷新对象索引</Button>}
+        {!text.trim() && <InfoHint label="搜索范围说明">输入关键词后加载数据库对象；页签、收藏与文件立即可用。输入 &gt; 切换到应用命令。</InfoHint>}
+      </div>}
       {loading&&<Spinner size="tiny" label="加载表和视图；本地页签、收藏与文件可先打开"/>}{error&&<p role="alert">{error}</p>}
       <div id="dw-quick-results" role="listbox" aria-label="快速打开结果" style={{maxHeight:"50vh",overflowY:"auto",marginTop:10}}>{items.map((item,i)=><Button id={"dw-quick-option-"+i} role="option" aria-selected={i===selected} key={item.id} appearance={i===selected?"secondary":"subtle"} style={{display:"flex",width:"100%",justifyContent:"start",textAlign:"left",marginBottom:4}} disabled={opening} onClick={()=>void choose(item)}><span style={{minWidth:0,overflowWrap:"anywhere"}}><strong>{item.label}</strong><small style={{display:"block"}}>{item.detail}</small></span></Button>)}</div>
       <div role="status">{!loading && !error && !items.length && "没有匹配的项目，请更换或清空关键词。"}</div>

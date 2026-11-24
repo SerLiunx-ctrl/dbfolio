@@ -1,0 +1,29 @@
+docs/github-actions.md
+  s_2b67871b998595::t_b490be59b340d4 50
+src-tauri/Cargo.toml
+  s_109f5739e791f5::t_d077f1a6b9c746 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "36e017a728aaa40fcf52192a438464422e654fbd",
+  "prompts": {},
+  "sessions": {
+    "s_109f5739e791f5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15c5a-f69e-7d72-8f75-20e0ea982620",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    },
+    "s_2b67871b998595": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20bfa-2a61-79c2-969a-111201ab4933",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

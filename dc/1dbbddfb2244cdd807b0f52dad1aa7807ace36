@@ -1,0 +1,19 @@
+updates/preview.json
+  s_ba3d8a7c023e81::t_b200f12932fa4a 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dc1dbbddfb2244cdd807b0f52dad1aa7807ace36",
+  "prompts": {},
+  "sessions": {
+    "s_ba3d8a7c023e81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b005-90d9-7b72-b699-9b9dacc9a3ee",
+        "model": "unknown"
+      },
+      "human_author": "SerLiunx-ctrl <17689543@qq.com>"
+    }
+  }
+}

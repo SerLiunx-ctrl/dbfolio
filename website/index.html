@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DBFolio 是开源的桌面数据库工作台，支持 SQL 查询、表格编辑、数据分析、ER 图和数据同步。">
+  <meta name="theme-color" content="#101820">
+  <title>DBFolio · 桌面数据库工作台</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23368CFA' stroke-width='1.6'%3E%3Cellipse cx='12' cy='5' rx='8' ry='3'/%3E%3Cpath d='M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #101820;
+      --surface: #18242f;
+      --line: #2e3c49;
+      --header-height: 65px;
+      --text: #eef3f8;
+      --muted: #a9b8c7;
+      --blue: #8cbafb;
+      --accent: #368cfa;
+      font: 100%/1.65 "Segoe UI", "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: var(--background); color: var(--text); }
+    h1, h2, h3, p, dl, dd, figure { margin: 0; }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; }
+    img { display: block; width: 100%; height: auto; }
+    [hidden] { display: none !important; }
+    [id] { scroll-margin-top: calc(var(--header-height) + 22px); }
+    :focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+
+    .wrap { width: min(1160px, calc(100% - 72px)); margin-inline: auto; }
+    .icon { width: 18px; height: 18px; flex: none; }
+    .skip-link { position: absolute; left: 12px; top: -80px; z-index: 3; padding: 7px 12px; background: var(--blue); color: #0c1723; }
+    .skip-link:focus { top: 12px; }
+    .text-link { color: var(--blue); text-decoration: underline; text-underline-offset: 4px; }
+    .text-link:hover { color: #c5ddff; }
+
+    .site-header {
+      position: sticky; top: 0; z-index: 2; background: var(--background);
+      border-bottom: 1px solid var(--line);
+    }
+    .header-inner { display: flex; align-items: center; min-height: 64px; gap: 34px; }
+    .brand { display: inline-flex; align-items: center; width: fit-content; gap: 9px; font-size: 1.13rem; font-weight: 700; }
+    .brand .icon { color: var(--accent); width: 25px; height: 25px; }
+    .site-nav { display: flex; align-items: center; gap: 25px; color: var(--muted); font-size: .9rem; }
+    .site-nav a:hover, .github-link:hover, .footer-nav a:hover { color: var(--text); }
+    .github-link { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: .9rem; }
+    .github-link .icon { width: 16px; height: 16px; }
+
+    .masthead { padding: 62px 0 44px; }
+    .intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 34px; padding-bottom: 30px; }
+    h1 { font-size: clamp(3rem, 6vw, 5.25rem); line-height: 1.02; letter-spacing: -.055em; font-weight: 730; }
+    .product-title { margin-top: 13px; font-size: clamp(1.34rem, 2.3vw, 1.75rem); font-weight: 650; line-height: 1.35; }
+    .product-description { max-width: 630px; margin-top: 12px; color: var(--muted); font-size: 1rem; line-height: 1.75; }
+    .download-actions { min-width: 212px; padding: 6px 0 4px 24px; border-left: 1px solid var(--line); }
+    .download-actions p { margin-top: 8px; color: var(--muted); font-size: .875rem; }
+    .primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 43px; padding: 7px 14px; border-radius: 6px; background: #85b4f6; color: #0d1927; font-weight: 650; }
+    .primary:hover { background: #aacaef; }
+
+    .workspace { border: 1px solid #344553; border-radius: 9px; background: #15202a; overflow: hidden; }
+    .screen-toolbar { display: flex; justify-content: space-between; align-items: stretch; padding-inline: 10px; gap: 8px; border-bottom: 1px solid #344553; }
+    .screen-tabs { --active-tab: 0; position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(348px, 100%); }
+    .screen-tabs::after {
+      content: ""; position: absolute; inset: auto auto 0 0; width: calc(100% / 3); height: 2px;
+      background: var(--blue); transform: translateX(calc(var(--active-tab) * 100%)); pointer-events: none;
+    }
+    .screen-tabs button { min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: var(--muted); font-size: .9rem; cursor: pointer; white-space: nowrap; }
+    .screen-tabs button:hover { color: var(--text); }
+    .screen-tabs button[aria-selected="true"] { color: var(--text); background: #1d2b37; }
+    .screen-playback {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 72px;
+      margin-block: 6px; padding: 0 9px; border: 1px solid #3b5064; border-radius: 5px;
+      background: #1d2b37; color: #dce8f4; font-size: .825rem; cursor: pointer; white-space: nowrap;
+    }
+    .screen-playback:hover { background: #2b3e51; border-color: #6e94bd; }
+    .playback-symbol { width: 10px; height: 10px; border-inline: 2px solid currentColor; }
+    .screen-playback[data-paused] .playback-symbol {
+      border: 0; background: currentColor; clip-path: polygon(15% 0, 100% 50%, 15% 100%);
+    }
+    .screen-tabs button:focus-visible, .screen:focus-visible, .screen-link:focus-visible, .photo:focus-visible { outline-offset: -3px; }
+    .screen-progress { height: 2px; background: #243746; }
+    .screen-progress span { display: block; height: 100%; background: #84b5f8; transform: scaleX(0); transform-origin: left; }
+    .screen-stage { display: grid; overflow: hidden; background: #172632; }
+    .screen {
+      grid-area: 1 / 1; display: grid; min-width: 0; visibility: hidden;
+      opacity: 0; pointer-events: none;
+    }
+    .screen.is-active { z-index: 1; visibility: visible; opacity: 1; pointer-events: auto; }
+    .screen-link { display: grid; grid-template-rows: auto 1fr; }
+    .screen-link img { aspect-ratio: 1440 / 860; object-fit: contain; background: #172632; }
+    .screen-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 10px 15px; border-top: 1px solid var(--line); background: #15202a; color: var(--muted); font-size: .875rem; }
+    .screen-caption .original-link { white-space: nowrap; color: var(--blue); }
+    .screen-link:hover .original-link { text-decoration: underline; text-underline-offset: 3px; }
+
+    .engine-block { border-block: 1px solid var(--line); background: #141e27; }
+    .engine-inner { padding-block: 23px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: start; }
+    .engine-title { font-size: .98rem; line-height: 1.5; }
+    .support-link { display: block; width: fit-content; margin-top: 4px; font-size: .82rem; }
+    .engine-groups { display: grid; grid-template-columns: 1.6fr .9fr 1fr; gap: 20px; }
+    .engine-groups dt { margin-bottom: 3px; color: var(--muted); font-size: .82rem; }
+    .engine-groups dd { color: var(--text); font-size: .95rem; }
+
+    .section { padding-block: 55px; }
+    .section + .section { border-top: 1px solid var(--line); }
+    .section-heading { margin-bottom: 22px; font-size: clamp(1.55rem, 2.8vw, 2rem); font-weight: 700; line-height: 1.25; letter-spacing: -.025em; }
+    .capability { display: grid; grid-template-columns: minmax(158px, .67fr) minmax(0, 2.5fr); gap: 24px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .capability:last-child { border-bottom: 1px solid var(--line); }
+    .capability dt { font-weight: 650; }
+    .capability dd, .workflow p, .gallery-item p { color: var(--muted); line-height: 1.72; }
+
+    .workflow { display: grid; grid-template-columns: minmax(245px, .7fr) minmax(0, 1.4fr); align-items: start; gap: clamp(22px, 4vw, 50px); padding-bottom: 28px; }
+    .workflow + .workflow { border-top: 1px solid var(--line); padding-top: 28px; padding-bottom: 0; }
+    .workflow h3, .gallery-item h3 { font-size: 1.08rem; line-height: 1.4; }
+    .workflow p { margin-top: 8px; }
+    .workflow p + p { margin-top: 10px; }
+    .photo { display: block; overflow: hidden; border: 1px solid #344553; border-radius: 6px; background: var(--surface); }
+    .photo:hover { border-color: #6384a4; }
+    .photo img { background: var(--surface); }
+
+    .gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+    .gallery-item h3 { margin-top: 12px; }
+    .gallery-item p { margin-top: 6px; font-size: .95rem; }
+    .gallery-item .hint { font-size: .825rem; }
+
+    .download-band { border-top: 1px solid var(--line); background: #141e27; }
+    .download-inner { display: flex; justify-content: space-between; align-items: center; padding-block: 30px; gap: 18px; }
+    .download-inner h2 { font-size: 1.45rem; }
+    .download-inner p { margin-top: 4px; color: var(--muted); }
+    .download-inner a { flex: none; }
+
+    footer { border-top: 1px solid var(--line); }
+    .footer-inner { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-block: 22px; }
+    .footer-note, .footer-nav { color: var(--muted); font-size: .875rem; }
+    .footer-nav { display: flex; align-items: center; gap: 18px; margin-left: auto; }
+
+    @media (max-width: 820px) {
+      .wrap { width: calc(100% - 44px); }
+      .masthead { padding-top: 42px; }
+      .engine-inner { grid-template-columns: 1fr; gap: 12px; }
+      .workflow { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+      .gallery { gap: 16px; }
+    }
+    @media (max-width: 620px) {
+      .wrap { width: calc(100% - 32px); }
+      .header-inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; min-height: auto; padding-block: 10px; }
+      .site-nav { grid-row: 2; grid-column: 1 / -1; justify-content: space-between; gap: 8px; font-size: .825rem; }
+      .github-link { grid-row: 1; grid-column: 2; }
+      .masthead { padding: 32px 0 28px; }
+      .intro { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-bottom: 21px; }
+      .download-actions { min-width: 0; padding: 0; border: 0; }
+      .screen-toolbar { padding-inline: 4px; gap: 4px; }
+      .screen-tabs { width: auto; flex: 1; }
+      .screen-tabs button { padding-inline: 3px; font-size: .825rem; }
+      .screen-playback { min-width: 55px; padding-inline: 6px; }
+      .screen-caption { padding: 8px 10px; font-size: .8rem; }
+      .engine-groups { grid-template-columns: 1fr; gap: 9px; }
+      .engine-groups > div + div { border-top: 1px solid var(--line); padding-top: 8px; }
+      .section { padding-block: 34px; }
+      .section-heading { margin-bottom: 16px; }
+      .capability { grid-template-columns: 1fr; gap: 4px; padding-block: 11px; }
+      .gallery { grid-template-columns: minmax(0, 1fr); gap: 23px; }
+      .download-inner { align-items: flex-start; flex-direction: column; }
+      .footer-inner { gap: 9px 14px; }
+      .footer-nav { margin-left: 0; }
+    }
+    .reading-progress {
+      position: absolute; inset: auto 0 -1px; height: 2px; pointer-events: none;
+      background: var(--blue); transform: scaleX(0); transform-origin: left;
+    }
+    .site-header[data-scrolled] { box-shadow: 0 4px 16px #080c1140; }
+    .site-nav a { position: relative; }
+    .site-nav a[aria-current="location"] { color: var(--text); }
+    .site-nav a::after {
+      content: ""; position: absolute; inset: auto 0 -5px; height: 2px;
+      transform: scaleX(0); transform-origin: left; background: var(--blue);
+    }
+    .site-nav a[aria-current="location"]::after { transform: scaleX(1); }
+
+    .screen-image { position: relative; display: block; overflow: hidden; }
+    .screen-highlight {
+      display: none; position: absolute; z-index: 1; pointer-events: none;
+      left: var(--mark-x); top: var(--mark-y); width: var(--mark-width); height: var(--mark-height);
+      border: 1px solid #97c7ff; border-radius: 5px;
+      box-shadow: 0 0 0 1px #6caff96b, 0 0 16px #5e9add47;
+    }
+    .screen-highlight span {
+      position: absolute; left: -1px; bottom: calc(100% + 5px); white-space: nowrap;
+      padding: 2px 7px; border: 1px solid #7aabed; border-radius: 4px;
+      background: #15283cf2; color: #e5f0ff; font-size: .74rem; font-weight: 600;
+    }
+    .mark-sql { --mark-x: 17.1%; --mark-y: 53.8%; --mark-width: 45%; --mark-height: 19%; }
+    .mark-er { --mark-x: 63.6%; --mark-y: 28.9%; --mark-width: 26%; --mark-height: 7%; }
+    .mark-analysis { --mark-x: 79.2%; --mark-y: 42.2%; --mark-width: 20.2%; --mark-height: 22.5%; }
+    .mark-analysis span { left: auto; right: -1px; }
+
+    .engine-groups > div:nth-child(2), .capability:nth-child(even), .gallery-item:nth-child(2) { --reveal-delay: 75ms; }
+    .engine-groups > div:nth-child(3), .gallery-item:nth-child(3) { --reveal-delay: 150ms; }
+    .workflow > div { --entry-x: -12px; }
+    .gallery-item figcaption { --reveal-delay: 100ms; }
+
+    @media (max-width: 620px) {
+      :root { --header-height: 84px; }
+      .screen-highlight span { padding: 1px 4px; font-size: .65rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .reading-progress { display: none; }
+    }
+    @keyframes heading-in {
+      from { opacity: .12; clip-path: inset(0 0 90%); transform: translateY(16px); }
+      to { opacity: 1; clip-path: inset(0); transform: none; }
+    }
+    @keyframes section-in {
+      from { opacity: .55; transform: translate(var(--entry-x, 0), 15px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes screenshot-mark {
+      0% { opacity: 0; transform: scale(.94); }
+      18%, 72% { opacity: 1; transform: none; }
+      100% { opacity: 0; transform: scale(1.025); }
+    }
+
+    @keyframes title-arrive {
+      from { opacity: 0; transform: translateY(17px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes workspace-open {
+      from { opacity: .1; transform: translateY(20px); clip-path: inset(0 0 11% 0 round 9px); }
+      to { opacity: 1; transform: none; clip-path: inset(0 round 9px); }
+    }
+    @keyframes photo-reveal {
+      from { opacity: .48; transform: translateY(14px); clip-path: inset(0 0 13% 0 round 6px); }
+      to { opacity: 1; transform: none; clip-path: inset(0 round 6px); }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      html { scroll-behavior: smooth; }
+      .intro .download-actions { animation: title-arrive .53s cubic-bezier(.2, .7, .28, 1) 210ms backwards; }
+      .site-header { transition: box-shadow .25s ease-out; }
+      .site-nav a::after { transition: transform .25s ease-out; }
+      .intro h1 { animation: heading-in .65s cubic-bezier(.2, .72, .25, 1) backwards; }
+      .intro .product-title { animation: title-arrive .49s cubic-bezier(.2, .7, .28, 1) 115ms backwards; }
+      .intro .product-description { animation: title-arrive .45s cubic-bezier(.2, .7, .28, 1) 190ms backwards; }
+      .screen.is-active .screen-highlight {
+        display: block; opacity: 0;
+        animation: screenshot-mark 3.55s cubic-bezier(.2, .65, .27, 1) .58s both;
+      }
+      [data-section-revealed] { animation: section-in .55s cubic-bezier(.19, .66, .29, 1) var(--reveal-delay, 0ms) backwards; }
+      .gallery-item .photo[data-revealed] { animation-delay: var(--reveal-delay, 0ms); }
+      .workspace { animation: workspace-open .78s cubic-bezier(.2, .7, .25, 1) 130ms backwards; }
+      .screen-tabs::after { transition: transform .34s cubic-bezier(.22, .68, .25, 1); }
+      .screen-tabs button, .screen-playback { transition: color .18s, background-color .18s, border-color .18s; }
+      .screen {
+        transform: translateX(10px);
+        transition: opacity .42s ease-out, transform .42s cubic-bezier(.22, .68, .25, 1), visibility 0s linear .42s;
+      }
+      .screen.is-active { transform: none; transition-delay: 0s; }
+      .photo[data-revealed] { animation: photo-reveal .56s cubic-bezier(.2, .68, .28, 1); }
+      .primary, .photo { transition: background-color .2s, border-color .2s; }
+    }
+    @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+      .photo img, .primary .icon { transition: transform .32s cubic-bezier(.22, .67, .28, 1); }
+      .photo:hover img { transform: scale(1.035); }
+      .primary:hover .icon { transform: translateY(2px); }
+    }
+  </style>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <defs>
+      <symbol id="i-db" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.25" rx="8.25" ry="3"/><path d="M3.75 5.25v13.5c0 1.65 3.69 3 8.25 3s8.25-1.35 8.25-3V5.25M3.75 12c0 1.65 3.69 3 8.25 3s8.25-1.35 8.25-3"/></g></symbol>
+      <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 .75a11.25 11.25 0 0 0-3.56 21.92c.56.1.77-.25.77-.54v-2.11c-3.14.68-3.8-1.33-3.8-1.33-.51-1.3-1.25-1.65-1.25-1.65-1.03-.7.08-.69.08-.69 1.13.08 1.73 1.16 1.73 1.16 1.01 1.73 2.64 1.23 3.28.94.1-.74.4-1.23.72-1.51-2.51-.29-5.15-1.26-5.15-5.6 0-1.24.44-2.25 1.16-3.04-.12-.29-.5-1.44.11-3 .95-.3 3.11 1.16 3.11 1.16a10.84 10.84 0 0 1 5.65 0s2.16-1.46 3.11-1.16c.61 1.56.23 2.71.11 3 .72.79 1.16 1.8 1.16 3.04 0 4.35-2.65 5.31-5.17 5.59.41.36.77 1.04.77 2.1v3.11c0 .3.2.65.77.54A11.25 11.25 0 0 0 12 .75Z"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></symbol>
+    </defs>
+  </svg>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#main"><svg class="icon" aria-hidden="true"><use href="#i-db"/></svg>DBFolio</a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="#features">功能</a>
+        <a href="#intelligence">AI 与分析</a>
+        <a href="#engines">支持引擎</a>
+        <a href="#captures">界面预览</a>
+      </nav>
+      <a class="github-link" href="https://github.com/SerLiunx-ctrl/dbfolio"><svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>GitHub</a>
+    </div>
+    <span class="reading-progress" aria-hidden="true"></span>
+  </header>
+
+  <main id="main">
+    <section class="masthead" aria-labelledby="product-name">
+      <div class="wrap">
+        <div class="intro">
+          <div>
+            <h1 id="product-name">DBFolio</h1>
+            <p class="product-title">跨引擎桌面数据库工作台</p>
+            <p class="product-description">编写和运行 SQL，编辑表数据与结构，查看查询结果和表关系。Redis、MongoDB 和消息队列也可以在同一个客户端管理。</p>
+          </div>
+          <div class="download-actions">
+            <a class="primary" href="https://github.com/SerLiunx-ctrl/dbfolio/releases"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>下载 Windows 版</a>
+            <p>Windows 10 / 11 · x64</p>
+            <p><a class="text-link" href="https://github.com/SerLiunx-ctrl/dbfolio#quick-start">快速上手</a></p>
+          </div>
+        </div>
+        <div class="workspace" id="workspace">
+          <div class="screen-toolbar">
+            <div class="screen-tabs" role="tablist" aria-label="工作台界面">
+              <button type="button" role="tab" id="tab-sql" aria-controls="panel-sql" aria-selected="true">SQL 查询</button>
+              <button type="button" role="tab" id="tab-er" aria-controls="panel-er" aria-selected="false" tabindex="-1">ER 关系图</button>
+              <button type="button" role="tab" id="tab-analysis" aria-controls="panel-analysis" aria-selected="false" tabindex="-1">数据分析</button>
+            </div>
+            <button class="screen-playback" type="button" aria-label="暂停自动演示" hidden>
+              <span class="playback-symbol" aria-hidden="true"></span><span class="playback-label">暂停</span>
+            </button>
+          </div>
+          <div class="screen-progress" aria-hidden="true" hidden><span></span></div>
+          <div class="screen-stage">
+            <div class="screen is-active" id="panel-sql" role="tabpanel" aria-labelledby="tab-sql" tabindex="0">
+              <a class="screen-link" href="assets/demo/mariadb-query.png" target="_blank" rel="noopener">
+                <span class="screen-image">
+                  <img src="assets/demo/mariadb-query.png" alt="MariaDB 的 SQL 编辑器和按状态汇总的订单结果" width="1440" height="860" fetchpriority="high">
+                  <span class="screen-highlight mark-sql" aria-hidden="true"><span>按状态汇总</span></span>
+                </span>
+                <span class="screen-caption"><span>在 MariaDB 上按状态汇总订单数和金额</span><span class="original-link">查看原图</span></span>
+              </a>
+            </div>
+            <div class="screen" id="panel-er" role="tabpanel" aria-labelledby="tab-er" tabindex="0" aria-hidden="true" inert>
+              <a class="screen-link" href="assets/demo/mariadb-er.png" target="_blank" rel="noopener">
+                <span class="screen-image">
+                  <img src="assets/demo/mariadb-er.png" alt="客户、订单、订单明细与商品四张表之间的外键关系" width="1440" height="860" decoding="async">
+                  <span class="screen-highlight mark-er" aria-hidden="true"><span>订单明细外键</span></span>
+                </span>
+                <span class="screen-caption"><span>查看订单、客户和商品之间的外键</span><span class="original-link">查看原图</span></span>
+              </a>
+            </div>
+            <div class="screen" id="panel-analysis" role="tabpanel" aria-labelledby="tab-analysis" tabindex="0" aria-hidden="true" inert>
+              <a class="screen-link" href="assets/demo/data-analysis.png" target="_blank" rel="noopener">
+                <span class="screen-image">
+                  <img src="assets/demo/data-analysis.png" alt="订单金额环形图与按状态划分的分类明细" width="1440" height="860" decoding="async">
+                  <span class="screen-highlight mark-analysis" aria-hidden="true"><span>分类明细</span></span>
+                </span>
+                <span class="screen-caption"><span>将订单查询结果绘制为环形图</span><span class="original-link">查看原图</span></span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="engine-block" id="engines" aria-labelledby="engine-title">
+      <div class="wrap engine-inner">
+        <div>
+          <h2 class="engine-title" id="engine-title">支持的引擎</h2>
+          <a class="text-link support-link" href="https://github.com/SerLiunx-ctrl/dbfolio#support">查看功能范围</a>
+        </div>
+        <dl class="engine-groups">
+          <div><dt>关系型数据库</dt><dd>MySQL · MariaDB · PostgreSQL · SQLite · 达梦 DM8</dd></div>
+          <div><dt>文档与键值</dt><dd>MongoDB · Redis</dd></div>
+          <div><dt>消息队列</dt><dd>Kafka · RabbitMQ · RocketMQ</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <div class="wrap">
+      <section class="section" id="features" aria-labelledby="feature-title">
+        <h2 class="section-heading" id="feature-title">数据库操作</h2>
+        <dl>
+          <div class="capability">
+            <dt>SQL 查询与表格编辑</dt>
+            <dd>补全表名和字段，执行选区 SQL，查看历史和执行计划。编辑数据后可先核对逐行差异及 SQL，再勾选要提交的行。</dd>
+          </div>
+          <div class="capability">
+            <dt>表结构与数据字典</dt>
+            <dd>查看字段、索引、外键和 DDL，从 ER 图定位关联字段。可给数据字典补充业务说明，并导出 Markdown、HTML 或 Excel。</dd>
+          </div>
+          <div class="capability">
+            <dt>测试数据与文件</dt>
+            <dd>用规则、模板或 AI 生成测试数据，预览后写入或导出。支持 CSV、TSV 导入及 CSV、JSON、Excel 导出，适用引擎可处理 SQL 文件。</dd>
+          </div>
+          <div class="capability">
+            <dt>数据与结构同步</dt>
+            <dd>比较受支持的同引擎数据库，核对差异与同步计划再执行。导入、导出和同步的进度可在任务中心查看。</dd>
+          </div>
+          <div class="capability">
+            <dt>连接与会话管理</dt>
+            <dd>按项目和环境管理连接，生产会话默认只读，适用连接可配置 SSH 和 TLS。会话配置保存在本机，使用客户端无需注册。</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section" id="intelligence" aria-labelledby="intelligence-title">
+        <h2 class="section-heading" id="intelligence-title">AI 与数据分析</h2>
+        <article class="workflow" id="ai">
+          <div>
+            <h3>编写 SQL 与识别关联</h3>
+            <p>描述查询需求，用 <code>@</code> 引用表或字段。生成的 SQL 供你在编辑器中审阅和执行，也可以优化选中的语句。</p>
+            <p>ER 图可以根据所选表结构建议关联，审阅后可加为业务标注。AI 服务和模型由你配置，按需启用。</p>
+          </div>
+          <a class="photo" href="assets/demo/ai-workspace.png" target="_blank" rel="noopener" aria-label="查看 SQL 智能生成原图">
+            <img src="assets/demo/ai-workspace.png" alt="智能生成 SQL，左侧编辑器显示待执行语句，右侧显示订单统计需求" width="1440" height="760" loading="lazy" decoding="async">
+          </a>
+        </article>
+        <article class="workflow" id="analysis">
+          <div>
+            <h3>从查询结果绘图</h3>
+            <p>从 SQL 查询或 MongoDB 聚合结果选择分类、数值和聚合方式，查看图表、分类明细和字段概况。</p>
+            <p>有柱形图、折线图、环形图、散点图和指标卡等 9 种展示。分析方案可保存并重新运行，结果可导出为 PNG、CSV 或 JSON。</p>
+          </div>
+          <a class="photo" href="assets/demo/data-analysis.png" target="_blank" rel="noopener" aria-label="查看数据分析原图">
+            <img src="assets/demo/data-analysis.png" alt="按订单状态分析金额，分析工作区显示环形图和分类明细" width="1440" height="860" loading="lazy" decoding="async">
+          </a>
+        </article>
+      </section>
+
+      <section class="section" id="captures" aria-labelledby="capture-title">
+        <h2 class="section-heading" id="capture-title">缓存、文档与消息</h2>
+        <div class="gallery">
+          <figure class="gallery-item">
+            <a class="photo" href="assets/demo/redis-keys.png" target="_blank" rel="noopener" aria-label="查看 Redis 键浏览原图">
+              <img src="assets/demo/redis-keys.png" alt="Redis 中的订单缓存及 Hash 的值和有效期" width="1440" height="860" loading="lazy" decoding="async">
+            </a>
+            <figcaption>
+              <h3>Redis</h3>
+              <p>按键名找到订单缓存，查看类型、值和剩余有效期。</p>
+            </figcaption>
+          </figure>
+          <figure class="gallery-item">
+            <a class="photo" href="assets/demo/mongodb-documents.png" target="_blank" rel="noopener" aria-label="查看 MongoDB 文档原图">
+              <img src="assets/demo/mongodb-documents.png" alt="MongoDB 订单事件的集合列表与 JSON 文档详情" width="1440" height="860" loading="lazy" decoding="async">
+            </a>
+            <figcaption>
+              <h3>MongoDB</h3>
+              <p>筛选和排序订单事件，查看文档中的嵌套字段与内容。</p>
+            </figcaption>
+          </figure>
+          <figure class="gallery-item">
+            <a class="photo" href="assets/demo/rabbitmq-messages.png" target="_blank" rel="noopener" aria-label="查看 RabbitMQ 消息原图">
+              <img src="assets/demo/rabbitmq-messages.png" alt="RabbitMQ 履约队列的消息列表与打包事件正文" width="1440" height="860" loading="lazy" decoding="async">
+            </a>
+            <figcaption>
+              <h3>RabbitMQ</h3>
+              <p>查看待处理消息数，按需取样查看消息正文和路由键。</p>
+              <p class="hint">取样会重新入队，消息顺序可能变化。</p>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
+
+    <section class="download-band" id="download" aria-labelledby="download-title">
+      <div class="wrap download-inner">
+        <div>
+          <h2 id="download-title">下载 DBFolio</h2>
+          <p>Windows 10 / 11 · x64 · 安装版与便携版</p>
+        </div>
+        <a class="primary" href="https://github.com/SerLiunx-ctrl/dbfolio/releases"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>查看发行版</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <a class="brand" href="#main"><svg class="icon" aria-hidden="true"><use href="#i-db"/></svg>DBFolio</a>
+      <p class="footer-note">MIT 开源许可</p>
+      <nav class="footer-nav" aria-label="项目链接">
+        <a href="https://github.com/SerLiunx-ctrl/dbfolio#quick-start">快速上手</a>
+        <a href="https://github.com/SerLiunx-ctrl/dbfolio">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    const header = document.querySelector('.site-header');
+    const readingProgress = header.querySelector('.reading-progress');
+    const sectionLinks = new Map(
+      Array.from(header.querySelectorAll('.site-nav a')).map(link => [link.hash.slice(1), link])
+    );
+    const trackedSections = Array.from(document.querySelectorAll('main section[id]'))
+      .filter(section => sectionLinks.has(section.id));
+    let readingFrame = 0;
+    let activeSection = null;
+
+    function syncReading() {
+      readingFrame = 0;
+      const scrollTop = window.scrollY;
+      const pageHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const visibleLine = header.offsetHeight + 32;
+      let current = null;
+
+      for (const section of trackedSections) {
+        if (section.getBoundingClientRect().top <= visibleLine) current = section.id;
+      }
+      if (pageHeight > 0 && scrollTop >= pageHeight - 2) {
+        current = trackedSections.at(-1)?.id ?? current;
+      }
+      if (activeSection !== current) {
+        sectionLinks.get(activeSection)?.removeAttribute('aria-current');
+        sectionLinks.get(current)?.setAttribute('aria-current', 'location');
+        activeSection = current;
+      }
+      header.toggleAttribute('data-scrolled', scrollTop > 12);
+      const progress = pageHeight > 0 ? Math.min(1, Math.max(0, scrollTop / pageHeight)) : 0;
+      readingProgress.style.transform = 'scaleX(' + progress + ')';
+    }
+
+    function scheduleReading() {
+      if (!readingFrame) readingFrame = requestAnimationFrame(syncReading);
+    }
+
+    window.addEventListener('scroll', scheduleReading, { passive: true });
+    window.addEventListener('resize', scheduleReading);
+    window.addEventListener('load', scheduleReading);
+    scheduleReading();
+
+    const workspace = document.getElementById('workspace');
+    const toolbarTabs = workspace.querySelector('.screen-tabs');
+    const tabs = Array.from(toolbarTabs.querySelectorAll('[role="tab"]'));
+    const panels = tabs.map(tab => document.getElementById(tab.getAttribute('aria-controls')));
+    const stage = workspace.querySelector('.screen-stage');
+    const playButton = workspace.querySelector('.screen-playback');
+    const playLabel = workspace.querySelector('.playback-label');
+    const progressBar = workspace.querySelector('.screen-progress');
+    const progress = progressBar.firstElementChild;
+    const motion = matchMedia('(prefers-reduced-motion: reduce)');
+
+    let selectedIndex = 0;
+    let playbackEnabled = true;
+    let isInView = false;
+    let pointerOverScreen = false;
+    let timer = null;
+
+    function selectTab(index, focus = false) {
+      selectedIndex = index;
+      toolbarTabs.style.setProperty('--active-tab', index);
+      tabs.forEach((tab, i) => {
+        const active = i === index;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        panels[i].classList.toggle('is-active', active);
+        panels[i].inert = !active;
+        panels[i].setAttribute('aria-hidden', String(!active));
+      });
+      if (focus) tabs[index].focus();
+    }
+
+    function resetProgress() {
+      timer?.cancel();
+      timer = null;
+    }
+
+    function syncPlayback() {
+      const available = !motion.matches && 'IntersectionObserver' in window && typeof progress.animate === 'function';
+      playButton.hidden = !available;
+      progressBar.hidden = !available;
+      playButton.toggleAttribute('data-paused', !playbackEnabled);
+      playButton.setAttribute('aria-label', playbackEnabled ? '暂停自动演示' : '播放自动演示');
+      playLabel.textContent = playbackEnabled ? '暂停' : '播放';
+
+      if (!available || !playbackEnabled || !isInView || pointerOverScreen || document.hidden) {
+        timer?.pause();
+        return;
+      }
+      if (timer) {
+        timer.play();
+        return;
+      }
+      timer = progress.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], {
+        duration: 5400,
+        fill: 'forwards',
+      });
+      timer.onfinish = () => {
+        resetProgress();
+        selectTab((selectedIndex + 1) % tabs.length);
+        syncPlayback();
+      };
+    }
+
+    function selectManually(index, focus = false) {
+      playbackEnabled = false;
+      resetProgress();
+      selectTab(index, focus);
+      syncPlayback();
+    }
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectManually(index));
+      tab.addEventListener('keydown', (event) => {
+        let next;
+        switch (event.key) {
+          case 'ArrowLeft': next = (index + tabs.length - 1) % tabs.length; break;
+          case 'ArrowRight': next = (index + 1) % tabs.length; break;
+          case 'Home': next = 0; break;
+          case 'End': next = tabs.length - 1; break;
+          default: return;
+        }
+        event.preventDefault();
+        selectManually(next, true);
+      });
+    });
+
+    playButton.addEventListener('click', () => {
+      playbackEnabled = !playbackEnabled;
+      syncPlayback();
+    });
+    workspace.addEventListener('focusin', (event) => {
+      if (event.target === playButton) return;
+      playbackEnabled = false;
+      syncPlayback();
+    });
+    stage.addEventListener('pointerenter', (event) => {
+      if (event.pointerType !== 'mouse') return;
+      pointerOverScreen = true;
+      syncPlayback();
+    });
+    stage.addEventListener('pointerleave', () => {
+      pointerOverScreen = false;
+      syncPlayback();
+    });
+
+    if ('IntersectionObserver' in window) {
+      const workspaceObserver = new IntersectionObserver(([entry]) => {
+        isInView = entry.intersectionRatio >= 0.22;
+        syncPlayback();
+      }, { threshold: 0.22 });
+      workspaceObserver.observe(workspace);
+
+      const revealObserver = new IntersectionObserver((entries, observer) => {
+        for (const { target, intersectionRatio } of entries) {
+          if (intersectionRatio < 0.16) continue;
+          target.toggleAttribute(target.classList.contains('photo') ? 'data-revealed' : 'data-section-revealed', true);
+          observer.unobserve(target);
+        }
+      }, { threshold: 0.16 });
+      const revealTargets = '.photo, .engine-groups > div, .capability, .section-heading, .workflow > div, .gallery-item figcaption, .download-inner';
+      document.querySelectorAll(revealTargets).forEach(item => revealObserver.observe(item));
+    }
+    document.addEventListener('visibilitychange', syncPlayback);
+    motion.addEventListener('change', syncPlayback);
+    syncPlayback();
+  </script>
+</body>
+</html>

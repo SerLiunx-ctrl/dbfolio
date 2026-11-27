@@ -288,7 +288,7 @@ fn validate_sql(
     // No client directives, connection-state changes or nested dynamic evaluation.
     if ![
         "SELECT", "WITH", "INSERT", "REPLACE", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP",
-        "TRUNCATE", "RENAME", "EXPLAIN", "DESCRIBE", "DESC",
+        "TRUNCATE", "RENAME", "EXPLAIN", "DESCRIBE", "DESC", "SHOW",
     ]
     .contains(&query::first_keyword(&statement.sql).as_str())
     {
@@ -542,6 +542,8 @@ mod tests {
             .replace("column_name=", "index_name=");
         assert!(checked(&index, false, false).is_ok());
         assert!(checked("SELECT 1; SELECT 'semicolon ; in string'", false, false).is_ok());
+        assert!(checked("SHOW TABLES; SHOW CREATE TABLE t;", true, false).is_ok());
+        assert!(checked("SELECT 1; SHOW PROCESSLIST;", true, false).is_err());
         assert!(checked("SELECT 1", false, false).unwrap().is_none());
         assert!(plan(
             Engine::Sqlite,

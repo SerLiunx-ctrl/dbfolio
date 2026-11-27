@@ -259,7 +259,13 @@ pub(crate) fn decode_cell(row: &MySqlRow, idx: usize) -> DbValue {
             Ok(v) => v.map_or(DbValue::Null, |t| DbValue::Time(format_mysql_time(t))),
             Err(error) => DbValue::ReadOnly(format!("MySQL TIME 解析失败：{error}")),
         };
-    } else if type_name == "DATETIME" || type_name == "TIMESTAMP" {
+    } else if type_name == "TIMESTAMP" {
+        // TIMESTAMP and DATETIME share a wire format. Decode the connection's
+        // wall time without imposing the DATETIME-only NaiveDateTime type check.
+        if let Ok(v) = row.try_get_unchecked::<Option<NaiveDateTime>, _>(idx) {
+            return v.map_or(DbValue::Null, |d| DbValue::DateTime(format_date_time(d)));
+        }
+    } else if type_name == "DATETIME" {
         if let Ok(v) = row.try_get::<Option<NaiveDateTime>, _>(idx) {
             return v.map_or(DbValue::Null, |d| DbValue::DateTime(format_date_time(d)));
         }

@@ -1,0 +1,77 @@
+.dw-database-visibility {
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  width: min(310px, calc(100vw - 16px));
+}
+
+.dw-database-visibility-header,
+.dw-database-visibility-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.dw-database-visibility-header strong {
+  font-size: 13px;
+}
+
+.dw-database-visibility-actions {
+  display: flex;
+  gap: 2px;
+  margin-inline-start: auto;
+}
+
+.dw-database-visibility-actions .fui-Button {
+  min-width: 24px;
+  padding: 2px;
+}
+
+.dw-database-visibility-count,
+.dw-database-visibility-footer,
+.dw-database-visibility-list p {
+  color: var(--colorNeutralForeground3);
+  font-size: 12px;
+}
+
+.dw-database-visibility-list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(340px, 48dvh);
+  overflow: auto;
+  padding: 4px 0;
+  border-block: 1px solid var(--colorNeutralStroke2);
+}
+
+.dw-database-visibility-list .fui-Checkbox {
+  flex: none;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 26px;
+}
+
+.dw-database-visibility-list .fui-Checkbox__indicator {
+  align-self: center;
+  margin-block: 0;
+}
+
+.dw-database-visibility-list .fui-Checkbox__label {
+  flex: 1;
+  min-width: 0;
+  margin-block: 0;
+  padding-block: 3px;
+  font-size: 12px;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dw-database-visibility-list p {
+  margin: 4px 0;
+}
+
+.dw-database-visibility-footer .fui-Button {
+  margin-inline-start: auto;
+}

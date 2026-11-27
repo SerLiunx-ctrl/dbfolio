@@ -21,9 +21,11 @@ document.documentElement.dataset.oled = String(mode === 'oled');
 document.documentElement.dataset.density = 'compact';
 connectionBridge.isOffline = () => false;
 useSessionStore.setState({sessions:[{id:'s',name:'隔离测试',engine,readOnly:params.has('readonly')} as any]});
-const columns = Array.from({length:70},(_,i)=>({name:i===0?'id':i===65?target:`column_${i}`,ordinal:i+1,rawType:'varchar(80)',nullable:true,autoIncrement:false,unsigned:false}));
+const longName = 'column_with_a_very_long_business_identifier_for_composite_index_layout';
+const columns = Array.from({length:70},(_,i)=>({name:i===0?'id':i===35?longName:i===65?target:`column_${i}`,ordinal:i+1,rawType:'varchar(80)',nullable:true,autoIncrement:false,unsigned:false}));
+const indexColumnNames = ['id','column_2','column_3','column_4','column_5','column_6','column_7','column_8','column_9',longName,target];
 const detail = {name:'items',kind:'table',columns,primaryKey:[],indexes:[
-  {name:'idx_target',unique:false,columns:[{name:target,prefixLen:10,desc:true},{name:'id'}],method:'BTREE'},
+  {name:'idx_target',unique:false,columns:indexColumnNames.map((name,i)=>({name,...(i===indexColumnNames.length-1?{prefixLen:10,desc:true}:{})})),method:'BTREE'},
   {name:'idx_expression',unique:false,columns:[{name:'lower(column_1)'}],method:'BTREE'},
 ],foreignKeys:[{name:'fk_owner',columns:['id'],refTable:'parents',refColumns:['id'],onDelete:'NO ACTION',onUpdate:'NO ACTION'}],rawDdl:''};
 const draft = newTableState(engine);
@@ -33,7 +35,7 @@ draft.indexes = [{name:'idx_target',unique:false,columns:[{name:target},{name:'i
 draft.foreignKeys=[{name:'fk_owner',columns:['id'],refTable:'parents',refSchema:engine==='postgres'?'public':null,refColumns:['id'],onDelete:'NO ACTION',onUpdate:'NO ACTION'}];
 const draftTab:any={id:'draft',kind:'createTable',sessionId:'s',database:'db',draft,title:'新建表*'};
 useTabStore.setState({tabs:[draftTab],activeId:'draft'});
-w.calls=[];w.target=target;w.tabs=useTabStore;
+w.calls=[];w.target=target;w.longName=longName;w.indexColumnNames=indexColumnNames;w.tabs=useTabStore;
 w.__TAURI_INTERNALS__={invoke:async(command:string,args:any)=>{
   w.calls.push({command,args});
   if(command==='meta_table_detail')return {...detail,name:args.table};

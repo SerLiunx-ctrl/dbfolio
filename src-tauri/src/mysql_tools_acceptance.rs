@@ -55,6 +55,51 @@ async fn mysql_text_binary_decoding() {
     conn.close().await.unwrap(); // Temporary table is removed even on disconnect/panic.
 }
 
+#[tokio::test]
+#[ignore = "需要 DBFOLIO_TIMESTAMP_TEST_URL 指向本机隔离测试库"]
+async fn mysql_timestamp_decodes_like_server_text() {
+    use crate::{adapters::mysql::rows_to_outcome, meta::value::DbValue};
+    use sqlx::mysql::{MySqlConnectOptions, MySqlConnection};
+
+    let url = std::env::var("DBFOLIO_TIMESTAMP_TEST_URL").unwrap();
+    let options: MySqlConnectOptions = url.parse().expect("无效的测试库地址");
+    assert_eq!(options.get_host(), "127.0.0.1", "只使用本机隔离库");
+    let mut conn = MySqlConnection::connect_with(&options).await.unwrap();
+
+    conn.execute("SET SESSION time_zone = '+00:00'").await.unwrap();
+    conn.execute(
+        "CREATE TEMPORARY TABLE dbfolio_timestamp_check (
+            stamp TIMESTAMP NULL, precise_stamp TIMESTAMP(6) NULL, local_time DATETIME(6),
+            missing_stamp TIMESTAMP(6) NULL
+        )",
+    ).await.unwrap();
+    conn.execute(
+        "INSERT INTO dbfolio_timestamp_check VALUES (
+            '2026-06-08 19:40:12', '2026-06-08 19:40:12.123456',
+            '2026-06-08 19:40:12.123456', NULL
+        )",
+    ).await.unwrap();
+
+    let query = "SELECT stamp, precise_stamp, local_time, missing_stamp FROM dbfolio_timestamp_check";
+    for (zone, timestamp) in [
+        ("+00:00", "2026-06-08 19:40:12"),
+        ("+05:30", "2026-06-09 01:10:12"),
+    ] {
+        conn.execute(format!("SET SESSION time_zone = '{zone}'").as_str()).await.unwrap();
+        let expected = vec![
+            DbValue::DateTime(timestamp.into()),
+            DbValue::DateTime(format!("{timestamp}.123456")),
+            DbValue::DateTime("2026-06-08 19:40:12.123456".into()),
+            DbValue::Null,
+        ];
+        let prepared = sqlx::query(query).fetch_all(&mut conn).await.unwrap();
+        let raw = sqlx::raw_sql(query).fetch_all(&mut conn).await.unwrap();
+        for rows in [prepared, raw] {
+            assert_eq!(rows_to_outcome(rows, vec![]).rows, vec![expected.clone()]);
+        }
+    }
+}
+
 async fn import(
     state: &AppState,
     id: &str,

@@ -141,7 +141,7 @@
 :root[data-density="compact"] .dw-mongo-tool-result :is(th,td) { padding: 5px 8px; }
 :root[data-density="compact"] .dw-plan-view li { padding: 7px 9px; margin: 6px 0; }
 
-.dw-session-form { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: var(--dw-form-gap) !important; }
+.dw-session-form { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; gap: var(--dw-form-gap) !important; }
 .dw-session-form > :is(.dw-span-full,.fui-Switch,.fui-Checkbox,p) { grid-column: 1 / -1; }
 .dw-session-form > p { font-size: 12px; color: var(--colorNeutralForeground3); }
 .dw-session-form .fui-Field { min-width: 0; }

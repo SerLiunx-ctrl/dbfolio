@@ -17,12 +17,40 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    assert.equal(await page.evaluate(()=>window.calls.filter(c=>/^(ddl_|query_|execute)/.test(c.command)).length),0,'定位不执行数据库写入或查询');
    assert.equal(await page.getByRole('table',{name:draft?'列草稿':'列信息'}).count(),1);
   };
+  const checkComposite=async(label)=>{
+   const expected=await page.evaluate(()=>window.indexColumnNames);
+   assert.equal(expected.length,11,'夹具包含 11 个复合索引字段');
+   assert.equal(expected.at(-1),target,'待定位字段位于复合索引末尾');
+   const cell=page.getByRole('table',{name:'索引信息'}).getByRole('row').filter({hasText:'idx_target'}).locator('td').nth(2);
+   const measure=await cell.evaluate(node=>{
+    const rect=element=>{const r=element.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+    return {cell:rect(node),row:rect(node.parentElement),scrollWidth:node.scrollWidth,clientWidth:node.clientWidth,
+     items:[...node.querySelectorAll('.dw-metadata-column')].map(item=>({
+      name:item.querySelector('.dw-metadata-column-link')?.textContent,
+      type:item.querySelector('.dw-metadata-type')?.textContent,
+      item:rect(item),link:rect(item.querySelector('.dw-metadata-column-link')),badge:rect(item.querySelector('.dw-metadata-type'))
+     }))};
+   });
+   assert.equal(measure.items.length,expected.length,`${label}: 复合索引列不能被省略`);
+   for(const [i,item] of measure.items.entries()){
+    assert.equal(item.name,expected[i],`${label}: 第 ${i+1} 个字段保持顺序及跳转按钮`);
+    assert.equal(item.type,'varchar(80)',`${label}: 第 ${i+1} 个字段保留类型标签`);
+    for(const [part,box] of [['字段块',item.item],['跳转按钮',item.link],['类型标签',item.badge]]){
+     assert(box.left>=measure.cell.left-1&&box.right<=measure.cell.right+1&&box.top>=measure.cell.top-1&&box.bottom<=measure.cell.bottom+1,
+      `${label}: 第 ${i+1} 个${part}超出列界 ${JSON.stringify({box,cell:measure.cell})}`);
+    }
+   }
+   assert(measure.items.at(-1).item.top>measure.items[0].item.top+1,`${label}: 复合索引应分成多行`);
+   assert(measure.scrollWidth<=measure.clientWidth+2,`${label}: 字段不能在单元格内横向裁切`);
+   assert(measure.row.bottom>=measure.items.at(-1).item.bottom-1,`${label}: 表格行应完整包住最后一项`);
+  };
   for(const engine of ['mysql','postgres','sqlite'])for(const theme of ['light','dark','oled']){
    await page.goto(`http://127.0.0.1:1425/scripts/fixtures/index-navigation.html?engine=${engine}&theme=${theme}`);
    await page.getByRole('table',{name:'索引信息'}).waitFor();
    assert.equal(await page.getByRole('button',{name:'在结构中定位字段 lower(column_1)',exact:true}).count(),0,'表达式无伪跳转');
    for(const zoom of [1,2]){
     await page.evaluate(z=>document.body.style.zoom=String(z),zoom);
+    await checkComposite(`${engine}/${theme}/${zoom}x`);
     await link().focus();await page.keyboard.press(zoom===1?'Enter':' ');await checkRow();
     if(zoom===1&&theme==='dark')await page.screenshot({path:`.qa/index-navigation-${engine}.png`});
     await page.getByRole('tab',{name:/索引/}).click();
@@ -42,6 +70,23 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    }
    console.log(`PASS ${engine}/${theme}: 名称精确定位、滚动、键盘与双缩放`);
   }
+  await page.setViewportSize({width:900,height:720});
+  await page.goto('http://127.0.0.1:1425/scripts/fixtures/index-navigation.html?engine=mysql&theme=light');
+  const indexTable=page.getByRole('table',{name:'索引信息'});
+  await indexTable.waitFor();
+  const widthHandle=indexTable.getByRole('separator',{name:'调整列列宽',exact:true});
+  await widthHandle.focus();
+  const beforeWidth=Number(await widthHandle.getAttribute('aria-valuenow'));
+  for(let i=0;i<4;i++)await page.keyboard.press('Shift+ArrowLeft');
+  const afterWidth=Number(await widthHandle.getAttribute('aria-valuenow'));
+  assert(afterWidth<=beforeWidth-180,`索引列应缩窄约 200px：${beforeWidth} -> ${afterWidth}`);
+  await checkComposite('900px/缩窄/1x');
+  await page.evaluate(()=>document.body.style.zoom='2');
+  await checkComposite('900px/缩窄/2x');
+  await page.screenshot({path:'.qa/index-navigation-composite-narrow-2x.png'});
+  await link().focus();await page.keyboard.press('Enter');await checkRow();
+  await page.setViewportSize({width:1440,height:720});
+  console.log('PASS 11 列复合索引：缩窄、200% 缩放、末项字段定位');
   for(const engine of ['mysql','postgres','sqlite']){
    await page.goto(`http://127.0.0.1:1425/scripts/fixtures/index-navigation.html?engine=${engine}&readonly`);
    await link().click();await checkRow();assert.equal(await page.getByRole('button',{name:'保存',exact:true}).count(),0);

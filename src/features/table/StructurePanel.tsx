@@ -518,9 +518,14 @@ export function IndexesPanel({
                 <TableCell>
                   <MetadataTag category="index" value={index.primary ? "主键" : index.unique ? "唯一" : "普通"} />
                 </TableCell>
-                <TableCell>
+                <TableCell className="dw-index-columns">
                   <span className={styles.mono}>
-                    {<TypedColumns onColumnClick={onColumnClick} names={index.columns.map(c => c.name)} columns={detail.columns} suffixes={index.columns.map(c => `${c.prefixLen ? `(${c.prefixLen})` : ""}${c.desc ? " DESC" : ""}`)} />}
+                    <TypedColumns
+                      onColumnClick={onColumnClick}
+                      names={index.columns.map(c => c.name)}
+                      columns={detail.columns}
+                      suffixes={index.columns.map(c => `${c.prefixLen ? `(${c.prefixLen})` : ""}${c.desc ? " DESC" : ""}`)}
+                    />
                   </span>
                 </TableCell>
                 <TableCell><MetadataTag category="method" value={index.method ?? ""} /></TableCell>

@@ -37,7 +37,7 @@ import {
   TableFilled,
   TableRegular,
 } from "@fluentui/react-icons";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ContextMenuPortal, ContextMenuSurface } from "../../app/ContextMenuPortal";
 import { useNotify } from "../../app/toast";
 import { api } from "../../ipc";
@@ -50,6 +50,7 @@ import { ConfirmSqlDialog } from "../table/ConfirmSqlDialog";
 
 import { CreateDatabaseDialog } from "./CreateDatabaseDialog";
 import { ObjectFinder } from "./ObjectFinder";
+import { DatabaseVisibilityButton } from "./DatabaseVisibilityButton";
 import { FavoriteButton } from "./FavoriteButton";
 
 const useStyles = makeStyles({
@@ -130,6 +131,8 @@ const useStyles = makeStyles({
   },
 });
 
+const MYSQL_SYSTEM_DATABASES = new Set(['information_schema', 'mysql', 'performance_schema', 'sys']);
+
 interface ContextMenuState {
   x: number;
   y: number;
@@ -193,13 +196,23 @@ function SqlExplorerPanel() {
   const session = sessions.find((s) => s.id === activeSessionId) ?? null;
   const readOnly=!session || session.readOnly;
   const connected = session ? Boolean(statuses[session.id]) : false;
-  // Stable partition keeps the existing order within user and system databases.
-  const mysqlSystemDatabases = new Set(['information_schema', 'mysql', 'performance_schema', 'sys']);
-  const databaseList = session ? databases[session.id]
-    ?.filter(db => !session.allowedDatabases || session.allowedDatabases.includes(db.name))
-    .sort((a, b) => session.engine === 'mysql'
-      ? Number(mysqlSystemDatabases.has(a.name.toLowerCase())) - Number(mysqlSystemDatabases.has(b.name.toLowerCase()))
-      : 0) : undefined;
+  const availableDatabases = session ? databases[session.id] : undefined;
+  const allowedDatabases = session?.allowedDatabases;
+  const engine = session?.engine;
+  const supportsDatabaseVisibility = engine !== "sqlite";
+  const hiddenDatabases = useExplorerVisibility(state => session ? state.hiddenDatabases[session.id] : undefined);
+  const databaseList = useMemo(() => {
+    // Preserve the order within user and system databases.
+    const allowed = availableDatabases?.filter(db => !allowedDatabases || allowedDatabases.includes(db.name));
+    return engine === "mysql"
+      ? allowed?.sort((a, b) => Number(MYSQL_SYSTEM_DATABASES.has(a.name.toLowerCase())) - Number(MYSQL_SYSTEM_DATABASES.has(b.name.toLowerCase())))
+      : allowed;
+  }, [availableDatabases, allowedDatabases, engine]);
+  const visibleDatabases = useMemo(() => {
+    if (!supportsDatabaseVisibility || !hiddenDatabases?.length) return databaseList;
+    const hidden = new Set(hiddenDatabases);
+    return databaseList?.filter(db => !hidden.has(db.name));
+  }, [databaseList, hiddenDatabases, supportsDatabaseVisibility]);
   const databasesLoading = session ? Boolean(loading[`db:${session.id}`]) : false;
 
   useEffect(() => {
@@ -282,7 +295,25 @@ function SqlExplorerPanel() {
         </div>
       )}
 
-      {session && connected && <ObjectFinder key={session.id} sessionId={session.id} redis={session.engine === "redis"} preferredDatabase={searchDatabases[session.id] ?? (activeTab?.sessionId === session.id ? activeTab.database : undefined)} />}
+      {session && connected && (
+        <ObjectFinder
+          key={session.id}
+          sessionId={session.id}
+          redis={session.engine === "redis"}
+          databases={visibleDatabases ?? []}
+          preferredDatabase={searchDatabases[session.id] ?? (activeTab?.sessionId === session.id ? activeTab.database : undefined)}
+          visibilityControl={supportsDatabaseVisibility && (
+            <DatabaseVisibilityButton
+              sessionId={session.id}
+              databases={databaseList?.map(database => database.name) ?? []}
+              busy={databasesLoading}
+              onRefresh={() => {
+                void loadDatabases(session.id).catch(error => notify.error(error, "刷新数据库列表失败"));
+              }}
+            />
+          )}
+        />
+      )}
 
       {session && !connected && (
         <div className={styles.placeholder}>
@@ -297,13 +328,18 @@ function SqlExplorerPanel() {
         </div>
       )}
 
-      {session && connected && databaseList && (
+      {session && connected && !databasesLoading && !visibleDatabases?.length && (
+        <div className={styles.placeholder}>
+          {databaseList?.length ? "所有数据库均已隐藏" : "暂无数据库"}
+        </div>
+      )}
+      {session && connected && !!visibleDatabases?.length && (
         <div className={styles.treeWrap}>
           <Tree
             aria-label="数据库对象"
             onOpenChange={(_, data) => handleOpenChange(String(data.value), data.open)}
           >
-            {databaseList.map((database) => {
+            {visibleDatabases.map((database) => {
               if (session.engine === "redis") {
                 const isSelected =
                   activeTab?.kind === "redis" &&

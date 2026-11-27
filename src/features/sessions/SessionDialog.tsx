@@ -43,6 +43,20 @@ const useStyles = makeStyles({
     gridColumn: "1 / -1",
     gridTemplateColumns: "2fr 1fr",
     gap: "10px",
+    alignItems: "start",
+  },
+  databaseScope: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+  scopeToggle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  selectDatabases: {
+    alignSelf: "flex-start",
   },
   fileRow: {
     display: "grid",
@@ -459,7 +473,7 @@ export function SessionDialog({
                 <small style={{gridColumn:'1/-1'}}>{engine==='kafka'?'使用原生 Kafka 协议，需能够访问 Broker 广播的所有地址；用户名与密码由所选 SASL 机制使用。':engine==='rabbitmq'?'连接 RabbitMQ Management HTTP API（默认 15672），需启用 management 插件；不是 AMQP 的 5672 端口。':'连接 RocketMQ Dashboard 2.x 管理接口（通常 8082），不是 NameServer 的 9876 端口；Dashboard 负责访问 Broker。'}</small>
               </section>}
               <ConnectionSecurity engine={engine} value={network} onChange={setNetwork} sshPassword={sshPassword} onPassword={setSshPassword} sshPassphrase={sshPassphrase} onPassphrase={setSshPassphrase} disabled={testing||saving}/>
-              <Field label="分组">
+              <Field label="分组" className="dw-span-full">
                 <Combobox
                   freeform
                   value={group}
@@ -478,14 +492,71 @@ export function SessionDialog({
                 </Combobox>
               </Field>
 
-              {engine === "mysql" && <section>
-                <div style={{display:'flex',alignItems:'center',gap:6}}><Switch label="仅允许指定数据库" checked={restrictDatabases} onChange={(_,d)=>setRestrictDatabases(d.checked)}/><InfoHint label="数据库访问范围">仅作用于本会话。未列入的数据库不显示，并阻止直接跨库 SQL、同步和导出访问。数据库名精确匹配，不支持通配符。视图、触发器及服务器内部依赖仍由服务器权限决定。</InfoHint></div>
-                {restrictDatabases && <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                  <Field label="允许的数据库（每行一个）" validationState={scopeError ? "error" : "none"} validationMessage={scopeError || undefined}><Textarea resize="vertical" rows={3} value={allowedDatabases} onChange={(_,d)=>setAllowedDatabases(d.value)} placeholder={'test_db\ndev_db'}/></Field>
-                  {session && <Button size="small" disabled={loadingChoices || !useSessionStore.getState().statuses[session.id]?.connected} onClick={async()=>{setLoadingChoices(true);try{setDatabaseChoices((await api.listDatabases(session.id)).map(d=>d.name));}catch(e){notify.error(e,'读取数据库失败');}finally{setLoadingChoices(false);}}}>从当前连接选择</Button>}
-                  {databaseChoices.length>0 && <div style={{maxHeight:130,overflow:'auto'}}>{databaseChoices.map(db=><Checkbox key={db} label={db} checked={allowedDatabases.split(/\r?\n/).map(s=>s.trim()).includes(db)} onChange={(_,d)=>setAllowedDatabases([...new Set([...allowedDatabases.split(/\r?\n/).map(s=>s.trim()).filter(s=>s && s!==db),...(d.checked?[db]:[])])].join('\n'))}/>)}</div>}
-                </div>}
-              </section>}
+              {engine === "mysql" && (
+                <section className={styles.databaseScope + " dw-span-full"}>
+                  <div className={styles.scopeToggle}>
+                    <Switch
+                      label="仅允许指定数据库"
+                      checked={restrictDatabases}
+                      onChange={(_, data) => setRestrictDatabases(data.checked)}
+                    />
+                    <InfoHint label="数据库访问范围">仅作用于本会话。未列入的数据库不显示，并阻止直接访问范围外的数据库。实例级命令（如 SHOW PROCESSLIST）也会被限制。数据库名精确匹配，不支持通配符。视图、触发器及服务器内部依赖仍由服务器权限决定。</InfoHint>
+                  </div>
+                  {restrictDatabases && (
+                    <>
+                      <Field
+                        label="允许的数据库（每行一个）"
+                        validationState={scopeError ? "error" : "none"}
+                        validationMessage={scopeError || undefined}
+                      >
+                        <Textarea
+                          resize="vertical"
+                          rows={3}
+                          value={allowedDatabases}
+                          onChange={(_, data) => setAllowedDatabases(data.value)}
+                          placeholder={"test_db\ndev_db"}
+                        />
+                      </Field>
+                      {session && (
+                        <Button
+                          size="small"
+                          className={styles.selectDatabases}
+                          disabled={loadingChoices || !useSessionStore.getState().statuses[session.id]?.connected}
+                          onClick={async () => {
+                            setLoadingChoices(true);
+                            try {
+                              setDatabaseChoices((await api.listDatabases(session.id)).map(db => db.name));
+                            } catch (error) {
+                              notify.error(error, "读取数据库失败");
+                            } finally {
+                              setLoadingChoices(false);
+                            }
+                          }}
+                        >
+                          从当前连接选择
+                        </Button>
+                      )}
+                      {databaseChoices.length > 0 && (
+                        <div style={{ maxHeight: 130, overflow: "auto" }}>
+                          {databaseChoices.map(db => (
+                            <Checkbox
+                              key={db}
+                              label={db}
+                              checked={allowedNames.includes(db)}
+                              onChange={(_, data) => {
+                                const next = new Set(allowedNames);
+                                if (data.checked) next.add(db);
+                                else next.delete(db);
+                                setAllowedDatabases([...next].join("\n"));
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </section>
+              )}
 
               {environment==="production"&&!readOnly&&<div role="alert" style={{color:tokens.colorPaletteRedForeground1}}>生产会话已允许写入，请谨慎执行修改、删除和同步操作。</div>}
               <Switch

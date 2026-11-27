@@ -12,10 +12,10 @@ export function TaskActivity({ kind, sessionId, tabId }: { kind: TaskKind; sessi
   if (!task) return null;
   return <div role="status" style={{ margin: "8px 0", padding: 8, border: "1px solid var(--colorNeutralStroke2)", borderRadius: 6, overflowWrap: "anywhere" }}>
     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-      <span style={{ flex: 1 }}>{task.label} · {(Math.max(0, (task.endedAt ?? now) - task.startedAt)/1000).toFixed(1)} 秒</span>
-      {isTaskActive(task) && <Button size="small" icon={<StopRegular />} disabled={task.status === "cancelling"} onClick={() => void cancelTask(task.id)}>{task.status === "cancelling" ? "等待当前操作停止" : "取消任务"}</Button>}
+      <span style={{ flex: "1 1 180px", minWidth: 0 }}>{task.label} · {(Math.max(0, (task.endedAt ?? now) - task.startedAt)/1000).toFixed(1)} 秒</span>
+      {isTaskActive(task) && <Button size="small" style={{ flexShrink: 0 }} icon={<StopRegular />} disabled={task.status === "cancelling"} onClick={() => void cancelTask(task.id)}>{task.status === "cancelling" ? "等待当前操作停止" : "取消任务"}</Button>}
     </div>
-    {isTaskActive(task) && <ProgressBar aria-label="任务进度" value={task.progress?.total ? Math.min(1, task.progress.processed / task.progress.total) : undefined} />}
+    {isTaskActive(task) && <div style={{ paddingTop: 12, paddingBottom: 6 }}><ProgressBar aria-label="任务进度" value={task.progress?.total ? Math.min(1, task.progress.processed / task.progress.total) : undefined} /></div>}
     <div>{task.progress?.message}</div>
     <div>{task.result}</div>
     <div>{task.error}</div>

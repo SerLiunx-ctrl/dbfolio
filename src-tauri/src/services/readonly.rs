@@ -1,6 +1,7 @@
 use crate::{error::{AppError,AppResult},meta::Engine,state::AppState};
 pub async fn writable(state:&AppState,id:&str)->AppResult<()> {if state.local.get_session(id).await?.read_only {return Err(AppError::ReadOnly("当前会话为只读模式，已阻止写入".into()));} Ok(())}
 pub fn sql(engine:Engine,text:&str)->AppResult<()> {
+ if engine==Engine::Mysql && super::database_access::is_metadata_show(text) {return Ok(());}
  let (_,words)=super::explain::scan_sql(engine,text).map_err(|e|AppError::ReadOnly(format!("只读模式拒绝该语句：{e}")))?;
  let words:Vec<_>=words.split_whitespace().map(str::to_ascii_uppercase).collect();
  let first=words.first().map(String::as_str).unwrap_or("");

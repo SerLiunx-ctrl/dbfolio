@@ -18,6 +18,7 @@ pub fn danger_reason(engine:Engine,sql:&str)->Option<String>{
     let dialect:Box<dyn Dialect>=match engine {Engine::Mysql=>Box::new(MySqlDialect{}),Engine::Postgres=>Box::new(PostgreSqlDialect{}),_=>Box::new(SQLiteDialect{})};
     // 可执行注释中的内容不能作为普通注释忽略。
     if engine==Engine::Mysql&&sql.contains("/*!"){return Some("高风险：SQL 包含 MySQL 可执行注释，请确认其中的实际操作".into());}
+    if engine==Engine::Mysql && super::database_access::is_metadata_show(sql) {return None;}
     let statements=match Parser::parse_sql(dialect.as_ref(),sql){
         Ok(items)=>items,
         Err(_)=>return Some("需核对：无法完整解析该 SQL，不能可靠判断影响范围，请检查语句后确认执行".into()),

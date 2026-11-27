@@ -46,14 +46,14 @@ pub fn check(allowed: Option<&[String]>, database: &str) -> AppResult<()> {
 #[derive(Debug)]
 struct Token {
     text: String,
-    quoted: bool,
+    quote: Option<char>,
 }
 impl Token {
     fn is(&self, word: &str) -> bool {
-        !self.quoted && self.text.eq_ignore_ascii_case(word)
+        self.quote.is_none() && self.text.eq_ignore_ascii_case(word)
     }
     fn ident(&self) -> bool {
-        self.quoted
+        matches!(self.quote, Some('`' | '"'))
             || self
                 .text
                 .chars()
@@ -131,7 +131,7 @@ fn tokens(sql: &str) -> AppResult<Vec<Token>> {
             }
             out.push(Token {
                 text: if quote == '\'' { String::new() } else { value },
-                quoted: quote != '\'',
+                quote: Some(quote),
             });
             continue;
         }
@@ -142,13 +142,13 @@ fn tokens(sql: &str) -> AppResult<Vec<Token>> {
             }
             out.push(Token {
                 text: c[start..i].iter().collect(),
-                quoted: false,
+                quote: None,
             });
             continue;
         }
         out.push(Token {
             text: c[i].to_string(),
-            quoted: false,
+            quote: None,
         });
         i += 1;
     }
@@ -161,6 +161,84 @@ fn tokens(sql: &str) -> AppResult<Vec<Token>> {
     Ok(out)
 }
 
+enum ShowScope<'a> {
+    Database(Option<&'a str>),
+    Processlist,
+}
+
+fn show_object(tokens: &[Token]) -> Option<(Option<&str>, &[Token])> {
+    match tokens {
+        [db, dot, name, rest @ ..] if db.ident() && dot.is(".") && name.ident() => {
+            Some((Some(&db.text), rest))
+        }
+        [name, rest @ ..] if name.ident() => Some((None, rest)),
+        _ => None,
+    }
+}
+
+fn show_scope(tokens: &[Token]) -> Option<ShowScope<'_>> {
+    let [show, rest @ ..] = tokens else { return None };
+    if !show.is("SHOW") {
+        return None;
+    }
+    let extended = rest.first().is_some_and(|x| x.is("EXTENDED"));
+    let rest = &rest[usize::from(extended)..];
+    let full = rest.first().is_some_and(|x| x.is("FULL"));
+    let [command, args @ ..] = &rest[usize::from(full)..] else { return None };
+
+    if !extended && command.is("PROCESSLIST") && args.is_empty() {
+        return Some(ShowScope::Processlist);
+    }
+    if !extended && !full && command.is("CREATE") {
+        let [kind, target @ ..] = args else { return None };
+        if kind.is("TABLE") || kind.is("VIEW") {
+            let (db, rest) = show_object(target)?;
+            return rest.is_empty().then_some(ShowScope::Database(db));
+        }
+        return None;
+    }
+
+    let (db, rest, like_allowed) = if command.is("TABLES") {
+        (None, args, true)
+    } else if !extended && !full && command.is("TABLE") {
+        let [status, rest @ ..] = args else { return None };
+        if !status.is("STATUS") {
+            return None;
+        }
+        (None, rest, true)
+    } else {
+        let columns = command.is("COLUMNS") || command.is("FIELDS");
+        let indexes = !full && ["INDEX", "INDEXES", "KEYS"].iter().any(|w| command.is(w));
+        let [from, target @ ..] = args else { return None };
+        if (!columns && !indexes) || !(from.is("FROM") || from.is("IN")) {
+            return None;
+        }
+        let (db, rest) = show_object(target)?;
+        (db, rest, columns)
+    };
+    let (db, rest) = match rest {
+        [from, name, rest @ ..]
+            if db.is_none() && (from.is("FROM") || from.is("IN")) && name.ident() =>
+        {
+            (Some(name.text.as_str()), rest)
+        }
+        _ => (db, rest),
+    };
+    // Only literal LIKE is scoped here. WHERE can introduce queries or routines.
+    if rest.is_empty()
+        || (like_allowed && matches!(rest, [like, pattern] if like.is("LIKE") && pattern.quote == Some('\'')))
+    {
+        return Some(ShowScope::Database(db));
+    }
+    None
+}
+
+/// These exact MySQL forms are always reads, including SHOW CREATE.
+pub(super) fn is_metadata_show(text: &str) -> bool {
+    super::query::first_keyword(text) == "SHOW"
+        && tokens(text).is_ok_and(|tokens| show_scope(&tokens).is_some())
+}
+
 pub fn sql(allowed: Option<&[String]>, database: &str, text: &str) -> AppResult<()> {
     let Some(_) = allowed else {
         return Ok(());
@@ -168,6 +246,20 @@ pub fn sql(allowed: Option<&[String]>, database: &str, text: &str) -> AppResult<
     check(allowed, database)?;
     let t = tokens(text)?;
     let first = t.first().ok_or_else(|| denied("SQL 为空"))?;
+    if first.is("SHOW") {
+        return match show_scope(&t) {
+            Some(ShowScope::Database(db)) => check(allowed, db.unwrap_or(database)),
+            Some(ShowScope::Processlist) => Err(denied(
+                "本会话已启用「仅允许指定数据库」。SHOW PROCESSLIST 查看实例连接，无法按选中的数据库限定。",
+            )),
+            None => Err(denied(
+                "本会话已启用「仅允许指定数据库」。SHOW 仅支持可限定到库或表的元数据查询（可用字面量 LIKE）。",
+            )),
+        };
+    }
+    if first.is("USE") {
+        return Err(denied("本会话已启用「仅允许指定数据库」。请用查询页的数据库选择器切换数据库。"));
+    }
     let ddl = first.is("CREATE") || first.is("ALTER") || first.is("DROP");
     if ddl {
         let object = t.iter().skip(1).find(|x| {
@@ -185,7 +277,7 @@ pub fn sql(allowed: Option<&[String]>, database: &str, text: &str) -> AppResult<
     .iter()
     .any(|w| first.is(w))
     {
-        return Err(denied("该命令无法限定数据库范围；请使用数据库选择器，不执行 USE、SHOW、动态 SQL 或服务器管理命令"));
+        return Err(denied("本会话已启用「仅允许指定数据库」。无法验证该命令只访问允许的数据库。"));
     }
     if t.iter().any(|x| {
         [
@@ -391,6 +483,47 @@ mod tests {
         assert!(check(Some(&[]), "test_db").is_err());
         assert!(check(Some(&allow), "TEST_DB").is_err());
     }
+    #[test]
+    fn show_metadata_checks_database_scope() {
+        let allow = ["test_db".into(), "test_two".into()];
+        for query in [
+            "SHOW FULL TABLES",
+            "SHOW EXTENDED FULL TABLES FROM test_two",
+            "/* metadata */ SHOW TABLES IN test_two LIKE 't%'",
+            "SHOW TABLE STATUS FROM test_two",
+            "SHOW EXTENDED FULL COLUMNS FROM t IN test_two LIKE 'id'",
+            "SHOW FIELDS FROM test_two.t",
+            "SHOW INDEX FROM test_two.t",
+            "SHOW KEYS FROM t IN test_two",
+            "SHOW CREATE TABLE test_two.t;",
+            "SHOW CREATE VIEW `test_two`.`v`",
+        ] {
+            assert!(sql(Some(&allow), "test_db", query).is_ok(), "{query}");
+            assert!(is_metadata_show(query), "{query}");
+        }
+        for query in [
+            "SHOW TABLES IN other_db",
+            "SHOW TABLE STATUS FROM other_db",
+            "SHOW COLUMNS FROM other_db.t",
+            "SHOW INDEX FROM t IN other_db",
+            "SHOW CREATE TABLE other_db.t",
+            "SHOW CREATE VIEW other_db.v",
+            "SHOW CREATE DATABASE test_db",
+            "SHOW TABLES WHERE Tables_in_test_db = 't'",
+            "SHOW GLOBAL STATUS",
+            "SHOW DATABASES",
+            "SHOW TABLES; SELECT 1",
+        ] {
+            assert!(sql(Some(&allow), "test_db", query).is_err(), "{query}");
+        }
+        let processlist = "SHOW FULL PROCESSLIST;";
+        let error = sql(Some(&allow), "test_db", processlist).unwrap_err();
+        assert!(error.to_string().contains("查看实例连接"));
+        assert!(sql(None, "test_db", processlist).is_ok());
+        assert!(is_metadata_show(processlist));
+        assert!(!is_metadata_show("SHOW PROCESSLIST; SELECT 1"));
+    }
+
     #[tokio::test]
     async fn saved_scope_roundtrip_and_default_validation() {
         let dir = tempfile::tempdir().unwrap();
